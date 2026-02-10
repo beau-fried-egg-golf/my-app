@@ -1,35 +1,69 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Tabs, useRouter } from 'expo-router';
+import { Pressable, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useStore } from '@/data/store';
+import { useEffect } from 'react';
+
+function ProfileButton() {
+  const router = useRouter();
+  return (
+    <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
+      <Ionicons name="person-circle-outline" size={28} color={Colors.black} />
+    </Pressable>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { session, isLoading } = useStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !session) {
+      router.replace('/(auth)/login');
+    }
+  }, [isLoading, session]);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: Colors.black,
+        tabBarInactiveTintColor: Colors.gray,
+        tabBarStyle: {
+          backgroundColor: Colors.white,
+          borderTopColor: Colors.lightGray,
+        },
+        headerStyle: { backgroundColor: Colors.white },
+        headerTintColor: Colors.black,
+        headerShadowVisible: false,
+        headerTitleStyle: { fontWeight: '700', fontSize: 18 },
+        headerRight: () => <ProfileButton />,
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Feed',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="courses"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Courses',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="golf-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  profileBtn: {
+    marginRight: 16,
+  },
+});

@@ -1,0 +1,195 @@
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/theme';
+import { useStore } from '@/data/store';
+
+export default function ProfileScreen() {
+  const { user, writeups, signOut } = useStore();
+  const router = useRouter();
+
+  if (!user) return null;
+
+  const userWriteups = writeups.filter((w) => w.user_id === user.id);
+  const totalUpvotes = userWriteups.reduce((sum, w) => sum + (w.upvote_count ?? 0), 0);
+
+  async function handleSignOut() {
+    await signOut();
+    router.replace('/(auth)/login');
+  }
+
+  return (
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.avatarSection}>
+        {user.image ? (
+          <Image source={{ uri: user.image }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={40} color={Colors.gray} />
+          </View>
+        )}
+        <Text style={styles.name}>{user.name}</Text>
+        {user.location ? <Text style={styles.location}>{user.location}</Text> : null}
+      </View>
+
+      <View style={styles.stats}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{userWriteups.length}</Text>
+          <Text style={styles.statLabel}>Writeups</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{totalUpvotes}</Text>
+          <Text style={styles.statLabel}>Upvotes</Text>
+        </View>
+      </View>
+
+      <View style={styles.details}>
+        {user.handicap !== null && (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Handicap</Text>
+            <Text style={styles.detailValue}>{user.handicap}</Text>
+          </View>
+        )}
+        {user.homeCourse ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Home Course</Text>
+            <Text style={styles.detailValue}>{user.homeCourse}</Text>
+          </View>
+        ) : null}
+        {user.favoriteBall ? (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Favorite Ball</Text>
+            <Text style={styles.detailValue}>{user.favoriteBall}</Text>
+          </View>
+        ) : null}
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Member Since</Text>
+          <Text style={styles.detailValue}>
+            {new Date(user.memberSince).toLocaleDateString('en-US', {
+              month: 'long',
+              year: 'numeric',
+            })}
+          </Text>
+        </View>
+      </View>
+
+      <Pressable style={styles.editButton} onPress={() => router.push('/edit-profile')}>
+        <Text style={styles.editButtonText}>Edit Profile</Text>
+      </Pressable>
+
+      <Pressable style={styles.signOutButton} onPress={handleSignOut}>
+        <Text style={styles.signOutButtonText}>Sign Out</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  content: {
+    padding: 24,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  name: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: Colors.black,
+    marginTop: 12,
+  },
+  location: {
+    fontSize: 14,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  stats: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  statItem: {
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.black,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: Colors.lightGray,
+  },
+  details: {
+    gap: 16,
+    marginBottom: 32,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  detailLabel: {
+    fontSize: 15,
+    color: Colors.gray,
+  },
+  detailValue: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: Colors.black,
+  },
+  editButton: {
+    borderWidth: 1,
+    borderColor: Colors.black,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.black,
+  },
+  signOutButton: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  signOutButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.gray,
+  },
+});
