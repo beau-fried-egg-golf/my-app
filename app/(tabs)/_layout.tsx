@@ -1,9 +1,9 @@
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
 
 function ProfileButton() {
   const router = useRouter();
@@ -16,13 +16,12 @@ function ProfileButton() {
 
 export default function TabLayout() {
   const { session, isLoading } = useStore();
-  const router = useRouter();
 
-  useEffect(() => {
-    if (!isLoading && !session) {
-      router.replace('/(auth)/login');
-    }
-  }, [isLoading, session]);
+  if (isLoading) return null;
+
+  if (!session) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <Tabs
@@ -55,6 +54,15 @@ export default function TabLayout() {
           title: 'Courses',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="golf-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="members"
+        options={{
+          title: 'Members',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />

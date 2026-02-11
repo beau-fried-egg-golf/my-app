@@ -7,6 +7,7 @@ export interface Profile {
   home_course: string;
   favorite_ball: string;
   member_since: string;
+  suspended?: boolean;
 }
 
 export interface Course {

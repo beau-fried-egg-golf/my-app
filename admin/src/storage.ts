@@ -20,20 +20,20 @@ export async function getWriteups(): Promise<Writeup[]> {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (!writeups) return [];
+  if (!writeups || writeups.length === 0) return [];
 
   // Load photos
   const writeupIds = writeups.map(w => w.id);
   const { data: photos } = await supabase
     .from('photos')
     .select('*')
-    .in('writeup_id', writeupIds.length > 0 ? writeupIds : ['__none__']);
+    .in('writeup_id', writeupIds);
 
   // Load upvote counts
   const { data: upvotes } = await supabase
     .from('writeup_upvotes')
     .select('writeup_id')
-    .in('writeup_id', writeupIds.length > 0 ? writeupIds : ['__none__']);
+    .in('writeup_id', writeupIds);
 
   const photosByWriteup = new Map<string, Photo[]>();
   for (const p of photos ?? []) {
@@ -84,4 +84,8 @@ export async function getProfiles(): Promise<Profile[]> {
 export async function getProfile(id: string): Promise<Profile | null> {
   const { data } = await supabase.from('profiles').select('*').eq('id', id).single();
   return data;
+}
+
+export async function updateProfile(id: string, data: Partial<Profile>): Promise<void> {
+  await supabase.from('profiles').update(data).eq('id', id);
 }

@@ -14,8 +14,10 @@ export default function ProfileScreen() {
   const totalUpvotes = userWriteups.reduce((sum, w) => sum + (w.upvote_count ?? 0), 0);
 
   async function handleSignOut() {
+    // Dismiss the modal first, then sign out
+    // signOut triggers onAuthStateChange which handles the redirect
+    router.dismissAll();
     await signOut();
-    router.replace('/(auth)/login');
   }
 
   return (
@@ -55,12 +57,6 @@ export default function ProfileScreen() {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Home Course</Text>
             <Text style={styles.detailValue}>{user.homeCourse}</Text>
-          </View>
-        ) : null}
-        {user.favoriteBall ? (
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Favorite Ball</Text>
-            <Text style={styles.detailValue}>{user.favoriteBall}</Text>
           </View>
         ) : null}
         <View style={styles.detailRow}>

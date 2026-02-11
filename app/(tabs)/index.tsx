@@ -1,11 +1,15 @@
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Activity } from '@/types';
+import { Activity, Writeup } from '@/types';
 
-function ActivityItem({ item, onPress }: { item: Activity; onPress: () => void }) {
+function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: () => void; writeups: Writeup[] }) {
+  const thumbnail = item.type === 'writeup' && item.writeup_id
+    ? writeups.find(w => w.id === item.writeup_id)?.photos[0]?.url
+    : undefined;
+
   if (item.type === 'writeup') {
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
@@ -17,9 +21,11 @@ function ActivityItem({ item, onPress }: { item: Activity; onPress: () => void }
             <Text style={styles.bold}>{item.user_name}</Text> posted a writeup on{' '}
             <Text style={styles.bold}>{item.course_name}</Text>
           </Text>
-          <Text style={styles.activityTitle}>"{item.writeup_title}"</Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
+        {thumbnail && (
+          <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
+        )}
       </Pressable>
     );
   }
@@ -53,7 +59,7 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, session } = useStore();
+  const { activities, writeups, session } = useStore();
   const router = useRouter();
 
   if (!session) return null;
@@ -66,6 +72,7 @@ export default function FeedScreen() {
         renderItem={({ item }) => (
           <ActivityItem
             item={item}
+            writeups={writeups}
             onPress={() => item.writeup_id ? router.push(`/writeup/${item.writeup_id}`) : undefined}
           />
         )}
@@ -121,11 +128,11 @@ const styles = StyleSheet.create({
     color: Colors.black,
     lineHeight: 21,
   },
-  activityTitle: {
-    fontSize: 14,
-    color: Colors.darkGray,
-    fontStyle: 'italic',
-    marginTop: 2,
+  thumbnail: {
+    width: 48,
+    height: 48,
+    borderRadius: 6,
+    marginLeft: 12,
   },
   activityTime: {
     fontSize: 12,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProfile, getWriteups, getCourses } from './storage';
+import { getProfile, getWriteups, getCourses, updateProfile } from './storage';
 import type { Profile, Writeup, Course } from './types';
 
 function formatDate(iso: string): string {
@@ -16,6 +16,7 @@ export default function UserDetail() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [writeups, setWriteups] = useState<Writeup[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [suspending, setSuspending] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -33,6 +34,15 @@ export default function UserDetail() {
     return courses.find((c) => c.id === courseId)?.short_name ?? courseId;
   }
 
+  async function handleToggleSuspend() {
+    if (!profile || !id) return;
+    setSuspending(true);
+    const newValue = !profile.suspended;
+    await updateProfile(id, { suspended: newValue });
+    setProfile({ ...profile, suspended: newValue });
+    setSuspending(false);
+  }
+
   const userName = profile?.name || `Member ${id?.slice(0, 6)}`;
 
   return (
@@ -44,13 +54,34 @@ export default function UserDetail() {
       <div className="detail-container">
         <div className="detail-header">
           <div>
-            <div className="detail-title">{userName}</div>
+            <div className="detail-title">
+              {userName}
+              {profile?.suspended && (
+                <span className="badge badge-hidden" style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                  Suspended
+                </span>
+              )}
+            </div>
             {profile && (
               <div className="detail-meta">
                 {profile.location} &middot; Handicap: {profile.handicap ?? 'N/A'} &middot; Member since {formatDate(profile.member_since)}
               </div>
             )}
           </div>
+          {profile && (
+            <button
+              className={`btn btn-sm ${profile.suspended ? '' : 'btn-danger'}`}
+              onClick={handleToggleSuspend}
+              disabled={suspending}
+              style={{ marginLeft: 'auto' }}
+            >
+              {suspending
+                ? 'Updating...'
+                : profile.suspended
+                  ? 'Unsuspend Account'
+                  : 'Suspend Account'}
+            </button>
+          )}
         </div>
 
         <h3 className="section-title" style={{ marginTop: 0 }}>

@@ -119,15 +119,6 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Favorite Ball</Text>
-            <TextInput
-              style={styles.input}
-              value={favoriteBall}
-              onChangeText={setFavoriteBall}
-              placeholderTextColor={Colors.gray}
-            />
-          </View>
         </View>
 
         <Pressable style={styles.saveButton} onPress={handleSave}>

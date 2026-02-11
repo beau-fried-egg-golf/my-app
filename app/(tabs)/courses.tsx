@@ -1,11 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
+import CourseMapSheet from '@/components/course-map-sheet';
+
+// Lazy-load map component only on web
+const CourseMap = Platform.OS === 'web'
+  ? require('@/components/course-map').default
+  : () => null;
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -39,6 +45,7 @@ function getDistanceMiles(
 type AccessFilter = 'all' | 'public' | 'private';
 type DistanceFilter = 'all' | '25' | '50' | '100';
 type WriteupFilter = 'all' | 'has_writeups';
+type SortOrder = 'alpha' | 'distance';
 
 export default function CoursesScreen() {
   const { courses, writeups } = useStore();
@@ -48,6 +55,10 @@ export default function CoursesScreen() {
   const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all');
   const [writeupFilter, setWriteupFilter] = useState<WriteupFilter>('all');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('alpha');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -89,6 +100,14 @@ export default function CoursesScreen() {
   const filteredCourses = useMemo(() => {
     let result = [...courses];
 
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(q) || c.short_name.toLowerCase().includes(q)
+      );
+    }
+
     if (accessFilter === 'public') result = result.filter((c) => !c.is_private);
     if (accessFilter === 'private') result = result.filter((c) => c.is_private);
 
@@ -104,8 +123,18 @@ export default function CoursesScreen() {
       result = result.filter((c) => getWriteupCount(c.id) > 0);
     }
 
+    if (sortOrder === 'alpha') {
+      result.sort((a, b) => a.short_name.localeCompare(b.short_name));
+    } else if (sortOrder === 'distance' && userLocation) {
+      result.sort((a, b) => {
+        const da = getDistance(a) ?? Infinity;
+        const db = getDistance(b) ?? Infinity;
+        return da - db;
+      });
+    }
+
     return result;
-  }, [courses, accessFilter, distanceFilter, writeupFilter, userLocation, writeups]);
+  }, [courses, searchQuery, accessFilter, distanceFilter, writeupFilter, sortOrder, userLocation, writeups]);
 
   function renderCourse({ item }: { item: Course }) {
     const count = getWriteupCount(item.id);
@@ -147,10 +176,12 @@ export default function CoursesScreen() {
     );
   }
 
+  const isWeb = Platform.OS === 'web';
+
   return (
     <View style={styles.container}>
-      <Pressable style={styles.filterBar} onPress={() => setShowFilters(!showFilters)}>
-        <View style={styles.filterBarLeft}>
+      <View style={styles.toolBar}>
+        <Pressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
           <Ionicons name="options-outline" size={18} color={Colors.black} />
           <Text style={styles.filterBarText}>Filters</Text>
           {activeFilterCount > 0 && (
@@ -158,13 +189,60 @@ export default function CoursesScreen() {
               <Text style={styles.filterCountText}>{activeFilterCount}</Text>
             </View>
           )}
+          <Ionicons
+            name={showFilters ? 'chevron-up' : 'chevron-down'}
+            size={16}
+            color={Colors.gray}
+          />
+        </Pressable>
+        <View style={styles.toolBarRight}>
+          {isWeb && (
+            <View style={styles.viewToggle}>
+              <Pressable
+                style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
+                onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
+              >
+                <Ionicons
+                  name="list-outline"
+                  size={14}
+                  color={viewMode === 'list' ? Colors.white : Colors.darkGray}
+                />
+              </Pressable>
+              <Pressable
+                style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
+                onPress={() => setViewMode('map')}
+              >
+                <Ionicons
+                  name="map-outline"
+                  size={14}
+                  color={viewMode === 'map' ? Colors.white : Colors.darkGray}
+                />
+              </Pressable>
+            </View>
+          )}
+          {viewMode === 'list' && (
+            <View style={styles.sortToggle}>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('alpha')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('distance')}
+              >
+                <Ionicons
+                  name="navigate-outline"
+                  size={13}
+                  color={sortOrder === 'distance' ? Colors.white : Colors.darkGray}
+                />
+                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>Near</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
-        <Ionicons
-          name={showFilters ? 'chevron-up' : 'chevron-down'}
-          size={16}
-          color={Colors.gray}
-        />
-      </Pressable>
+      </View>
 
       {showFilters && (
         <View style={styles.filterPanel}>
@@ -248,27 +326,72 @@ export default function CoursesScreen() {
         </View>
       )}
 
-      <FlatList
-        data={filteredCourses}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCourse}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No courses match your filters</Text>
+      {viewMode === 'list' ? (
+        <>
+          <View style={styles.searchBar}>
+            <Ionicons name="search-outline" size={16} color={Colors.gray} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search courses..."
+              placeholderTextColor={Colors.gray}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')} style={styles.searchClear}>
+                <Ionicons name="close-circle" size={16} color={Colors.gray} />
+              </Pressable>
+            )}
           </View>
-        }
-      />
+          <FlatList
+            data={filteredCourses}
+            keyExtractor={(item) => item.id}
+            renderItem={renderCourse}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+            contentContainerStyle={styles.list}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Text style={styles.emptyText}>No courses match your filters</Text>
+              </View>
+            }
+          />
+        </>
+      ) : (
+        <View style={styles.mapContainer}>
+          <CourseMap
+            courses={filteredCourses}
+            userLocation={userLocation}
+            selectedCourse={selectedCourse}
+            onCourseSelect={setSelectedCourse}
+          />
+          {selectedCourse && (
+            <CourseMapSheet
+              course={selectedCourse}
+              writeupCount={getWriteupCount(selectedCourse.id)}
+              distance={getDistance(selectedCourse)}
+              onClose={() => setSelectedCourse(null)}
+            />
+          )}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  filterBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
+  toolBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   filterBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   filterBarText: { fontSize: 14, fontWeight: '600', color: Colors.black },
+  toolBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  viewToggle: { flexDirection: 'row', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, overflow: 'hidden' },
+  sortToggle: { flexDirection: 'row', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, overflow: 'hidden' },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 10, paddingVertical: 5 },
+  sortBtnActive: { backgroundColor: Colors.black },
+  sortBtnText: { fontSize: 12, fontWeight: '600', color: Colors.darkGray },
+  sortBtnTextActive: { color: Colors.white },
   filterCount: { backgroundColor: Colors.black, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
   filterCountText: { color: Colors.white, fontSize: 11, fontWeight: '700' },
   filterPanel: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 12 },
@@ -281,6 +404,10 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.white, fontWeight: '600' },
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 10, marginBottom: 2, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, height: 38 },
+  searchIcon: { marginRight: 6 },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 0, outlineStyle: 'none' } as any,
+  searchClear: { marginLeft: 4, padding: 2 },
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
@@ -296,4 +423,5 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: Colors.lightGray, marginHorizontal: 16 },
   empty: { padding: 32, alignItems: 'center' },
   emptyText: { fontSize: 15, color: Colors.gray },
+  mapContainer: { flex: 1, position: 'relative' },
 });

@@ -9,6 +9,7 @@ interface StoreContextType {
   writeups: Writeup[];
   activities: Activity[];
   courses: Course[];
+  profiles: Profile[];
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null }>;
@@ -33,6 +34,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [writeups, setWriteups] = useState<Writeup[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [profileCache, setProfileCache] = useState<Map<string, string>>(new Map());
 
@@ -70,21 +72,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .eq('id', userId)
       .single();
     if (data) {
-      setUser(profileToUser(data as Profile));
+      const profile = data as Profile;
+      if (profile.suspended) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        return;
+      }
+      setUser(profileToUser(profile));
     }
   }
 
   async function loadData() {
     try {
-      const [coursesRes, writeupsRes, activitiesRes] = await Promise.all([
+      const [coursesRes, writeupsRes, activitiesRes, profilesRes] = await Promise.all([
         supabase.from('courses').select('*').order('name'),
         loadWriteups(),
         loadActivities(),
+        supabase.from('profiles').select('*').order('name'),
       ]);
 
       if (coursesRes.data) setCourses(coursesRes.data);
       if (writeupsRes) setWriteups(writeupsRes);
       if (activitiesRes) setActivities(activitiesRes);
+      if (profilesRes.data) setProfiles(profilesRes.data);
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -98,34 +109,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!rawWriteups) return [];
+    if (!rawWriteups || rawWriteups.length === 0) return [];
 
     // Load photos for all writeups
     const writeupIds = rawWriteups.map(w => w.id);
     const { data: photos } = await supabase
       .from('photos')
       .select('*')
-      .in('writeup_id', writeupIds.length > 0 ? writeupIds : ['__none__']);
+      .in('writeup_id', writeupIds);
 
     // Load upvote counts for writeups
     const { data: writeupUpvotes } = await supabase
       .from('writeup_upvotes')
       .select('writeup_id, user_id')
-      .in('writeup_id', writeupIds.length > 0 ? writeupIds : ['__none__']);
+      .in('writeup_id', writeupIds);
 
     // Load photo upvote counts
     const photoIds = (photos ?? []).map(p => p.id);
-    const { data: photoUpvotes } = await supabase
-      .from('photo_upvotes')
-      .select('photo_id, user_id')
-      .in('photo_id', photoIds.length > 0 ? photoIds : ['__none__']);
+    const { data: photoUpvotes } = photoIds.length > 0
+      ? await supabase
+          .from('photo_upvotes')
+          .select('photo_id, user_id')
+          .in('photo_id', photoIds)
+      : { data: [] };
 
     // Load profile names for all authors
     const authorIds = [...new Set(rawWriteups.map(w => w.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name')
-      .in('id', authorIds.length > 0 ? authorIds : ['__none__']);
+      .in('id', authorIds);
 
     const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
     // Update cache
@@ -169,22 +182,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (!data) return [];
+    if (!data || data.length === 0) return [];
 
     // Enrich with names
     const userIds = [...new Set(data.map(a => a.user_id).concat(data.filter(a => a.target_user_id).map(a => a.target_user_id!)))];
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, name')
-      .in('id', userIds.length > 0 ? userIds : ['__none__']);
+      .in('id', userIds);
 
     const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
 
     const writeupIds = [...new Set(data.filter(a => a.writeup_id).map(a => a.writeup_id!))];
-    const { data: writeupData } = await supabase
-      .from('writeups')
-      .select('id, title, course_id')
-      .in('id', writeupIds.length > 0 ? writeupIds : ['__none__']);
+    const { data: writeupData } = writeupIds.length > 0
+      ? await supabase
+          .from('writeups')
+          .select('id, title, course_id')
+          .in('id', writeupIds)
+      : { data: [] };
 
     const writeupMap = new Map((writeupData ?? []).map(w => [w.id, w]));
 
@@ -211,14 +226,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    if (error) return { error };
-
-    // Update the profile with the name
-    if (data.user) {
-      await supabase.from('profiles').update({ name }).eq('id', data.user.id);
-    }
-    return { error: null };
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    return { error: error ?? null };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -501,6 +514,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         writeups,
         activities,
         courses,
+        profiles,
         isLoading,
         signIn,
         signUp,
