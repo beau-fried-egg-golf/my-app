@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -82,6 +82,7 @@ export default function CourseDetailScreen() {
   const { courses, writeups, getUserName, user, togglePhotoUpvote } = useStore();
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
+  const galleryScrollRef = useRef<ScrollView>(null);
 
   const course = courses.find((c) => c.id === id);
   if (!course) return null;
@@ -282,15 +283,21 @@ export default function CourseDetailScreen() {
             <Text style={styles.modalCloseText}>x</Text>
           </Pressable>
           <ScrollView
+            ref={galleryScrollRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: selectedPhoto * SCREEN_WIDTH, y: 0 }}
+            onLayout={() => {
+              if (selectedPhoto > 0) {
+                galleryScrollRef.current?.scrollTo({ x: selectedPhoto * SCREEN_WIDTH, animated: false });
+              }
+            }}
+            style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory' } as any : undefined}
           >
             {sortedPhotos.map((photo) => {
               const photoHasUpvote = photo.user_has_upvoted ?? false;
               return (
-                <View key={`modal-${photo.id}`} style={styles.modalSlide}>
+                <View key={`modal-${photo.id}`} style={[styles.modalSlide, Platform.OS === 'web' && { scrollSnapAlign: 'start' } as any]}>
                   <Image
                     source={{ uri: photo.url }}
                     style={styles.modalImage}
