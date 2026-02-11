@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -21,19 +20,21 @@ export default function SignupScreen() {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const canSubmit = email.trim().length > 0 && password.length >= 6 && name.trim().length > 0;
 
   async function handleSignup() {
-    if (!canSubmit) return;
+    if (!canSubmit || loading) return;
+    setError('');
     setLoading(true);
     try {
-      const { error } = await signUp(email.trim(), password, name.trim());
-      if (error) {
-        Alert.alert('Sign Up Failed', error.message);
+      const { error: authError } = await signUp(email.trim(), password, name.trim());
+      if (authError) {
+        setError(authError.message);
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      setError(e.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -49,6 +50,12 @@ export default function SignupScreen() {
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Sign up to get started</Text>
         </View>
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.form}>
           <View style={styles.field}>
@@ -85,14 +92,18 @@ export default function SignupScreen() {
               placeholder="At least 6 characters"
               placeholderTextColor={Colors.gray}
               secureTextEntry
+              onSubmitEditing={handleSignup}
             />
           </View>
         </View>
 
         <Pressable
-          style={[styles.button, (!canSubmit || loading) && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            (!canSubmit || loading) && styles.buttonDisabled,
+            pressed && canSubmit && !loading && styles.buttonPressed,
+          ]}
           onPress={handleSignup}
-          disabled={!canSubmit || loading}
         >
           <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
         </Pressable>
@@ -129,6 +140,16 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 4,
   },
+  errorBox: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+  },
   form: {
     gap: 20,
     marginBottom: 32,
@@ -155,9 +176,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   buttonDisabled: {
     opacity: 0.4,
+    cursor: 'default' as any,
+  },
+  buttonPressed: {
+    opacity: 0.8,
   },
   buttonText: {
     color: Colors.white,
@@ -167,6 +193,7 @@ const styles = StyleSheet.create({
   linkButton: {
     marginTop: 20,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   linkText: {
     fontSize: 15,

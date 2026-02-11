@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,19 +18,21 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const canSubmit = email.trim().length > 0 && password.length >= 6;
 
   async function handleLogin() {
-    if (!canSubmit) return;
+    if (!canSubmit || loading) return;
+    setError('');
     setLoading(true);
     try {
-      const { error } = await signIn(email.trim(), password);
-      if (error) {
-        Alert.alert('Login Failed', error.message);
+      const { error: authError } = await signIn(email.trim(), password);
+      if (authError) {
+        setError(authError.message);
       }
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      setError(e.message ?? 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -47,6 +48,12 @@ export default function LoginScreen() {
           <Text style={styles.title}>Welcome Back</Text>
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
+
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.form}>
           <View style={styles.field}>
@@ -72,14 +79,18 @@ export default function LoginScreen() {
               placeholder="Your password"
               placeholderTextColor={Colors.gray}
               secureTextEntry
+              onSubmitEditing={handleLogin}
             />
           </View>
         </View>
 
         <Pressable
-          style={[styles.button, (!canSubmit || loading) && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            (!canSubmit || loading) && styles.buttonDisabled,
+            pressed && canSubmit && !loading && styles.buttonPressed,
+          ]}
           onPress={handleLogin}
-          disabled={!canSubmit || loading}
         >
           <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
         </Pressable>
@@ -116,6 +127,16 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 4,
   },
+  errorBox: {
+    backgroundColor: '#ffebee',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: '#d32f2f',
+    fontSize: 14,
+  },
   form: {
     gap: 20,
     marginBottom: 32,
@@ -142,9 +163,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   buttonDisabled: {
     opacity: 0.4,
+    cursor: 'default' as any,
+  },
+  buttonPressed: {
+    opacity: 0.8,
   },
   buttonText: {
     color: Colors.white,
@@ -154,6 +180,7 @@ const styles = StyleSheet.create({
   linkButton: {
     marginTop: 20,
     alignItems: 'center',
+    cursor: 'pointer' as any,
   },
   linkText: {
     fontSize: 15,
