@@ -43,8 +43,8 @@ function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: ()
           <Text style={styles.activityTextBold}>{name}</Text>
           <Text style={styles.activityText}> upvoted </Text>
           <Text style={styles.activityTextBold}>{targetName}</Text>
+          <Text style={styles.activityText}>{'\'s writeup on'}</Text>
         </View>
-        <Text style={styles.activityText}>{'\'s writeup on'}</Text>
         <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
         <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
       </View>

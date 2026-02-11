@@ -18,6 +18,7 @@ import { useStore } from '@/data/store';
 import { Photo } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import WordHighlight from '@/components/WordHighlight';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -181,6 +182,12 @@ export default function WriteupDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.headerRow}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Text style={styles.backArrowText}>{'<'}</Text>
+        </Pressable>
+        <LetterSpacedHeader text="WRITEUP" size={32} />
+      </View>
       <Pressable onPress={() => router.push(`/course/${writeup.course_id}`)}>
         <Text style={styles.courseName}>{course?.short_name?.toUpperCase()}</Text>
       </Pressable>
@@ -248,6 +255,9 @@ export default function WriteupDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 40 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  backArrow: { paddingRight: 12, paddingTop: 4 },
+  backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   courseName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 1, marginBottom: 8 },
   title: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, lineHeight: 32 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 20, flexWrap: 'wrap' },

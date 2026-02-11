@@ -35,6 +35,12 @@ export interface Course {
   description: string;
   latitude: number;
   longitude: number;
+  fe_hero_image: string | null;
+  fe_profile_url: string | null;
+  fe_profile_author: string | null;
+  fe_egg_rating: number | null;  // 0-3, null = unrated
+  fe_bang_for_buck: boolean;
+  fe_profile_date: string | null;
 }
 
 // Camel-case alias used in some UI components
@@ -52,6 +58,12 @@ export function courseToUI(c: Course) {
     description: c.description,
     latitude: c.latitude,
     longitude: c.longitude,
+    feHeroImage: c.fe_hero_image,
+    feProfileUrl: c.fe_profile_url,
+    feProfileAuthor: c.fe_profile_author,
+    feEggRating: c.fe_egg_rating,
+    feBangForBuck: c.fe_bang_for_buck,
+    feProfileDate: c.fe_profile_date,
   };
 }
 

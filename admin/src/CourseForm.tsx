@@ -15,6 +15,12 @@ const EMPTY_COURSE: Omit<Course, 'id'> = {
   description: '',
   latitude: 0,
   longitude: 0,
+  fe_hero_image: null,
+  fe_profile_url: null,
+  fe_profile_author: null,
+  fe_egg_rating: null,
+  fe_bang_for_buck: false,
+  fe_profile_date: null,
 };
 
 function generateId(name: string): string {
@@ -47,7 +53,7 @@ export default function CourseForm() {
     }
   }, [id, isEditing]);
 
-  function handleChange(field: keyof typeof form, value: string | number | boolean) {
+  function handleChange(field: keyof typeof form, value: string | number | boolean | null) {
     setForm((prev) => ({ ...prev, [field]: value }));
     if (field === 'name' && !isEditing) {
       setCourseId(generateId(value as string));
@@ -145,6 +151,49 @@ export default function CourseForm() {
           <div className="form-group">
             <label className="form-label">Longitude</label>
             <input className="form-input" type="number" step="0.0001" value={form.longitude} onChange={(e) => handleChange('longitude', parseFloat(e.target.value) || 0)} />
+          </div>
+        </div>
+
+        <h2 style={{ marginTop: 24, marginBottom: 12, fontSize: 18 }}>Fried Egg Content</h2>
+
+        <div className="form-group">
+          <label className="form-label">Hero Image URL</label>
+          <input className="form-input" value={form.fe_hero_image ?? ''} onChange={(e) => handleChange('fe_hero_image', e.target.value || null)} />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Profile URL</label>
+          <input className="form-input" value={form.fe_profile_url ?? ''} onChange={(e) => handleChange('fe_profile_url', e.target.value || null)} />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Profile Author</label>
+            <input className="form-input" value={form.fe_profile_author ?? ''} onChange={(e) => handleChange('fe_profile_author', e.target.value || null)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Profile Date</label>
+            <input className="form-input" type="date" value={form.fe_profile_date ?? ''} onChange={(e) => handleChange('fe_profile_date', e.target.value || null)} />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Egg Rating</label>
+            <select className="form-input" value={form.fe_egg_rating === null ? '' : form.fe_egg_rating} onChange={(e) => handleChange('fe_egg_rating', e.target.value === '' ? null : parseInt(e.target.value))}>
+              <option value="">Unrated</option>
+              <option value="0">0 eggs</option>
+              <option value="1">1 egg</option>
+              <option value="2">2 eggs</option>
+              <option value="3">3 eggs</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Bang for Your Buck</label>
+            <label className="form-checkbox-label" style={{ marginTop: 8 }}>
+              <input type="checkbox" checked={form.fe_bang_for_buck} onChange={(e) => handleChange('fe_bang_for_buck', e.target.checked)} />
+              Bang for Your Buck
+            </label>
           </div>
         </div>
 

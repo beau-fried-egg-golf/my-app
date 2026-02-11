@@ -8,6 +8,7 @@ export const Colors = {
   darkGray: '#333333',
   border: '#D0D0D0',
   orange: '#FE4D12',
+  feYellow: '#FFEE54',
 };
 
 const greyLLStack = "'Grey LL', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";

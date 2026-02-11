@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import { Course } from '@/types';
 
+function hasFEContent(course: Course): boolean {
+  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
+}
+
 interface CourseMapProps {
   courses: Course[];
   userLocation: { lat: number; lon: number } | null;
@@ -58,17 +62,19 @@ function CourseMapInner({
 }: CourseMapProps & { RL: any; L: any }) {
   const { MapContainer, TileLayer, Marker } = RL;
 
-  const markerIcon = useRef(
-    L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      iconSize: [25, 41],
-      iconAnchor: [12, 41],
-      popupAnchor: [1, -34],
-      shadowSize: [41, 41],
-    })
-  ).current;
+  function makePinIcon(color: string) {
+    return L.divIcon({
+      className: '',
+      iconSize: [24, 36],
+      iconAnchor: [12, 36],
+      html: `<div style="width:24px;height:36px;position:relative;">
+        <div style="width:24px;height:24px;background:${color};border:2px solid #000;border-radius:50% 50% 50% 0;transform:rotate(-45deg);position:absolute;top:0;left:0;"></div>
+      </div>`,
+    });
+  }
+
+  const feIcon = useRef(makePinIcon('#FFEE54')).current;
+  const defaultIcon = useRef(makePinIcon('#FE4D12')).current;
 
   const center: [number, number] = userLocation
     ? [userLocation.lat, userLocation.lon]
@@ -95,7 +101,7 @@ function CourseMapInner({
           <Marker
             key={course.id}
             position={[course.latitude, course.longitude] as [number, number]}
-            icon={markerIcon}
+            icon={hasFEContent(course) ? feIcon : defaultIcon}
             eventHandlers={{
               click: () => {
                 lastMarkerClickTime = Date.now();

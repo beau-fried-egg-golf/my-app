@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { getCourses, getWriteups, deleteCourse } from './storage';
 import type { Course, Writeup } from './types';
 
+function hasFEContent(course: Course): boolean {
+  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
+}
+
 export default function CourseList() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [writeups, setWriteups] = useState<Writeup[]>([]);
@@ -49,6 +53,7 @@ export default function CourseList() {
               <th>Holes</th>
               <th>Par</th>
               <th>Year</th>
+              <th>FE</th>
               <th>Writeups</th>
               <th>Actions</th>
             </tr>
@@ -66,6 +71,11 @@ export default function CourseList() {
                 <td>{c.holes}</td>
                 <td>{c.par}</td>
                 <td>{c.year_established}</td>
+                <td>
+                  {hasFEContent(c) ? (
+                    <span style={{ backgroundColor: '#FFEE54', color: '#000', fontWeight: 'bold', fontSize: 11, padding: '2px 6px', borderRadius: 4 }}>FE</span>
+                  ) : '–'}
+                </td>
                 <td>{getWriteupCount(c.id)}</td>
                 <td>
                   <div className="btn-group">

@@ -23,6 +23,12 @@ export interface Course {
   description: string;
   latitude: number;
   longitude: number;
+  fe_hero_image: string | null;
+  fe_profile_url: string | null;
+  fe_profile_author: string | null;
+  fe_egg_rating: number | null;
+  fe_bang_for_buck: boolean;
+  fe_profile_date: string | null;
 }
 
 export interface Photo {

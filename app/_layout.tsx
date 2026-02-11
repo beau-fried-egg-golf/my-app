@@ -53,7 +53,7 @@ export default function RootLayout() {
           options={{ title: 'New Writeup', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW WRITEUP" size={32} /> }}
         />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="writeup/[id]" options={{ title: '' }} />
+        <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="member/[id]" options={{ title: 'Member', headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
         <Stack.Screen
           name="onboarding"

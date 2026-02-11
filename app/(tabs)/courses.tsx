@@ -8,6 +8,10 @@ import { Course } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
 import WordHighlight from '@/components/WordHighlight';
 
+function hasFEContent(course: Course): boolean {
+  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
+}
+
 // Lazy-load map component only on web
 const CourseMap = Platform.OS === 'web'
   ? require('@/components/course-map').default
@@ -45,6 +49,7 @@ function getDistanceMiles(
 type AccessFilter = 'all' | 'public' | 'private';
 type DistanceFilter = 'all' | '25' | '50' | '100';
 type WriteupFilter = 'all' | 'has_writeups';
+type FEFilter = 'all' | 'has_fe';
 type SortOrder = 'alpha' | 'distance';
 
 export default function CoursesScreen() {
@@ -55,6 +60,7 @@ export default function CoursesScreen() {
   const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all');
   const [writeupFilter, setWriteupFilter] = useState<WriteupFilter>('all');
+  const [feFilter, setFEFilter] = useState<FEFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('alpha');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,6 +101,7 @@ export default function CoursesScreen() {
     accessFilter !== 'all' ? 1 : 0,
     distanceFilter !== 'all' ? 1 : 0,
     writeupFilter !== 'all' ? 1 : 0,
+    feFilter !== 'all' ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const filteredCourses = useMemo(() => {
@@ -123,6 +130,10 @@ export default function CoursesScreen() {
       result = result.filter((c) => getWriteupCount(c.id) > 0);
     }
 
+    if (feFilter === 'has_fe') {
+      result = result.filter((c) => hasFEContent(c));
+    }
+
     if (sortOrder === 'alpha') {
       result.sort((a, b) => a.short_name.localeCompare(b.short_name));
     } else if (sortOrder === 'distance' && userLocation) {
@@ -134,7 +145,7 @@ export default function CoursesScreen() {
     }
 
     return result;
-  }, [courses, searchQuery, accessFilter, distanceFilter, writeupFilter, sortOrder, userLocation, writeups]);
+  }, [courses, searchQuery, accessFilter, distanceFilter, writeupFilter, feFilter, sortOrder, userLocation, writeups]);
 
   function renderCourse({ item }: { item: Course }) {
     const count = getWriteupCount(item.id);
@@ -164,6 +175,9 @@ export default function CoursesScreen() {
             <Text style={styles.statText}>
               {count} writeup{count !== 1 ? 's' : ''}
             </Text>
+            {!!item.fe_profile_url && (
+              <Text style={styles.feBlurb}> · Has a Fried Egg course profile</Text>
+            )}
           </View>
           {recent && (
             <Text style={styles.recentText}>
@@ -292,6 +306,28 @@ export default function CoursesScreen() {
             </ScrollView>
           </View>
 
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterLabel}>FRIED EGG</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.filterChips}>
+                {([
+                  ['all', 'ALL'],
+                  ['has_fe', 'HAS FE PROFILE'],
+                ] as [FEFilter, string][]).map(([val, label]) => (
+                  <Pressable
+                    key={val}
+                    style={[styles.chip, feFilter === val && styles.chipActive]}
+                    onPress={() => setFEFilter(val)}
+                  >
+                    <Text style={[styles.chipText, feFilter === val && styles.chipTextActive]}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
           {activeFilterCount > 0 && (
             <Pressable
               style={styles.clearFilters}
@@ -299,6 +335,7 @@ export default function CoursesScreen() {
                 setAccessFilter('all');
                 setDistanceFilter('all');
                 setWriteupFilter('all');
+                setFEFilter('all');
               }}
             >
               <Text style={styles.clearFiltersText}>Clear all filters</Text>
@@ -377,11 +414,11 @@ const styles = StyleSheet.create({
   filterPanel: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 12 },
   filterGroup: { gap: 6 },
   filterLabel: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 0.5 },
-  filterChips: { flexDirection: 'row', gap: 8 },
-  chip: { borderWidth: 1, borderColor: Colors.border, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
-  chipActive: { backgroundColor: Colors.orange, borderColor: Colors.orange },
-  chipText: { fontSize: 13, color: Colors.darkGray, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
-  chipTextActive: { color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  filterChips: { flexDirection: 'row', gap: 4 },
+  chip: { paddingHorizontal: 6, paddingVertical: 3 },
+  chipActive: { backgroundColor: Colors.orange },
+  chipText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, textTransform: 'uppercase', letterSpacing: 0.5 },
+  chipTextActive: { color: Colors.black },
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 10, marginBottom: 2, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, height: 38 },
@@ -404,4 +441,5 @@ const styles = StyleSheet.create({
   empty: { padding: 32, alignItems: 'center' },
   emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   mapContainer: { flex: 1, position: 'relative' },
+  feBlurb: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
 });

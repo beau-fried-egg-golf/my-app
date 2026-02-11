@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import {
   Dimensions,
   Image,
+  Linking,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,9 +14,13 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Photo, Writeup } from '@/types';
+import { Course, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
+
+function hasFEContent(course: Course): boolean {
+  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
+}
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -123,6 +129,13 @@ export default function CourseDetailScreen() {
           <LetterSpacedHeader text={course.short_name} size={32} />
         </View>
       </View>
+
+      {course.fe_hero_image && (
+        <View style={styles.feHeroWrap}>
+          <Image source={{ uri: course.fe_hero_image }} style={styles.feHero} resizeMode="cover" />
+        </View>
+      )}
+
       <View style={styles.courseHeader}>
         <View style={styles.courseDetails}>
           <Text style={styles.courseAddress}>
@@ -142,6 +155,41 @@ export default function CourseDetailScreen() {
         </View>
         <Text style={styles.courseDescription}>{course.description}</Text>
       </View>
+
+      {course.fe_profile_url && (
+        <Pressable
+          style={styles.feProfileSection}
+          onPress={() => {
+            if (Platform.OS === 'web') {
+              window.open(course.fe_profile_url!, '_blank');
+            } else {
+              Linking.openURL(course.fe_profile_url!);
+            }
+          }}
+        >
+          <Text style={styles.feProfileLink}>
+            Read the full course profile{course.fe_profile_author ? ` by ${course.fe_profile_author}` : ''}
+          </Text>
+          {course.fe_profile_date && (
+            <Text style={styles.feProfileDate}>
+              {new Date(course.fe_profile_date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </Text>
+          )}
+          <View style={styles.feEggRow}>
+            {course.fe_egg_rating !== null ? (
+              course.fe_egg_rating === 0 ? (
+                <Text style={styles.feEggLabel}>0 Eggs</Text>
+              ) : (
+                Array.from({ length: course.fe_egg_rating }).map((_, i) => (
+                  <Text key={i} style={styles.feEgg}>🥚</Text>
+                ))
+              )
+            ) : (
+              <Text style={styles.feEggLabel}>Not rated</Text>
+            )}
+          </View>
+        </Pressable>
+      )}
 
       <View style={styles.statsRow}>
         <Text style={styles.statsText}>
@@ -212,7 +260,7 @@ export default function CourseDetailScreen() {
             style={styles.writeButton}
             onPress={() => router.push(`/create-writeup?courseId=${id}`)}
           >
-            <Text style={styles.writeButtonText}>Write the first one</Text>
+            <Text style={styles.writeButtonText}>Post a writeup</Text>
           </Pressable>
         </View>
       )}
@@ -223,7 +271,7 @@ export default function CourseDetailScreen() {
             style={styles.writeButton}
             onPress={() => router.push(`/create-writeup?courseId=${id}`)}
           >
-            <Text style={styles.writeButtonText}>Write a review</Text>
+            <Text style={styles.writeButtonText}>Post a writeup</Text>
           </Pressable>
         </View>
       )}
@@ -323,4 +371,12 @@ const styles = StyleSheet.create({
   modalUpvoteActive: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: Colors.white },
   modalUpvoteText: { color: Colors.white, fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   modalTime: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: Fonts!.sans },
+  feHeroWrap: { paddingHorizontal: 16, paddingTop: 12 },
+  feHero: { width: '100%', aspectRatio: 9 / 16, borderRadius: 8 } as any,
+  feProfileSection: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 4 },
+  feProfileLink: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, textDecorationLine: 'underline' },
+  feProfileDate: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
+  feEggRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
+  feEgg: { fontSize: 18 },
+  feEggLabel: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
 });

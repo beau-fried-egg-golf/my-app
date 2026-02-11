@@ -4,6 +4,10 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { Course } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 
+function hasFEContent(course: Course): boolean {
+  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
+}
+
 interface CourseMapSheetProps {
   course: Course;
   writeupCount: number;
@@ -23,6 +27,11 @@ export default function CourseMapSheet({ course, writeupCount, distance, onClose
       <Pressable style={styles.body} onPress={() => router.push(`/course/${course.id}`)}>
         <View style={styles.header}>
           <WordHighlight words={course.short_name.split(' ')} size={16} />
+          {hasFEContent(course) && (
+            <View style={styles.feBadge}>
+              <Text style={styles.feBadgeText}>FE</Text>
+            </View>
+          )}
           <View style={styles.badge}>
             <Text style={styles.badgeText}>{course.is_private ? 'PRIVATE' : 'PUBLIC'}</Text>
           </View>
@@ -108,5 +117,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.darkGray,
     fontFamily: Fonts!.sans,
+  },
+  feBadge: {
+    backgroundColor: '#FFEE54',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  feBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
   },
 });
