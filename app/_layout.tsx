@@ -4,11 +4,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider } from '@/data/store';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     ...Ionicons.font,
+    'GreyLL-Regular': require('../public/fonts/GreyLLTT-Regular.ttf'),
+    'GreyLL-Medium': require('../public/fonts/GreyLLTT-Medium.ttf'),
+    'GreyLL-Bold': require('../public/fonts/GreyLLTT-Bold.ttf'),
   });
 
   if (!fontsLoaded) {
@@ -28,25 +32,29 @@ export default function RootLayout() {
           headerTintColor: Colors.black,
           headerShadowVisible: false,
           contentStyle: { backgroundColor: Colors.white },
-          headerTitleStyle: { fontWeight: '600' },
+          headerTitleStyle: {
+            fontFamily: Fonts!.sansBold,
+            fontWeight: FontWeights.bold,
+          },
         }}
       >
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen
           name="profile"
-          options={{ title: 'Profile', presentation: 'modal' }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen
           name="edit-profile"
-          options={{ title: 'Edit Profile', presentation: 'modal' }}
+          options={{ title: 'Edit Profile', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="EDIT PROFILE" size={32} /> }}
         />
         <Stack.Screen
           name="create-writeup"
-          options={{ title: 'New Writeup', presentation: 'modal' }}
+          options={{ title: 'New Writeup', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW WRITEUP" size={32} /> }}
         />
-        <Stack.Screen name="course/[id]" options={{ title: '' }} />
+        <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ title: '' }} />
+        <Stack.Screen name="member/[id]" options={{ title: 'Member', headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
         <Stack.Screen
           name="onboarding"
           options={{ headerShown: false, presentation: 'fullScreenModal' }}

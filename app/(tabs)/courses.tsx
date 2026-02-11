@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
+import WordHighlight from '@/components/WordHighlight';
 
 // Lazy-load map component only on web
 const CourseMap = Platform.OS === 'web'
@@ -148,7 +148,7 @@ export default function CoursesScreen() {
       >
         <View style={styles.courseHeader}>
           <View style={styles.courseInfo}>
-            <Text style={styles.courseName}>{item.short_name}</Text>
+            <WordHighlight words={item.short_name.split(' ')} size={16} />
             <Text style={styles.courseCity}>{item.city}</Text>
           </View>
           <View style={styles.courseMeta}>
@@ -161,7 +161,6 @@ export default function CoursesScreen() {
         </View>
         <View style={styles.courseStats}>
           <View style={styles.statItem}>
-            <Ionicons name="document-text-outline" size={14} color={Colors.gray} />
             <Text style={styles.statText}>
               {count} writeup{count !== 1 ? 's' : ''}
             </Text>
@@ -182,18 +181,13 @@ export default function CoursesScreen() {
     <View style={styles.container}>
       <View style={styles.toolBar}>
         <Pressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
-          <Ionicons name="options-outline" size={18} color={Colors.black} />
-          <Text style={styles.filterBarText}>Filters</Text>
+          <Text style={styles.filterBarText}>FILTERS</Text>
           {activeFilterCount > 0 && (
             <View style={styles.filterCount}>
               <Text style={styles.filterCountText}>{activeFilterCount}</Text>
             </View>
           )}
-          <Ionicons
-            name={showFilters ? 'chevron-up' : 'chevron-down'}
-            size={16}
-            color={Colors.gray}
-          />
+          <Text style={styles.chevronText}>{showFilters ? '^' : 'v'}</Text>
         </Pressable>
         <View style={styles.toolBarRight}>
           {isWeb && (
@@ -202,21 +196,13 @@ export default function CoursesScreen() {
                 style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
                 onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
               >
-                <Ionicons
-                  name="list-outline"
-                  size={14}
-                  color={viewMode === 'list' ? Colors.white : Colors.darkGray}
-                />
+                <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
               </Pressable>
               <Pressable
                 style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
                 onPress={() => setViewMode('map')}
               >
-                <Ionicons
-                  name="map-outline"
-                  size={14}
-                  color={viewMode === 'map' ? Colors.white : Colors.darkGray}
-                />
+                <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
               </Pressable>
             </View>
           )}
@@ -232,12 +218,7 @@ export default function CoursesScreen() {
                 style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('distance')}
               >
-                <Ionicons
-                  name="navigate-outline"
-                  size={13}
-                  color={sortOrder === 'distance' ? Colors.white : Colors.darkGray}
-                />
-                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>Near</Text>
+                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEAR</Text>
               </Pressable>
             </View>
           )}
@@ -247,7 +228,7 @@ export default function CoursesScreen() {
       {showFilters && (
         <View style={styles.filterPanel}>
           <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Access</Text>
+            <Text style={styles.filterLabel}>ACCESS</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {(['all', 'public', 'private'] as AccessFilter[]).map((val) => (
@@ -257,7 +238,7 @@ export default function CoursesScreen() {
                     onPress={() => setAccessFilter(val)}
                   >
                     <Text style={[styles.chipText, accessFilter === val && styles.chipTextActive]}>
-                      {val === 'all' ? 'All' : val.charAt(0).toUpperCase() + val.slice(1)}
+                      {val === 'all' ? 'ALL' : val.toUpperCase()}
                     </Text>
                   </Pressable>
                 ))}
@@ -266,14 +247,14 @@ export default function CoursesScreen() {
           </View>
 
           <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Distance</Text>
+            <Text style={styles.filterLabel}>DISTANCE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {([
-                  ['all', 'Any'],
-                  ['25', '< 25 mi'],
-                  ['50', '< 50 mi'],
-                  ['100', '< 100 mi'],
+                  ['all', 'ANY'],
+                  ['25', '< 25 MI'],
+                  ['50', '< 50 MI'],
+                  ['100', '< 100 MI'],
                 ] as [DistanceFilter, string][]).map(([val, label]) => (
                   <Pressable
                     key={val}
@@ -290,12 +271,12 @@ export default function CoursesScreen() {
           </View>
 
           <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>Writeups</Text>
+            <Text style={styles.filterLabel}>WRITEUPS</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {([
-                  ['all', 'All'],
-                  ['has_writeups', 'Has writeups'],
+                  ['all', 'ALL'],
+                  ['has_writeups', 'HAS WRITEUPS'],
                 ] as [WriteupFilter, string][]).map(([val, label]) => (
                   <Pressable
                     key={val}
@@ -329,7 +310,6 @@ export default function CoursesScreen() {
       {viewMode === 'list' ? (
         <>
           <View style={styles.searchBar}>
-            <Ionicons name="search-outline" size={16} color={Colors.gray} style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search courses..."
@@ -341,7 +321,7 @@ export default function CoursesScreen() {
             />
             {searchQuery.length > 0 && (
               <Pressable onPress={() => setSearchQuery('')} style={styles.searchClear}>
-                <Ionicons name="close-circle" size={16} color={Colors.gray} />
+                <Text style={styles.clearText}>x</Text>
               </Pressable>
             )}
           </View>
@@ -384,44 +364,44 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   toolBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   filterBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  filterBarText: { fontSize: 14, fontWeight: '600', color: Colors.black },
+  filterBarText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   toolBarRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  viewToggle: { flexDirection: 'row', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, overflow: 'hidden' },
-  sortToggle: { flexDirection: 'row', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, overflow: 'hidden' },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 10, paddingVertical: 5 },
-  sortBtnActive: { backgroundColor: Colors.black },
-  sortBtnText: { fontSize: 12, fontWeight: '600', color: Colors.darkGray },
-  sortBtnTextActive: { color: Colors.white },
-  filterCount: { backgroundColor: Colors.black, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
-  filterCountText: { color: Colors.white, fontSize: 11, fontWeight: '700' },
+  viewToggle: { flexDirection: 'row', gap: 4 },
+  sortToggle: { flexDirection: 'row', gap: 4 },
+  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 6, paddingVertical: 3 },
+  sortBtnActive: { backgroundColor: Colors.orange },
+  sortBtnText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, textTransform: 'uppercase', letterSpacing: 0.5 },
+  sortBtnTextActive: { color: Colors.black },
+  filterCount: { backgroundColor: Colors.orange, borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  filterCountText: { color: Colors.white, fontSize: 11, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   filterPanel: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 12 },
   filterGroup: { gap: 6 },
-  filterLabel: { fontSize: 12, fontWeight: '600', color: Colors.gray, textTransform: 'uppercase', letterSpacing: 0.5 },
+  filterLabel: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 0.5 },
   filterChips: { flexDirection: 'row', gap: 8 },
   chip: { borderWidth: 1, borderColor: Colors.border, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 6 },
-  chipActive: { backgroundColor: Colors.black, borderColor: Colors.black },
-  chipText: { fontSize: 13, color: Colors.darkGray },
-  chipTextActive: { color: Colors.white, fontWeight: '600' },
+  chipActive: { backgroundColor: Colors.orange, borderColor: Colors.orange },
+  chipText: { fontSize: 13, color: Colors.darkGray, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
+  chipTextActive: { color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   clearFilters: { alignSelf: 'flex-start' },
-  clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline' },
+  clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
   searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 10, marginBottom: 2, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, height: 38 },
-  searchIcon: { marginRight: 6 },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 0, outlineStyle: 'none' } as any,
+  chevronText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  clearText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
+  searchInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   searchClear: { marginLeft: 4, padding: 2 },
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   courseInfo: { flex: 1 },
-  courseName: { fontSize: 17, fontWeight: '600', color: Colors.black },
-  courseCity: { fontSize: 13, color: Colors.gray, marginTop: 2 },
+  courseCity: { fontSize: 13, color: Colors.black, marginTop: 6, fontFamily: Fonts!.sans },
   courseMeta: { marginLeft: 12, alignItems: 'flex-end' },
-  distanceText: { fontSize: 14, fontWeight: '500', color: Colors.darkGray },
+  distanceText: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   courseStats: { marginTop: 8, gap: 4 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statText: { fontSize: 13, color: Colors.gray },
-  recentText: { fontSize: 12, color: Colors.gray, fontStyle: 'italic' },
+  statText: { fontSize: 13, color: Colors.black, fontFamily: Fonts!.sans },
+  recentText: { fontSize: 12, color: Colors.black, fontFamily: Fonts!.sans },
   separator: { height: 1, backgroundColor: Colors.lightGray, marginHorizontal: 16 },
   empty: { padding: 32, alignItems: 'center' },
-  emptyText: { fontSize: 15, color: Colors.gray },
+  emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   mapContainer: { flex: 1, position: 'relative' },
 });

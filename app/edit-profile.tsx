@@ -13,7 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
 
@@ -133,13 +133,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 24 },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
-  avatar: { width: 88, height: 88, borderRadius: 44 },
-  avatarPlaceholder: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
-  changePhoto: { fontSize: 14, fontWeight: '600', color: Colors.black, marginTop: 8 },
+  avatar: { width: 88, height: 88, borderRadius: 4, borderWidth: 2, borderColor: Colors.black },
+  avatarPlaceholder: { width: 88, height: 88, borderRadius: 4, borderWidth: 2, borderColor: Colors.black, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
+  changePhoto: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginTop: 8 },
   form: { gap: 20, marginBottom: 32 },
   field: { gap: 6 },
-  label: { fontSize: 14, fontWeight: '600', color: Colors.black },
-  input: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black },
+  label: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  input: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, fontFamily: Fonts!.sans },
   saveButton: { backgroundColor: Colors.black, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
-  saveButtonText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
+  saveButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
 });

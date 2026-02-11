@@ -1,9 +1,9 @@
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Activity, Writeup } from '@/types';
+import WordHighlight from '@/components/WordHighlight';
 
 function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: () => void; writeups: Writeup[] }) {
   const thumbnail = item.type === 'writeup' && item.writeup_id
@@ -11,16 +11,16 @@ function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: ()
     : undefined;
 
   if (item.type === 'writeup') {
+    const name = item.user_name ?? '';
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
-        <View style={styles.activityIcon}>
-          <Ionicons name="document-text-outline" size={20} color={Colors.black} />
-        </View>
+        <View style={styles.activityIcon} />
         <View style={styles.activityContent}>
-          <Text style={styles.activityText}>
-            <Text style={styles.bold}>{item.user_name}</Text> posted a writeup on{' '}
-            <Text style={styles.bold}>{item.course_name}</Text>
-          </Text>
+          <View style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> posted a writeup on{' '}</Text>
+          </View>
+          <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
         {thumbnail && (
@@ -30,17 +30,22 @@ function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: ()
     );
   }
 
+  const name = item.user_name ?? '';
+  const targetName = item.target_user_name ?? '';
+
   return (
     <Pressable style={styles.activityItem} onPress={onPress}>
       <View style={styles.activityIcon}>
-        <Ionicons name="arrow-up" size={20} color={Colors.black} />
+        <Text style={styles.arrowText}>^</Text>
       </View>
       <View style={styles.activityContent}>
-        <Text style={styles.activityText}>
-          <Text style={styles.bold}>{item.user_name}</Text> upvoted{' '}
-          <Text style={styles.bold}>{item.target_user_name}</Text>'s writeup on{' '}
-          <Text style={styles.bold}>{item.course_name}</Text>
-        </Text>
+        <View style={styles.activityRow}>
+          <Text style={styles.activityTextBold}>{name}</Text>
+          <Text style={styles.activityText}> upvoted </Text>
+          <Text style={styles.activityTextBold}>{targetName}</Text>
+        </View>
+        <Text style={styles.activityText}>{'\'s writeup on'}</Text>
+        <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
         <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
       </View>
     </Pressable>
@@ -78,7 +83,6 @@ export default function FeedScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="newspaper-outline" size={48} color={Colors.lightGray} />
             <Text style={styles.emptyTitle}>No activity yet</Text>
             <Text style={styles.emptyText}>
               Write your first course review to get started
@@ -92,7 +96,7 @@ export default function FeedScreen() {
         style={styles.fab}
         onPress={() => router.push('/create-writeup')}
       >
-        <Ionicons name="add" size={28} color={Colors.white} />
+        <Text style={{ fontSize: 28, color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, lineHeight: 30 }}>+</Text>
       </Pressable>
     </View>
   );
@@ -123,10 +127,24 @@ const styles = StyleSheet.create({
   activityContent: {
     flex: 1,
   },
+  activityRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   activityText: {
     fontSize: 15,
     color: Colors.black,
     lineHeight: 21,
+    fontFamily: Fonts!.sans,
+    fontWeight: FontWeights.regular,
+  },
+  activityTextBold: {
+    fontSize: 15,
+    color: Colors.black,
+    lineHeight: 21,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
   },
   thumbnail: {
     width: 48,
@@ -138,9 +156,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     marginTop: 4,
-  },
-  bold: {
-    fontWeight: '600',
+    fontFamily: Fonts!.sans,
   },
   separator: {
     height: 1,
@@ -158,13 +174,21 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
     marginTop: 8,
   },
   emptyText: {
     fontSize: 14,
     color: Colors.gray,
+    fontFamily: Fonts!.sans,
+  },
+  arrowText: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
   },
   fab: {
     position: 'absolute',

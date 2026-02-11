@@ -7,22 +7,37 @@ export const Colors = {
   lightGray: '#E5E5E5',
   darkGray: '#333333',
   border: '#D0D0D0',
+  orange: '#FE4D12',
 };
+
+const greyLLStack = "'Grey LL', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 export const Fonts = Platform.select({
   ios: {
-    sans: 'system-ui',
+    sans: 'GreyLL-Regular',
+    sansMedium: 'GreyLL-Medium',
+    sansBold: 'GreyLL-Bold',
     serif: 'ui-serif',
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'GreyLL-Regular',
+    sansMedium: 'GreyLL-Medium',
+    sansBold: 'GreyLL-Bold',
     serif: 'serif',
     mono: 'monospace',
   },
   web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+    sans: greyLLStack,
+    sansMedium: greyLLStack,
+    sansBold: greyLLStack,
     serif: "Georgia, 'Times New Roman', serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
   },
 });
+
+export const FontWeights = {
+  regular: '400' as const,
+  medium: '500' as const,
+  bold: '700' as const,
+};

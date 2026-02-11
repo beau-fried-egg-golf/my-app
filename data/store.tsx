@@ -85,17 +85,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   async function loadData() {
     try {
-      const [coursesRes, writeupsRes, activitiesRes, profilesRes] = await Promise.all([
+      const [coursesRes, writeupsRes, profilesRes] = await Promise.all([
         supabase.from('courses').select('*').order('name'),
         loadWriteups(),
-        loadActivities(),
         supabase.from('profiles').select('*').order('name'),
       ]);
 
-      if (coursesRes.data) setCourses(coursesRes.data);
+      const loadedCourses = coursesRes.data ?? [];
+      if (loadedCourses.length) setCourses(loadedCourses);
       if (writeupsRes) setWriteups(writeupsRes);
-      if (activitiesRes) setActivities(activitiesRes);
       if (profilesRes.data) setProfiles(profilesRes.data);
+
+      const activitiesRes = await loadActivities(loadedCourses);
+      if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -175,7 +177,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
-  async function loadActivities(): Promise<Activity[]> {
+  async function loadActivities(coursesData?: Course[]): Promise<Activity[]> {
     const { data } = await supabase
       .from('activities')
       .select('*')
@@ -205,7 +207,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     return data.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
-      const courseName = w?.course_id ? courses.find(c => c.id === w.course_id)?.short_name : '';
+      const courseList = coursesData ?? courses;
+      const courseName = w?.course_id ? courseList.find(c => c.id === w.course_id)?.short_name : '';
       return {
         ...a,
         user_name: profileMap.get(a.user_id) ?? 'Member',

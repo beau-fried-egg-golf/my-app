@@ -9,11 +9,12 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Photo, Writeup } from '@/types';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import WordHighlight from '@/components/WordHighlight';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const SCREEN_HEIGHT = Dimensions.get('window').height;
@@ -40,12 +41,14 @@ function WriteupCard({
   onPress: () => void;
   isFeatured?: boolean;
 }) {
+  const nameParts = userName.split(' ').filter(Boolean);
+
   return (
     <Pressable style={[styles.writeupCard, isFeatured && styles.featuredCard]} onPress={onPress}>
       {isFeatured && (
         <View style={styles.featuredBadge}>
-          <Ionicons name="arrow-up" size={12} color={Colors.black} />
-          <Text style={styles.featuredText}>Most Upvoted</Text>
+          <Text style={styles.featuredArrow}>^</Text>
+          <Text style={styles.featuredText}>MOST UPVOTED</Text>
         </View>
       )}
       <Text style={styles.writeupTitle}>{writeup.title}</Text>
@@ -53,12 +56,11 @@ function WriteupCard({
         {writeup.content}
       </Text>
       <View style={styles.writeupMeta}>
-        <Text style={styles.writeupAuthor}>{userName}</Text>
-        <Text style={styles.writeupDot}>·</Text>
+        <WordHighlight words={nameParts} size={10} />
+        <Text style={styles.writeupDot}> · </Text>
         <Text style={styles.writeupTime}>{formatTime(writeup.created_at)}</Text>
-        <Text style={styles.writeupDot}>·</Text>
-        <Ionicons name="arrow-up" size={12} color={Colors.gray} />
-        <Text style={styles.writeupUpvotes}>{writeup.upvote_count ?? 0}</Text>
+        <Text style={styles.writeupDot}> · </Text>
+        <Text style={styles.writeupUpvotes}>^ {writeup.upvote_count ?? 0}</Text>
       </View>
     </Pressable>
   );
@@ -113,25 +115,29 @@ export default function CourseDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.courseNameBlock}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Text style={styles.backArrowText}>{'<'}</Text>
+        </Pressable>
+        <View style={styles.courseNameContent}>
+          <LetterSpacedHeader text={course.short_name} size={32} />
+        </View>
+      </View>
       <View style={styles.courseHeader}>
-        <Text style={styles.courseName}>{course.name}</Text>
         <View style={styles.courseDetails}>
           <Text style={styles.courseAddress}>
             {course.address}, {course.city}
           </Text>
           <View style={styles.courseTagsRow}>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{course.is_private ? 'Private' : 'Public'}</Text>
-            </View>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{course.holes} holes</Text>
-            </View>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>Par {course.par}</Text>
-            </View>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>Est. {course.year_established}</Text>
-            </View>
+            <WordHighlight
+              words={[
+                course.is_private ? 'PRIVATE' : 'PUBLIC',
+                `${course.holes} HOLES`,
+                `PAR ${course.par}`,
+                `EST. ${course.year_established}`,
+              ]}
+              size={11}
+            />
           </View>
         </View>
         <Text style={styles.courseDescription}>{course.description}</Text>
@@ -164,8 +170,7 @@ export default function CourseDetailScreen() {
                   <Image source={{ uri: photo.url }} style={styles.galleryThumb} />
                   {(photo.upvote_count ?? 0) > 0 && (
                     <View style={styles.thumbUpvoteBadge}>
-                      <Ionicons name="arrow-up" size={10} color={Colors.white} />
-                      <Text style={styles.thumbUpvoteText}>{photo.upvote_count}</Text>
+                      <Text style={styles.thumbUpvoteText}>^ {photo.upvote_count}</Text>
                     </View>
                   )}
                 </View>
@@ -202,7 +207,6 @@ export default function CourseDetailScreen() {
 
       {courseWriteups.length === 0 && (
         <View style={styles.empty}>
-          <Ionicons name="document-text-outline" size={36} color={Colors.lightGray} />
           <Text style={styles.emptyText}>No writeups yet</Text>
           <Pressable
             style={styles.writeButton}
@@ -227,7 +231,7 @@ export default function CourseDetailScreen() {
       <Modal visible={galleryVisible} transparent animationType="fade">
         <View style={styles.modalBg}>
           <Pressable style={styles.modalClose} onPress={() => setGalleryVisible(false)}>
-            <Ionicons name="close" size={28} color={Colors.white} />
+            <Text style={styles.modalCloseText}>x</Text>
           </Pressable>
           <ScrollView
             horizontal
@@ -253,12 +257,7 @@ export default function CourseDetailScreen() {
                         style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
                         onPress={() => togglePhotoUpvote(photo.id)}
                       >
-                        <Ionicons
-                          name={photoHasUpvote ? 'arrow-up' : 'arrow-up-outline'}
-                          size={16}
-                          color={Colors.white}
-                        />
-                        <Text style={styles.modalUpvoteText}>{photo.upvote_count ?? 0}</Text>
+                        <Text style={styles.modalUpvoteText}>^ {photo.upvote_count ?? 0}</Text>
                       </Pressable>
                       <Text style={styles.modalTime}>{formatTime(photo.created_at)}</Text>
                     </View>
@@ -276,50 +275,52 @@ export default function CourseDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { paddingBottom: 40 },
+  courseNameBlock: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 16 },
+  backArrow: { paddingRight: 12, paddingTop: 4 },
+  backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  courseNameContent: { flex: 1 },
   courseHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  courseName: { fontSize: 24, fontWeight: '700', color: Colors.black },
-  courseDetails: { marginTop: 8 },
-  courseAddress: { fontSize: 14, color: Colors.gray },
-  courseTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  tag: { borderWidth: 1, borderColor: Colors.border, borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
-  tagText: { fontSize: 12, color: Colors.darkGray },
-  courseDescription: { fontSize: 15, color: Colors.darkGray, lineHeight: 22, marginTop: 12 },
+  courseDetails: { marginTop: 12 },
+  courseAddress: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
+  courseTagsRow: { marginTop: 10 },
+  courseDescription: { fontSize: 15, color: Colors.darkGray, lineHeight: 22, marginTop: 12, fontFamily: Fonts!.sans },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  statsText: { fontSize: 15, fontWeight: '600', color: Colors.black },
-  statsSubtext: { fontSize: 13, color: Colors.gray },
+  statsText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  statsSubtext: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
   gallerySection: { paddingTop: 16, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, paddingBottom: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: Colors.black, paddingHorizontal: 16, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, paddingHorizontal: 16, marginBottom: 10 },
   gallery: { paddingHorizontal: 16 },
   galleryItem: { position: 'relative', marginRight: 8 },
   galleryThumb: { width: 100, height: 100, borderRadius: 6 },
   thumbUpvoteBadge: { position: 'absolute', bottom: 4, right: 4, flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
-  thumbUpvoteText: { fontSize: 10, color: Colors.white, fontWeight: '600' },
+  thumbUpvoteText: { fontSize: 10, color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   section: { paddingHorizontal: 16, paddingTop: 16 },
   writeupCard: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 14, marginBottom: 10 },
-  featuredCard: { borderColor: Colors.black },
+  featuredCard: { borderColor: Colors.orange },
   featuredBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  featuredText: { fontSize: 12, fontWeight: '600', color: Colors.black },
-  writeupTitle: { fontSize: 16, fontWeight: '600', color: Colors.black },
-  writeupPreview: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, marginTop: 4 },
-  writeupMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
-  writeupAuthor: { fontSize: 12, fontWeight: '500', color: Colors.gray },
-  writeupDot: { color: Colors.gray, fontSize: 12 },
-  writeupTime: { fontSize: 12, color: Colors.gray },
-  writeupUpvotes: { fontSize: 12, color: Colors.gray },
+  featuredArrow: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  featuredText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange },
+  writeupTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  writeupPreview: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, marginTop: 4, fontFamily: Fonts!.sans },
+  writeupMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4, flexWrap: 'wrap' },
+  writeupDot: { color: Colors.gray, fontSize: 12, fontFamily: Fonts!.sans },
+  writeupTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
+  writeupUpvotes: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
-  emptyText: { fontSize: 15, color: Colors.gray },
+  emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   writeButton: { borderWidth: 1, borderColor: Colors.black, borderRadius: 6, paddingHorizontal: 16, paddingVertical: 10, marginTop: 8 },
-  writeButtonText: { fontSize: 14, fontWeight: '600', color: Colors.black },
+  writeButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   addWriteupRow: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
   modalClose: { position: 'absolute', top: 60, right: 20, zIndex: 10, padding: 8 },
+  modalCloseText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   modalSlide: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center' },
   modalImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.65 },
   modalOverlay: { position: 'absolute', bottom: 100, left: 0, right: 0, paddingHorizontal: 20, gap: 8 },
-  modalCaption: { color: Colors.white, fontSize: 15, lineHeight: 22 },
+  modalCaption: { color: Colors.white, fontSize: 15, lineHeight: 22, fontFamily: Fonts!.sans },
   modalActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   modalUpvote: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   modalUpvoteActive: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: Colors.white },
-  modalUpvoteText: { color: Colors.white, fontSize: 13, fontWeight: '600' },
-  modalTime: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
+  modalUpvoteText: { color: Colors.white, fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  modalTime: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: Fonts!.sans },
 });

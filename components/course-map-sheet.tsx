@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { Course } from '@/types';
+import WordHighlight from '@/components/WordHighlight';
 
 interface CourseMapSheetProps {
   course: Course;
@@ -17,14 +17,14 @@ export default function CourseMapSheet({ course, writeupCount, distance, onClose
   return (
     <View style={styles.container}>
       <Pressable style={styles.closeBtn} onPress={onClose}>
-        <Ionicons name="close" size={20} color={Colors.gray} />
+        <Text style={styles.closeText}>x</Text>
       </Pressable>
 
       <Pressable style={styles.body} onPress={() => router.push(`/course/${course.id}`)}>
         <View style={styles.header}>
-          <Text style={styles.name}>{course.short_name}</Text>
+          <WordHighlight words={course.short_name.split(' ')} size={16} />
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{course.is_private ? 'Private' : 'Public'}</Text>
+            <Text style={styles.badgeText}>{course.is_private ? 'PRIVATE' : 'PUBLIC'}</Text>
           </View>
         </View>
 
@@ -67,8 +67,14 @@ const styles = StyleSheet.create({
     zIndex: 1,
     padding: 4,
   },
+  closeText: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.gray,
+  },
   body: {
-    gap: 4,
+    gap: 8,
   },
   header: {
     flexDirection: 'row',
@@ -76,25 +82,22 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingRight: 28,
   },
-  name: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: Colors.black,
-  },
   badge: {
-    backgroundColor: Colors.lightGray,
+    backgroundColor: Colors.orange,
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
-    color: Colors.darkGray,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
   },
   city: {
     fontSize: 13,
     color: Colors.gray,
+    fontFamily: Fonts!.sans,
   },
   stats: {
     flexDirection: 'row',
@@ -104,5 +107,6 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 13,
     color: Colors.darkGray,
+    fontFamily: Fonts!.sans,
   },
 });

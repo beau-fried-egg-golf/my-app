@@ -12,8 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { uploadPhoto } from '@/utils/photo';
 
@@ -62,7 +61,6 @@ export default function CreateWriteupScreen() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      // Upload photos to Supabase Storage
       const uploadedPhotos = await Promise.all(
         photos.map(async (p) => ({
           url: await uploadPhoto(p.uri, user!.id),
@@ -93,11 +91,7 @@ export default function CreateWriteupScreen() {
           <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
             {selectedCourse ? selectedCourse.short_name : 'Select a course'}
           </Text>
-          <Ionicons
-            name={showPicker ? 'chevron-up' : 'chevron-down'}
-            size={20}
-            color={Colors.gray}
-          />
+          <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
         </Pressable>
 
         {showPicker && (
@@ -149,8 +143,7 @@ export default function CreateWriteupScreen() {
 
         <View style={styles.photosSection}>
           <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-            <Ionicons name="camera-outline" size={20} color={Colors.black} />
-            <Text style={styles.addPhotoText}>Add Photos</Text>
+            <Text style={styles.addPhotoText}>ADD PHOTOS</Text>
           </Pressable>
           {photos.map((photo, i) => (
             <View key={i} style={styles.photoItem}>
@@ -165,7 +158,7 @@ export default function CreateWriteupScreen() {
                   multiline
                 />
                 <Pressable style={styles.removePhoto} onPress={() => removePhoto(i)}>
-                  <Ionicons name="close-circle" size={22} color={Colors.black} />
+                  <Text style={styles.removeText}>x</Text>
                 </Pressable>
               </View>
             </View>
@@ -188,26 +181,28 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 40 },
   coursePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 12 },
-  coursePickerText: { fontSize: 16, color: Colors.black, fontWeight: '500' },
-  placeholder: { color: Colors.gray, fontWeight: '400' },
+  coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
+  placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
   courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginBottom: 12, maxHeight: 250 },
   courseOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  courseOptionSelected: { backgroundColor: Colors.black },
-  courseOptionText: { fontSize: 15, color: Colors.black },
-  courseOptionTextSelected: { color: Colors.white, fontWeight: '600' },
-  courseOptionCity: { fontSize: 12, color: Colors.gray },
+  courseOptionSelected: { backgroundColor: Colors.orange },
+  courseOptionText: { fontSize: 15, color: Colors.black, fontFamily: Fonts!.sans },
+  courseOptionTextSelected: { color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  courseOptionCity: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   field: { marginBottom: 12 },
-  titleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', color: Colors.black },
-  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24 },
+  titleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24, fontFamily: Fonts!.sans },
   photosSection: { marginBottom: 24, gap: 12 },
   addPhotoButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  addPhotoText: { fontSize: 15, fontWeight: '500', color: Colors.black },
+  addPhotoText: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   photoItem: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 8 },
   photoRow: { flexDirection: 'row', gap: 10 },
   photoThumb: { width: 72, height: 72, borderRadius: 6 },
-  captionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20 },
+  captionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans },
   removePhoto: { alignSelf: 'flex-start' },
-  submitButton: { backgroundColor: Colors.black, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
+  removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
+  submitButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
   submitButtonDisabled: { opacity: 0.4 },
-  submitButtonText: { color: Colors.white, fontSize: 16, fontWeight: '600' },
+  submitButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
 });

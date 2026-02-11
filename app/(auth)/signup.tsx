@@ -10,8 +10,9 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function SignupScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
+          <LetterSpacedHeader text="Create Account" size={28} />
           <Text style={styles.subtitle}>Sign up to get started</Text>
         </View>
 
@@ -130,15 +131,11 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 32,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: Colors.black,
-  },
   subtitle: {
     fontSize: 16,
     color: Colors.gray,
-    marginTop: 4,
+    marginTop: 12,
+    fontFamily: Fonts!.sans,
   },
   errorBox: {
     backgroundColor: '#ffebee',
@@ -149,6 +146,7 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#d32f2f',
     fontSize: 14,
+    fontFamily: Fonts!.sans,
   },
   form: {
     gap: 20,
@@ -159,7 +157,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
   },
   input: {
@@ -170,9 +169,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: Colors.black,
+    fontFamily: Fonts!.sans,
   },
   button: {
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.orange,
     borderRadius: 8,
     paddingVertical: 16,
     alignItems: 'center',
@@ -188,7 +188,8 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
   },
   linkButton: {
     marginTop: 20,
@@ -198,9 +199,11 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: 15,
     color: Colors.gray,
+    fontFamily: Fonts!.sans,
   },
   linkBold: {
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
   },
 });

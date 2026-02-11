@@ -1,8 +1,9 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function ProfileScreen() {
   const { user, writeups, signOut } = useStore();
@@ -14,14 +15,18 @@ export default function ProfileScreen() {
   const totalUpvotes = userWriteups.reduce((sum, w) => sum + (w.upvote_count ?? 0), 0);
 
   async function handleSignOut() {
-    // Dismiss the modal first, then sign out
-    // signOut triggers onAuthStateChange which handles the redirect
     router.dismissAll();
     await signOut();
   }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.headerRow}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Text style={styles.backArrowText}>{'<'}</Text>
+        </Pressable>
+        <LetterSpacedHeader text="PROFILE" size={32} />
+      </View>
       <View style={styles.avatarSection}>
         {user.image ? (
           <Image source={{ uri: user.image }} style={styles.avatar} />
@@ -89,6 +94,21 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  backArrow: {
+    paddingRight: 12,
+    paddingTop: 4,
+  },
+  backArrowText: {
+    fontSize: 24,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
   avatarSection: {
     alignItems: 'center',
     marginBottom: 24,
@@ -96,19 +116,24 @@ const styles = StyleSheet.create({
   avatar: {
     width: 88,
     height: 88,
-    borderRadius: 44,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.black,
   },
   avatarPlaceholder: {
     width: 88,
     height: 88,
-    borderRadius: 44,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: Colors.black,
     backgroundColor: Colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
   },
   name: {
     fontSize: 22,
-    fontWeight: '700',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
     marginTop: 12,
   },
@@ -116,6 +141,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray,
     marginTop: 2,
+    fontFamily: Fonts!.sans,
   },
   stats: {
     flexDirection: 'row',
@@ -133,13 +159,15 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
   },
   statLabel: {
     fontSize: 12,
     color: Colors.gray,
     marginTop: 2,
+    fontFamily: Fonts!.sans,
   },
   statDivider: {
     width: 1,
@@ -157,10 +185,12 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 15,
     color: Colors.gray,
+    fontFamily: Fonts!.sans,
   },
   detailValue: {
     fontSize: 15,
-    fontWeight: '500',
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
     color: Colors.black,
   },
   editButton: {
@@ -173,7 +203,8 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
   },
   signOutButton: {
@@ -185,7 +216,8 @@ const styles = StyleSheet.create({
   },
   signOutButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.gray,
   },
 });

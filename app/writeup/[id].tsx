@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Photo } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
+import WordHighlight from '@/components/WordHighlight';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -59,6 +59,8 @@ export default function WriteupDetailScreen() {
   const course = courses.find((c) => c.id === writeup.course_id);
   const hasUpvoted = writeup.user_has_upvoted ?? false;
   const isOwner = user?.id === writeup.user_id;
+  const authorName = writeup.author_name ?? getUserName(writeup.user_id);
+  const authorParts = authorName.split(' ').filter(Boolean);
 
   function startEditing() {
     setEditTitle(writeup!.title);
@@ -144,8 +146,7 @@ export default function WriteupDetailScreen() {
 
           <View style={styles.editPhotosSection}>
             <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-              <Ionicons name="camera-outline" size={20} color={Colors.black} />
-              <Text style={styles.addPhotoText}>Add Photos</Text>
+              <Text style={styles.addPhotoText}>ADD PHOTOS</Text>
             </Pressable>
             {editPhotos.map((photo, i) => (
               <View key={i} style={styles.editPhotoItem}>
@@ -165,7 +166,7 @@ export default function WriteupDetailScreen() {
                     style={styles.editRemovePhoto}
                     onPress={() => setEditPhotos(editPhotos.filter((_, idx) => idx !== i))}
                   >
-                    <Ionicons name="close-circle" size={22} color={Colors.black} />
+                    <Text style={styles.removeText}>x</Text>
                   </Pressable>
                 </View>
               </View>
@@ -181,14 +182,14 @@ export default function WriteupDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Pressable onPress={() => router.push(`/course/${writeup.course_id}`)}>
-        <Text style={styles.courseName}>{course?.short_name}</Text>
+        <Text style={styles.courseName}>{course?.short_name?.toUpperCase()}</Text>
       </Pressable>
 
       <Text style={styles.title}>{writeup.title}</Text>
 
       <View style={styles.authorRow}>
-        <Text style={styles.author}>By {writeup.author_name ?? getUserName(writeup.user_id)}</Text>
-        <Text style={styles.date}>{formatDate(writeup.created_at)}</Text>
+        <WordHighlight words={authorParts} size={12} />
+        <Text style={styles.date}> · {formatDate(writeup.created_at)}</Text>
       </View>
 
       <Text style={styles.body}>{writeup.content}</Text>
@@ -208,13 +209,8 @@ export default function WriteupDetailScreen() {
                     style={[styles.photoUpvote, photoUpvoted && styles.photoUpvoteActive]}
                     onPress={() => togglePhotoUpvote(photo.id)}
                   >
-                    <Ionicons
-                      name={photoUpvoted ? 'arrow-up' : 'arrow-up-outline'}
-                      size={14}
-                      color={photoUpvoted ? Colors.white : Colors.black}
-                    />
                     <Text style={[styles.photoUpvoteText, photoUpvoted && styles.photoUpvoteTextActive]}>
-                      {photo.upvote_count ?? 0}
+                      ^ {photo.upvote_count ?? 0}
                     </Text>
                   </Pressable>
                 </View>
@@ -229,24 +225,17 @@ export default function WriteupDetailScreen() {
           style={[styles.upvoteButton, hasUpvoted && styles.upvoteButtonActive]}
           onPress={() => toggleUpvote(writeup.id)}
         >
-          <Ionicons
-            name={hasUpvoted ? 'arrow-up' : 'arrow-up-outline'}
-            size={18}
-            color={hasUpvoted ? Colors.white : Colors.black}
-          />
           <Text style={[styles.upvoteText, hasUpvoted && styles.upvoteTextActive]}>
-            {writeup.upvote_count ?? 0}
+            ^ {writeup.upvote_count ?? 0}
           </Text>
         </Pressable>
 
         {isOwner && (
           <View style={styles.ownerActions}>
             <Pressable style={styles.ownerButton} onPress={startEditing}>
-              <Ionicons name="pencil-outline" size={16} color={Colors.black} />
               <Text style={styles.ownerButtonText}>Edit</Text>
             </Pressable>
             <Pressable style={styles.ownerButton} onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={16} color={Colors.black} />
               <Text style={styles.ownerButtonText}>Delete</Text>
             </Pressable>
           </View>
@@ -259,40 +248,40 @@ export default function WriteupDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 40 },
-  courseName: { fontSize: 13, fontWeight: '600', color: Colors.gray, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  title: { fontSize: 24, fontWeight: '700', color: Colors.black, lineHeight: 32 },
-  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 20 },
-  author: { fontSize: 14, color: Colors.gray },
-  date: { fontSize: 14, color: Colors.gray },
-  body: { fontSize: 16, color: Colors.black, lineHeight: 26 },
+  courseName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 1, marginBottom: 8 },
+  title: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, lineHeight: 32 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 20, flexWrap: 'wrap' },
+  date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
+  body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
   photos: { marginTop: 20, gap: 16 },
   photoContainer: { gap: 6 },
   photo: { width: '100%', height: 240, borderRadius: 8 },
-  photoCaption: { fontSize: 14, color: Colors.darkGray, fontStyle: 'italic', lineHeight: 20 },
+  photoCaption: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, fontFamily: Fonts!.sans },
   photoActions: { flexDirection: 'row' },
   photoUpvote: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
   photoUpvoteActive: { backgroundColor: Colors.black, borderColor: Colors.black },
-  photoUpvoteText: { fontSize: 12, fontWeight: '600', color: Colors.black },
+  photoUpvoteText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoUpvoteTextActive: { color: Colors.white },
   actions: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   upvoteButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
   upvoteButtonActive: { backgroundColor: Colors.black },
-  upvoteText: { fontSize: 15, fontWeight: '600', color: Colors.black },
+  upvoteText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   upvoteTextActive: { color: Colors.white },
   ownerActions: { flexDirection: 'row', gap: 12 },
   ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
-  ownerButtonText: { fontSize: 13, fontWeight: '500', color: Colors.black },
+  ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  cancelText: { fontSize: 16, color: Colors.gray },
-  saveText: { fontSize: 16, fontWeight: '600', color: Colors.black },
-  editTitleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontWeight: '600', color: Colors.black, marginBottom: 12 },
-  editContentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24, marginBottom: 12 },
+  cancelText: { fontSize: 16, color: Colors.gray, fontFamily: Fonts!.sans },
+  saveText: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  editTitleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
+  editContentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24, marginBottom: 12, fontFamily: Fonts!.sans },
   editPhotosSection: { marginBottom: 24, gap: 12 },
   addPhotoButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  addPhotoText: { fontSize: 15, fontWeight: '500', color: Colors.black },
+  addPhotoText: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   editPhotoItem: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 8 },
   editPhotoRow: { flexDirection: 'row', gap: 10 },
   editPhotoThumb: { width: 72, height: 72, borderRadius: 6 },
-  editCaptionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20 },
+  editCaptionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans },
   editRemovePhoto: { alignSelf: 'flex-start' },
+  removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
 });
