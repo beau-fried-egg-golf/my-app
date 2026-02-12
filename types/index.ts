@@ -172,13 +172,14 @@ export interface PostReply {
 
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created';
+  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created' | 'meetup_created' | 'meetup_signup';
   user_id: string;
   writeup_id: string | null;
   post_id?: string | null;
   course_id: string | null;
   target_user_id: string | null;
   group_id?: string | null;
+  meetup_id?: string | null;
   created_at: string;
   // Joined fields for display
   user_name?: string;
@@ -187,6 +188,7 @@ export interface Activity {
   target_user_name?: string;
   post_content?: string;
   group_name?: string;
+  meetup_name?: string;
 }
 
 export function profileToUser(p: Profile): User {
@@ -248,7 +250,7 @@ export interface GroupMessage {
 
 export interface ConversationListItem {
   id: string;
-  type: 'dm' | 'group';
+  type: 'dm' | 'group' | 'meetup';
   name: string;
   image: string | null;
   last_message?: string;
@@ -256,7 +258,50 @@ export interface ConversationListItem {
   unread: boolean;
   other_user_id?: string;
   group_id?: string;
+  meetup_id?: string;
   member_count?: number;
+}
+
+export interface Meetup {
+  id: string;
+  name: string;
+  description: string;
+  host_id: string;
+  location_name: string;
+  meetup_date: string;
+  cost: string;
+  total_slots: number;
+  host_takes_slot: boolean;
+  image: string | null;
+  created_at: string;
+  updated_at: string;
+  host_name?: string;
+  member_count?: number;
+  is_member?: boolean;
+  _last_message?: string;
+  _last_message_at?: string;
+  _has_unread?: boolean;
+  _member_last_read_at?: string | null;
+}
+
+export interface MeetupMember {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  last_read_at: string | null;
+  joined_at: string;
+  user_name?: string;
+  user_image?: string | null;
+}
+
+export interface MeetupMessage {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  sender_name?: string;
+  sender_image?: string | null;
 }
 
 export function userToProfile(u: User): Omit<Profile, 'id'> {

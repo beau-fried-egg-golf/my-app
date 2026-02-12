@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,32 +18,22 @@ function formatTime(iso: string): string {
 }
 
 function ConversationRow({ item, onPress }: { item: ConversationListItem; onPress: () => void }) {
-  const isGroup = item.type === 'group';
+  const iconName = item.type === 'group' ? 'people' : item.type === 'meetup' ? 'calendar' : 'person';
 
   return (
     <Pressable style={styles.item} onPress={onPress}>
       {item.unread && <View style={styles.unreadDot} />}
-      {isGroup ? (
-        item.image ? (
-          <Image source={{ uri: item.image }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="people" size={20} color={Colors.gray} />
-          </View>
-        )
+      {item.image ? (
+        <Image source={{ uri: item.image }} style={styles.avatar} />
       ) : (
-        item.image ? (
-          <Image source={{ uri: item.image }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={20} color={Colors.gray} />
-          </View>
-        )
+        <View style={styles.avatarPlaceholder}>
+          <Ionicons name={iconName} size={20} color={Colors.gray} />
+        </View>
       )}
       <View style={styles.itemContent}>
         <Text style={[styles.itemName, item.unread && styles.itemNameUnread]}>
           {item.name}
-          {isGroup && item.member_count ? ` (${item.member_count})` : ''}
+          {(item.type === 'group' || item.type === 'meetup') && item.member_count ? ` (${item.member_count})` : ''}
         </Text>
         {item.last_message ? (
           <Text style={[styles.itemPreview, item.unread && styles.itemPreviewUnread]} numberOfLines={1}>{item.last_message}</Text>
@@ -58,19 +48,42 @@ function ConversationRow({ item, onPress }: { item: ConversationListItem; onPres
   );
 }
 
+type TabType = 'dms' | 'groups' | 'meetups';
+
 export default function ConversationsScreen() {
-  const { conversationListItems, loadConversations, loadGroups } = useStore();
+  const { conversationListItems, loadConversations, loadGroups, loadMeetups } = useStore();
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<TabType>('dms');
 
   useEffect(() => {
     loadConversations();
     loadGroups();
-  }, [loadConversations, loadGroups]);
+    loadMeetups();
+  }, [loadConversations, loadGroups, loadMeetups]);
+
+  const filteredItems = conversationListItems.filter(item => {
+    if (activeTab === 'dms') return item.type === 'dm';
+    if (activeTab === 'groups') return item.type === 'group';
+    return item.type === 'meetup';
+  });
 
   return (
     <View style={styles.container}>
+      <View style={styles.tabBar}>
+        {(['dms', 'groups', 'meetups'] as TabType[]).map(tab => (
+          <Pressable
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.tabActive]}
+            onPress={() => setActiveTab(tab)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+              {tab.toUpperCase()}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
       <FlatList
-        data={conversationListItems}
+        data={filteredItems}
         keyExtractor={(item) => `${item.type}-${item.id}`}
         renderItem={({ item }) => (
           <ConversationRow
@@ -78,6 +91,8 @@ export default function ConversationsScreen() {
             onPress={() => {
               if (item.type === 'group') {
                 router.push(`/group-chat/${item.group_id ?? item.id}`);
+              } else if (item.type === 'meetup') {
+                router.push(`/meetup-chat/${item.meetup_id ?? item.id}`);
               } else {
                 router.push(`/conversation/${item.id}`);
               }
@@ -89,11 +104,15 @@ export default function ConversationsScreen() {
             <Ionicons name="chatbubbles-outline" size={48} color={Colors.lightGray} />
             <Text style={styles.emptyTitle}>No conversations yet</Text>
             <Text style={styles.emptyText}>
-              Visit a member's profile and tap Message to start chatting, or join a group
+              {activeTab === 'dms'
+                ? "Visit a member's profile and tap Message to start chatting"
+                : activeTab === 'groups'
+                  ? 'Join a group to start chatting'
+                  : 'Join a meetup to start chatting'}
             </Text>
           </View>
         }
-        contentContainerStyle={conversationListItems.length === 0 ? styles.emptyContainer : undefined}
+        contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : undefined}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
     </View>
@@ -102,6 +121,30 @@ export default function ConversationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.black,
+  },
+  tabText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.gray,
+    letterSpacing: 1,
+  },
+  tabTextActive: {
+    color: Colors.black,
+  },
   item: {
     flexDirection: 'row',
     alignItems: 'center',

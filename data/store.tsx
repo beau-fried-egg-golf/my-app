@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, ConversationListItem, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -67,6 +67,16 @@ interface StoreContextType {
   getGroupMessages: (groupId: string) => Promise<GroupMessage[]>;
   sendGroupMessage: (groupId: string, content: string) => Promise<GroupMessage>;
   markGroupRead: (groupId: string) => Promise<void>;
+  // Meetups
+  meetups: Meetup[];
+  loadMeetups: () => Promise<void>;
+  createMeetup: (data: { name: string; description: string; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }) => Promise<Meetup>;
+  joinMeetup: (meetupId: string) => Promise<void>;
+  leaveMeetup: (meetupId: string) => Promise<void>;
+  getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
+  getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
+  sendMeetupMessage: (meetupId: string, content: string) => Promise<MeetupMessage>;
+  markMeetupRead: (meetupId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -91,6 +101,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [dmsDisabled, setDmsDisabled] = useState(false);
   const [groups, setGroups] = useState<Group[]>([]);
   const groupsRef = useRef<Group[]>([]);
+  const [meetups, setMeetups] = useState<Meetup[]>([]);
+  const meetupsRef = useRef<Meetup[]>([]);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -102,9 +114,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return groups.some(g => g._has_unread);
   }, [groups]);
 
+  const hasUnreadMeetupMessages = React.useMemo(() => {
+    return meetups.some(m => m._has_unread);
+  }, [meetups]);
+
   const hasUnreadMessages = React.useMemo(
-    () => conversations.some(c => c.unread) || hasUnreadGroupMessages,
-    [conversations, hasUnreadGroupMessages],
+    () => conversations.some(c => c.unread) || hasUnreadGroupMessages || hasUnreadMeetupMessages,
+    [conversations, hasUnreadGroupMessages, hasUnreadMeetupMessages],
   );
 
   const conversationListItems = React.useMemo((): ConversationListItem[] => {
@@ -133,12 +149,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         member_count: g.member_count,
       }));
 
-    return [...dmItems, ...groupItems].sort((a, b) => {
+    const meetupItems: ConversationListItem[] = meetups
+      .filter(m => m.is_member)
+      .map(m => ({
+        id: m.id,
+        type: 'meetup' as const,
+        name: m.name,
+        image: m.image,
+        last_message: m._last_message,
+        last_message_at: m._last_message_at,
+        unread: m._has_unread ?? false,
+        meetup_id: m.id,
+        member_count: m.member_count,
+      }));
+
+    return [...dmItems, ...groupItems, ...meetupItems].sort((a, b) => {
       const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
       const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
       return bTime - aTime;
     });
-  }, [conversations, groups, session]);
+  }, [conversations, groups, meetups, session]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -147,6 +177,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     groupsRef.current = groups;
   }, [groups]);
+
+  useEffect(() => {
+    meetupsRef.current = meetups;
+  }, [meetups]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -176,6 +210,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setBlockedByIds(new Set());
         setDmsDisabled(false);
         setGroups([]);
+        setMeetups([]);
       }
     });
 
@@ -245,6 +280,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         loadActivities(loadedCourses),
         currentUserId ? loadConversations(currentUserId) : Promise.resolve(),
         currentUserId ? loadGroupsData(currentUserId) : Promise.resolve(),
+        currentUserId ? loadMeetupsData(currentUserId) : Promise.resolve(),
       ]);
       if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
@@ -374,6 +410,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       : { data: [] };
     const groupMap = new Map((groupData ?? []).map(g => [g.id, g.name]));
 
+    // Load meetup names for meetup activities
+    const meetupIds = [...new Set(data.filter(a => a.meetup_id).map(a => a.meetup_id!))];
+    const { data: meetupData } = meetupIds.length > 0
+      ? await supabase
+          .from('meetups')
+          .select('id, name')
+          .in('id', meetupIds)
+      : { data: [] };
+    const meetupMap = new Map((meetupData ?? []).map(m => [m.id, m.name]));
+
     return data.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
       const courseList = coursesData ?? coursesRef.current;
@@ -390,6 +436,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         target_user_name: a.target_user_id ? (profileMap.get(a.target_user_id) ?? 'another member') : undefined,
         post_content: a.post_id ? postMap.get(a.post_id) ?? '' : undefined,
         group_name: a.group_id ? groupMap.get(a.group_id) ?? '' : undefined,
+        meetup_name: a.meetup_id ? meetupMap.get(a.meetup_id) ?? '' : undefined,
       };
     });
   }
@@ -1423,6 +1470,297 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  // ---- Meetup methods ----
+  async function loadMeetupsData(overrideUserId?: string) {
+    const userId = overrideUserId ?? session?.user?.id;
+    if (!userId) return;
+
+    const { data: rawMeetups } = await supabase
+      .from('meetups')
+      .select('*')
+      .order('meetup_date', { ascending: true });
+
+    if (!rawMeetups || rawMeetups.length === 0) { setMeetups([]); return; }
+
+    const meetupIds = rawMeetups.map(m => m.id);
+
+    const [membersRes, lastMsgsRes] = await Promise.all([
+      supabase.from('meetup_members').select('*').in('meetup_id', meetupIds),
+      supabase.from('meetup_messages').select('meetup_id, user_id, content, created_at').in('meetup_id', meetupIds).order('created_at', { ascending: false }),
+    ]);
+
+    const members = membersRes.data ?? [];
+    const lastMsgs = lastMsgsRes.data ?? [];
+
+    // Host names
+    const hostIds = [...new Set(rawMeetups.map(m => m.host_id))];
+    const { data: hostProfiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', hostIds);
+    const hostMap = new Map((hostProfiles ?? []).map(p => [p.id, p.name]));
+
+    // Member counts, membership, last read
+    const memberCountMap = new Map<string, number>();
+    const membershipMap = new Map<string, boolean>();
+    const memberLastReadMap = new Map<string, string | null>();
+    for (const m of members) {
+      memberCountMap.set(m.meetup_id, (memberCountMap.get(m.meetup_id) ?? 0) + 1);
+      if (m.user_id === userId) {
+        membershipMap.set(m.meetup_id, true);
+        memberLastReadMap.set(m.meetup_id, m.last_read_at);
+      }
+    }
+
+    // Last message per meetup
+    const lastMsgMap = new Map<string, { content: string; created_at: string }>();
+    for (const msg of lastMsgs) {
+      if (!lastMsgMap.has(msg.meetup_id)) {
+        lastMsgMap.set(msg.meetup_id, msg);
+      }
+    }
+
+    const enriched: Meetup[] = rawMeetups.map(m => {
+      const lastMsg = lastMsgMap.get(m.id);
+      const lastReadAt = memberLastReadMap.get(m.id);
+      const isMember = membershipMap.get(m.id) ?? false;
+      const hasUnread = isMember && lastMsg
+        ? (!lastReadAt || new Date(lastMsg.created_at) > new Date(lastReadAt))
+        : false;
+      return {
+        ...m,
+        host_name: hostMap.get(m.host_id) ?? 'Member',
+        member_count: memberCountMap.get(m.id) ?? 0,
+        is_member: isMember,
+        _last_message: lastMsg?.content,
+        _last_message_at: lastMsg?.created_at,
+        _has_unread: hasUnread,
+        _member_last_read_at: lastReadAt,
+      };
+    });
+
+    setMeetups(enriched);
+  }
+
+  const loadMeetups = useCallback(async () => {
+    await loadMeetupsData();
+  }, [session]);
+
+  const createMeetup = useCallback(
+    async (data: { name: string; description: string; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }): Promise<Meetup> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: meetupData, error } = await supabase
+        .from('meetups')
+        .insert({
+          name: data.name,
+          description: data.description,
+          host_id: userId,
+          location_name: data.location_name,
+          meetup_date: data.meetup_date,
+          cost: data.cost,
+          total_slots: data.total_slots,
+          host_takes_slot: data.host_takes_slot,
+          image: data.image,
+        })
+        .select()
+        .single();
+
+      if (error || !meetupData) throw error ?? new Error('Failed to create meetup');
+
+      // Add host as member if host_takes_slot
+      if (data.host_takes_slot) {
+        await supabase
+          .from('meetup_members')
+          .insert({ meetup_id: meetupData.id, user_id: userId });
+      }
+
+      const meetup: Meetup = {
+        ...meetupData,
+        host_name: user?.name ?? 'Member',
+        member_count: data.host_takes_slot ? 1 : 0,
+        is_member: data.host_takes_slot,
+      };
+
+      setMeetups(prev => [meetup, ...prev]);
+
+      // Insert activity
+      await supabase.from('activities').insert({
+        type: 'meetup_created',
+        user_id: userId,
+        meetup_id: meetupData.id,
+      });
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+
+      return meetup;
+    },
+    [session, user],
+  );
+
+  const joinMeetup = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      // Optimistic update
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, is_member: true, member_count: (m.member_count ?? 0) + 1 } : m
+      ));
+
+      const { error } = await supabase
+        .from('meetup_members')
+        .insert({ meetup_id: meetupId, user_id: userId });
+
+      if (error) {
+        // Revert on error
+        setMeetups(prev => prev.map(m =>
+          m.id === meetupId ? { ...m, is_member: false, member_count: (m.member_count ?? 1) - 1 } : m
+        ));
+        return;
+      }
+
+      // Insert activity
+      await supabase.from('activities').insert({
+        type: 'meetup_signup',
+        user_id: userId,
+        meetup_id: meetupId,
+      });
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
+  const leaveMeetup = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const meetup = meetupsRef.current.find(m => m.id === meetupId);
+      if (meetup?.host_id === userId) return; // Can't leave if host
+
+      // Optimistic update
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
+      ));
+
+      await supabase
+        .from('meetup_members')
+        .delete()
+        .eq('meetup_id', meetupId)
+        .eq('user_id', userId);
+    },
+    [session],
+  );
+
+  const getMeetupMembers = useCallback(
+    async (meetupId: string): Promise<MeetupMember[]> => {
+      const { data: members } = await supabase
+        .from('meetup_members')
+        .select('*')
+        .eq('meetup_id', meetupId)
+        .order('joined_at', { ascending: true });
+
+      if (!members || members.length === 0) return [];
+
+      const userIds = [...new Set(members.map(m => m.user_id))];
+      const { data: memberProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, image')
+        .in('id', userIds);
+      const profileMap = new Map((memberProfiles ?? []).map(p => [p.id, p]));
+
+      return members.map(m => ({
+        ...m,
+        user_name: profileMap.get(m.user_id)?.name ?? 'Member',
+        user_image: profileMap.get(m.user_id)?.image ?? null,
+      }));
+    },
+    [],
+  );
+
+  const getMeetupMessages = useCallback(
+    async (meetupId: string): Promise<MeetupMessage[]> => {
+      const { data: msgs } = await supabase
+        .from('meetup_messages')
+        .select('*')
+        .eq('meetup_id', meetupId)
+        .order('created_at', { ascending: true });
+
+      if (!msgs || msgs.length === 0) return [];
+
+      const userIds = [...new Set(msgs.map(m => m.user_id))];
+      const { data: senderProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, image')
+        .in('id', userIds);
+      const profileMap = new Map((senderProfiles ?? []).map(p => [p.id, p]));
+
+      return msgs.map(m => ({
+        ...m,
+        sender_name: profileMap.get(m.user_id)?.name ?? 'Member',
+        sender_image: profileMap.get(m.user_id)?.image ?? null,
+      }));
+    },
+    [],
+  );
+
+  const sendMeetupMessage = useCallback(
+    async (meetupId: string, content: string): Promise<MeetupMessage> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data, error } = await supabase
+        .from('meetup_messages')
+        .insert({ meetup_id: meetupId, user_id: userId, content })
+        .select()
+        .single();
+
+      if (error || !data) throw error ?? new Error('Failed to send meetup message');
+
+      // Update sender's last_read_at
+      const now = new Date().toISOString();
+      await supabase
+        .from('meetup_members')
+        .update({ last_read_at: now })
+        .eq('meetup_id', meetupId)
+        .eq('user_id', userId);
+
+      // Update local state
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId
+          ? { ...m, _last_message: content, _last_message_at: now, _has_unread: false, _member_last_read_at: now }
+          : m
+      ));
+
+      return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
+    },
+    [session, user],
+  );
+
+  const markMeetupRead = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const now = new Date().toISOString();
+
+      // Optimistic update
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, _has_unread: false, _member_last_read_at: now } : m
+      ));
+
+      await supabase
+        .from('meetup_members')
+        .update({ last_read_at: now })
+        .eq('meetup_id', meetupId)
+        .eq('user_id', userId);
+    },
+    [session],
+  );
+
   const blockUser = useCallback(
     async (userId: string) => {
       if (!session) return;
@@ -1545,6 +1883,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getGroupMessages,
         sendGroupMessage,
         markGroupRead,
+        meetups,
+        loadMeetups,
+        createMeetup,
+        joinMeetup,
+        leaveMeetup,
+        getMeetupMembers,
+        getMeetupMessages,
+        sendMeetupMessage,
+        markMeetupRead,
       }}
     >
       {children}

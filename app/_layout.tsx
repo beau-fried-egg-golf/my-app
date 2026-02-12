@@ -68,6 +68,12 @@ export default function RootLayout() {
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="group-chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen
+          name="create-meetup"
+          options={{ title: 'New Meetup', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW MEETUP" size={32} /> }}
+        />
+        <Stack.Screen name="meetup/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="meetup-chat/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
           name="onboarding"
           options={{ headerShown: false, presentation: 'fullScreenModal' }}
         />

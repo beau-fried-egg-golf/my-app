@@ -86,6 +86,54 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     );
   }
 
+  if (item.type === 'meetup_created') {
+    const name = item.user_name ?? '';
+    const meetupName = item.meetup_name ?? 'a meetup';
+    return (
+      <Pressable style={styles.activityItem} onPress={onPress}>
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon}>
+            <Ionicons name="calendar" size={16} color={Colors.black} />
+          </View>
+        )}
+        <View style={styles.activityContent}>
+          <View style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> created a meetup </Text>
+            <Text style={styles.activityTextBold}>{meetupName}</Text>
+          </View>
+          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+
+  if (item.type === 'meetup_signup') {
+    const name = item.user_name ?? '';
+    const meetupName = item.meetup_name ?? 'a meetup';
+    return (
+      <Pressable style={styles.activityItem} onPress={onPress}>
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon}>
+            <Ionicons name="person-add" size={16} color={Colors.black} />
+          </View>
+        )}
+        <View style={styles.activityContent}>
+          <View style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> signed up for </Text>
+            <Text style={styles.activityTextBold}>{meetupName}</Text>
+          </View>
+          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   if (item.type === 'writeup') {
     const name = item.user_name ?? '';
     return (
@@ -207,6 +255,7 @@ export default function FeedScreen() {
             posts={posts}
             onPress={() => {
               if (item.type === 'group_created' && item.group_id) router.push(`/group/${item.group_id}`);
+              else if ((item.type === 'meetup_created' || item.type === 'meetup_signup') && item.meetup_id) router.push(`/meetup/${item.meetup_id}`);
               else if (item.type === 'post' && item.post_id) router.push(`/post/${item.post_id}`);
               else if (item.writeup_id) router.push(`/writeup/${item.writeup_id}`);
               else if (item.type === 'played' && item.course_id) router.push(`/course/${item.course_id}`);
