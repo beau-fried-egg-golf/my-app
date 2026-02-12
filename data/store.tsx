@@ -186,7 +186,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (blockerRes.data) setBlockedUserIds(new Set(blockerRes.data.map((b: UserBlock) => b.blocked_id)));
       if (blockedRes.data) setBlockedByIds(new Set(blockedRes.data.map((b: UserBlock) => b.blocker_id)));
 
-      const activitiesRes = await loadActivities(loadedCourses);
+      const [activitiesRes] = await Promise.all([
+        loadActivities(loadedCourses),
+        loadConversations(),
+      ]);
       if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
       console.error('Failed to load data', e);
