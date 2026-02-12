@@ -39,7 +39,7 @@ export default function WriteupList() {
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm('Delete this writeup permanently?')) return;
+    if (!window.confirm('Delete this review permanently?')) return;
     await deleteWriteup(id);
     setWriteups(writeups.filter((w) => w.id !== id));
   }
@@ -63,7 +63,7 @@ export default function WriteupList() {
   return (
     <div>
       <div className="page-header">
-        <h1 className="page-title">Writeups</h1>
+        <h1 className="page-title">Reviews</h1>
       </div>
 
       <div className="filters-bar">
@@ -146,7 +146,7 @@ export default function WriteupList() {
             ))}
           </tbody>
         </table>
-        {filtered.length === 0 && <div className="empty-state">No writeups found</div>}
+        {filtered.length === 0 && <div className="empty-state">No reviews found</div>}
       </div>
     </div>
   );

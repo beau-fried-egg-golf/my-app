@@ -91,11 +91,11 @@ export default function UserDetail() {
         </div>
 
         <h3 className="section-title" style={{ marginTop: 0 }}>
-          Writeups ({writeups.length})
+          Reviews ({writeups.length})
         </h3>
 
         {writeups.length === 0 ? (
-          <div className="empty-state">No writeups from this user</div>
+          <div className="empty-state">No reviews from this user</div>
         ) : (
           <div className="table-container">
             <table>

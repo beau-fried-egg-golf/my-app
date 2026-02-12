@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/courses', label: 'Courses' },
-  { to: '/writeups', label: 'Writeups' },
+  { to: '/writeups', label: 'Reviews' },
   { to: '/photos', label: 'Photos' },
   { to: '/posts', label: 'Posts' },
   { to: '/users', label: 'Users' },

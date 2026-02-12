@@ -27,7 +27,7 @@ export default function WriteupDetail() {
   }, [id]);
 
   if (!writeup) {
-    return <div className="empty-state">Writeup not found</div>;
+    return <div className="empty-state">Review not found</div>;
   }
 
   const course = courses.find((c) => c.id === writeup.course_id);
@@ -49,7 +49,7 @@ export default function WriteupDetail() {
   }
 
   async function handleDelete() {
-    if (!window.confirm('Delete this writeup permanently?')) return;
+    if (!window.confirm('Delete this review permanently?')) return;
     await deleteWriteup(id!);
     navigate('/writeups');
   }
@@ -59,7 +59,7 @@ export default function WriteupDetail() {
   return (
     <div>
       <div style={{ marginBottom: 16 }}>
-        <Link to="/writeups" className="btn btn-sm">&larr; Back to Writeups</Link>
+        <Link to="/writeups" className="btn btn-sm">&larr; Back to Reviews</Link>
       </div>
 
       <div className="detail-container">

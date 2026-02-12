@@ -60,7 +60,7 @@ export default function Dashboard() {
           <div className="stat-value">{courses.length}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Writeups</div>
+          <div className="stat-label">Reviews</div>
           <div className="stat-value">{writeups.length}</div>
           <div className="stat-detail">
             {visibleWriteups} visible, {hiddenWriteups} hidden
@@ -101,14 +101,14 @@ export default function Dashboard() {
               <strong>{profileMap.get(a.user_id) ?? 'Member'}</strong>{' '}
               {a.type === 'writeup' ? (
                 <>
-                  posted a writeup
+                  posted a review
                   {a.writeup_id && (
                     <> — <Link to={`/writeups/${a.writeup_id}`} className="link">View</Link></>
                   )}
                 </>
               ) : a.type === 'upvote' ? (
                 <>
-                  upvoted a writeup
+                  upvoted a review
                   {a.writeup_id && (
                     <> — <Link to={`/writeups/${a.writeup_id}`} className="link">View</Link></>
                   )}
