@@ -14,6 +14,8 @@ import PostDetail from './PostDetail';
 import UserList from './UserList';
 import UserDetail from './UserDetail';
 import MessageList from './MessageList';
+import MeetupList from './MeetupList';
+import MeetupForm from './MeetupForm';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -53,6 +55,9 @@ export default function App() {
         <Route path="users" element={<UserList />} />
         <Route path="users/:id" element={<UserDetail />} />
         <Route path="messages" element={<MessageList />} />
+        <Route path="meetups" element={<MeetupList />} />
+        <Route path="meetups/new" element={<MeetupForm />} />
+        <Route path="meetups/:id/edit" element={<MeetupForm />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

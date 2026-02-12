@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message, Meetup } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -244,4 +244,50 @@ export async function getConversationMessages(conversationId: string): Promise<M
 
 export async function deleteMessage(id: string): Promise<void> {
   await supabase.from('messages').delete().eq('id', id);
+}
+
+// ---- Meetups ----
+
+export async function getMeetups(): Promise<Meetup[]> {
+  const { data: meetups } = await supabase
+    .from('meetups')
+    .select('*')
+    .order('meetup_date', { ascending: false });
+
+  if (!meetups || meetups.length === 0) return [];
+
+  // Enrich with host names
+  const hostIds = [...new Set(meetups.map(m => m.host_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', hostIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  // Get member counts
+  const meetupIds = meetups.map(m => m.id);
+  const { data: members } = await supabase
+    .from('meetup_members')
+    .select('meetup_id')
+    .in('meetup_id', meetupIds);
+
+  const memberCountMap = new Map<string, number>();
+  for (const m of members ?? []) {
+    memberCountMap.set(m.meetup_id, (memberCountMap.get(m.meetup_id) ?? 0) + 1);
+  }
+
+  return meetups.map(m => ({
+    ...m,
+    host_name: profileMap.get(m.host_id) ?? 'Member',
+    member_count: memberCountMap.get(m.id) ?? 0,
+  }));
+}
+
+export async function saveMeetup(meetup: Meetup): Promise<void> {
+  const { host_name, member_count, ...data } = meetup;
+  await supabase.from('meetups').upsert(data);
+}
+
+export async function deleteMeetup(id: string): Promise<void> {
+  await supabase.from('meetups').delete().eq('id', id);
 }

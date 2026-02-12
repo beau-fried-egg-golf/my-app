@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCourses, getWriteups, getActivities, getProfiles, getPosts, getConversations } from './storage';
-import type { Course, Writeup, Activity, Profile, Post, Conversation } from './types';
+import { getCourses, getWriteups, getActivities, getProfiles, getPosts, getConversations, getMeetups } from './storage';
+import type { Course, Writeup, Activity, Profile, Post, Conversation, Meetup } from './types';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [meetups, setMeetups] = useState<Meetup[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -30,13 +31,15 @@ export default function Dashboard() {
       getProfiles(),
       getPosts(),
       getConversations(),
-    ]).then(([c, w, a, p, po, co]) => {
+      getMeetups(),
+    ]).then(([c, w, a, p, po, co, me]) => {
       setCourses(c);
       setWriteups(w);
       setActivities(a);
       setProfiles(p);
       setPosts(po);
       setConversations(co);
+      setMeetups(me);
     });
   }, []);
 
@@ -89,6 +92,13 @@ export default function Dashboard() {
           <div className="stat-value">{conversations.length}</div>
           <div className="stat-detail">
             {totalMessages} messages
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Meetups</div>
+          <div className="stat-value">{meetups.length}</div>
+          <div className="stat-detail">
+            {meetups.filter(m => m.is_fe_coordinated).length} FE coordinated
           </div>
         </div>
       </div>

@@ -15,7 +15,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Ionicons } from '@expo/vector-icons';
-import { Course, Photo, Writeup } from '@/types';
+import { Course, Meetup, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
 import EggRating from '@/components/EggRating';
@@ -82,10 +82,10 @@ interface GalleryPhoto extends Photo {
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed } = useStore();
+  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed, meetups, loadMeetups } = useStore();
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
-  const [activeTab, setActiveTab] = useState<'writeups' | 'photos'>('writeups');
+  const [activeTab, setActiveTab] = useState<'writeups' | 'photos' | 'meetups'>('writeups');
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const course = courses.find((c) => c.id === id);
@@ -123,6 +123,15 @@ export default function CourseDetailScreen() {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
   }, [allPhotos]);
+
+  const courseMeetups = useMemo(
+    () => meetups.filter(m => m.course_id === id),
+    [meetups, id],
+  );
+
+  useEffect(() => {
+    loadMeetups();
+  }, [loadMeetups]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -222,6 +231,14 @@ export default function CourseDetailScreen() {
             Photos ({sortedPhotos.length})
           </Text>
         </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'meetups' && styles.tabActive]}
+          onPress={() => setActiveTab('meetups')}
+        >
+          <Text style={[styles.tabText, activeTab === 'meetups' && styles.tabTextActive]}>
+            Meetups ({courseMeetups.length})
+          </Text>
+        </Pressable>
       </View>
 
       {activeTab === 'writeups' && (
@@ -293,6 +310,45 @@ export default function CourseDetailScreen() {
           ) : (
             <View style={styles.empty}>
               <Text style={styles.emptyText}>No photos yet</Text>
+            </View>
+          )}
+        </>
+      )}
+
+      {activeTab === 'meetups' && (
+        <>
+          {courseMeetups.length > 0 ? (
+            <View style={styles.section}>
+              {courseMeetups.map(m => {
+                const slotsRemaining = m.total_slots - (m.member_count ?? 0);
+                const meetupDate = new Date(m.meetup_date);
+                const dateStr = meetupDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+                  + ' · '
+                  + meetupDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+                return (
+                  <Pressable
+                    key={m.id}
+                    style={styles.meetupCard}
+                    onPress={() => router.push(`/meetup/${m.id}`)}
+                  >
+                    <View style={styles.meetupCardHeader}>
+                      <Ionicons name="calendar" size={16} color={Colors.black} style={{ marginRight: 8 }} />
+                      <Text style={styles.meetupCardName}>{m.name}</Text>
+                    </View>
+                    <Text style={styles.meetupCardMeta}>{dateStr}</Text>
+                    <Text style={styles.meetupCardMeta}>
+                      {slotsRemaining} of {m.total_slots} spot{m.total_slots !== 1 ? 's' : ''} available · {m.cost}
+                    </Text>
+                    {m.host_name && (
+                      <Text style={styles.meetupCardMeta}>Hosted by {m.host_name}</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No meetups at this course</Text>
             </View>
           )}
         </>
@@ -408,4 +464,8 @@ const styles = StyleSheet.create({
   feProfileSection: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 4 },
   feProfileLink: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, textDecorationLine: 'underline' },
   feProfileDate: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
+  meetupCard: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 14, marginBottom: 10 },
+  meetupCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  meetupCardName: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  meetupCardMeta: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 2 },
 });

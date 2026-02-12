@@ -105,6 +105,26 @@ export interface Message {
   author_name?: string;
 }
 
+export interface Meetup {
+  id: string;
+  name: string;
+  description: string;
+  host_id: string;
+  course_id: string | null;
+  location_name: string;
+  meetup_date: string;
+  cost: string;
+  total_slots: number;
+  host_takes_slot: boolean;
+  image: string | null;
+  is_fe_coordinated: boolean;
+  stripe_payment_url: string | null;
+  created_at: string;
+  updated_at: string;
+  host_name?: string;
+  member_count?: number;
+}
+
 export interface Activity {
   id: string;
   type: 'writeup' | 'upvote' | 'played' | 'post';

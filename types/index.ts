@@ -274,6 +274,8 @@ export interface Meetup {
   total_slots: number;
   host_takes_slot: boolean;
   image: string | null;
+  is_fe_coordinated: boolean;
+  stripe_payment_url: string | null;
   created_at: string;
   updated_at: string;
   host_name?: string;

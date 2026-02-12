@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/posts', label: 'Posts' },
   { to: '/users', label: 'Users' },
   { to: '/messages', label: 'Messages' },
+  { to: '/meetups', label: 'Meetups' },
 ];
 
 export default function Layout() {

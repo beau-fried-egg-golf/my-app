@@ -1,10 +1,29 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Meetup } from '@/types';
+
+function getDistanceMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 function formatMeetupDate(iso: string): string {
   const d = new Date(iso);
@@ -13,7 +32,7 @@ function formatMeetupDate(iso: string): string {
     + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
-function MeetupRow({ item, onPress }: { item: Meetup; onPress: () => void }) {
+function MeetupRow({ item, onPress, distance }: { item: Meetup; onPress: () => void; distance?: number | null }) {
   const slotsRemaining = item.total_slots - (item.member_count ?? 0);
   return (
     <Pressable style={styles.row} onPress={onPress}>
@@ -31,22 +50,67 @@ function MeetupRow({ item, onPress }: { item: Meetup; onPress: () => void }) {
         </Text>
         <Text style={styles.meetupMeta}>
           {item.location_name} · {slotsRemaining} spot{slotsRemaining !== 1 ? 's' : ''} left · {item.cost}
+          {distance != null ? ` · ${Math.round(distance)} mi` : ''}
         </Text>
       </View>
     </Pressable>
   );
 }
 
+type MeetupSortOrder = 'date' | 'distance';
+
 export default function MeetupsScreen() {
-  const { meetups, loadMeetups } = useStore();
+  const { meetups, courses, loadMeetups } = useStore();
   const router = useRouter();
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [sortOrder, setSortOrder] = useState<MeetupSortOrder>('date');
 
   useEffect(() => {
     loadMeetups();
   }, [loadMeetups]);
 
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        setUserLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      }
+    })();
+  }, []);
+
+  function getMeetupCoords(meetup: Meetup): { lat: number; lon: number } | null {
+    if (!meetup.course_id) return null;
+    const course = courses.find(c => c.id === meetup.course_id);
+    if (!course) return null;
+    return { lat: course.latitude, lon: course.longitude };
+  }
+
+  function getMeetupDistance(meetup: Meetup): number | null {
+    if (!userLocation) return null;
+    const coords = getMeetupCoords(meetup);
+    if (!coords) return null;
+    return getDistanceMiles(userLocation.lat, userLocation.lon, coords.lat, coords.lon);
+  }
+
+  const now = new Date();
   const myMeetups = meetups.filter(m => m.is_member);
-  const upcomingMeetups = meetups.filter(m => !m.is_member && new Date(m.meetup_date) > new Date());
+
+  const upcomingMeetups = useMemo(() => {
+    const upcoming = meetups.filter(m => !m.is_member && new Date(m.meetup_date) > now);
+    if (sortOrder === 'distance' && userLocation) {
+      return [...upcoming].sort((a, b) => {
+        const da = getMeetupDistance(a) ?? Infinity;
+        const db = getMeetupDistance(b) ?? Infinity;
+        return da - db;
+      });
+    }
+    return upcoming;
+  }, [meetups, sortOrder, userLocation, courses]);
+
+  const pastMeetups = useMemo(() => {
+    return meetups.filter(m => new Date(m.meetup_date) <= now);
+  }, [meetups]);
 
   return (
     <View style={styles.container}>
@@ -59,11 +123,26 @@ export default function MeetupsScreen() {
               <Text style={styles.createBtnText}>CREATE MEETUP</Text>
             </Pressable>
 
+            <View style={styles.sortToggle}>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'date' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('date')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'date' && styles.sortBtnTextActive]}>DATE</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('distance')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEAR</Text>
+              </Pressable>
+            </View>
+
             {myMeetups.length > 0 && (
               <>
                 <Text style={styles.sectionTitle}>MY MEETUPS</Text>
                 {myMeetups.map(m => (
-                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} />
+                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} distance={getMeetupDistance(m)} />
                 ))}
                 <View style={styles.sectionSpacer} />
               </>
@@ -73,7 +152,16 @@ export default function MeetupsScreen() {
               <>
                 <Text style={styles.sectionTitle}>UPCOMING</Text>
                 {upcomingMeetups.map(m => (
-                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} />
+                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} distance={getMeetupDistance(m)} />
+                ))}
+              </>
+            )}
+
+            {pastMeetups.length > 0 && (
+              <>
+                <Text style={styles.sectionTitle}>PAST MEETUPS</Text>
+                {pastMeetups.map(m => (
+                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} distance={getMeetupDistance(m)} />
                 ))}
               </>
             )}
@@ -113,6 +201,30 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     letterSpacing: 0.5,
+  },
+  sortToggle: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  sortBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  sortBtnActive: {
+    backgroundColor: Colors.orange,
+  },
+  sortBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  sortBtnTextActive: {
+    color: Colors.black,
   },
   sectionTitle: {
     fontSize: 13,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -81,6 +81,11 @@ export default function MeetupDetailScreen() {
             </View>
           )}
           <Text style={styles.meetupName}>{meetup.name}</Text>
+          {meetup.is_fe_coordinated && (
+            <View style={styles.feBadge}>
+              <Text style={styles.feBadgeText}>FE COORDINATED</Text>
+            </View>
+          )}
           <Text style={styles.meetupDateHero}>{formatMeetupDate(meetup.meetup_date)}</Text>
           <Text style={styles.meetupLocation}>{meetup.location_name}</Text>
         </View>
@@ -112,6 +117,18 @@ export default function MeetupDetailScreen() {
           )}
         </View>
 
+        {/* Stripe Payment Link */}
+        {meetup.stripe_payment_url ? (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={styles.stripeBtn}
+              onPress={() => Linking.openURL(meetup.stripe_payment_url!)}
+            >
+              <Text style={styles.stripeBtnText}>Reserve & Pay</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Details */}
         <Pressable
           style={styles.detailRow}
@@ -132,10 +149,13 @@ export default function MeetupDetailScreen() {
           <Text style={styles.detailValue}>{formatMeetupDate(meetup.meetup_date)}</Text>
         </View>
 
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Location</Text>
+        <Pressable
+          style={styles.detailRow}
+          onPress={() => meetup.course_id ? router.push(`/course/${meetup.course_id}`) : undefined}
+        >
+          <Text style={styles.detailLabel}>Course</Text>
           <Text style={styles.detailValue}>{meetup.location_name}</Text>
-        </View>
+        </Pressable>
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Cost</Text>
@@ -242,6 +262,32 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginTop: 12,
     textAlign: 'center',
+  },
+  feBadge: {
+    backgroundColor: '#FFEE54',
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginTop: 6,
+  },
+  feBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  stripeBtn: {
+    backgroundColor: '#635BFF',
+    borderRadius: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+  },
+  stripeBtnText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.white,
   },
   meetupDateHero: {
     fontSize: 14,

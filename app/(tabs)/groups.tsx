@@ -1,12 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Group } from '@/types';
 
-function GroupRow({ item, onPress }: { item: Group; onPress: () => void }) {
+function getDistanceMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function GroupRow({ item, onPress, distance }: { item: Group; onPress: () => void; distance?: number | null }) {
   return (
     <Pressable style={styles.row} onPress={onPress}>
       {item.image ? (
@@ -22,22 +41,66 @@ function GroupRow({ item, onPress }: { item: Group; onPress: () => void }) {
           {item.member_count ?? 0} member{(item.member_count ?? 0) !== 1 ? 's' : ''}
           {item.home_course_name ? ` · ${item.home_course_name}` : ''}
           {item.location_name ? ` · ${item.location_name}` : ''}
+          {distance != null ? ` · ${Math.round(distance)} mi` : ''}
         </Text>
       </View>
     </Pressable>
   );
 }
 
+type GroupSortOrder = 'default' | 'distance';
+
 export default function GroupsScreen() {
-  const { groups, loadGroups, session } = useStore();
+  const { groups, courses, loadGroups, session } = useStore();
   const router = useRouter();
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [sortOrder, setSortOrder] = useState<GroupSortOrder>('default');
 
   useEffect(() => {
     loadGroups();
   }, [loadGroups]);
 
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        setUserLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      }
+    })();
+  }, []);
+
+  function getGroupCoords(group: Group): { lat: number; lon: number } | null {
+    if (group.home_course_id) {
+      const course = courses.find(c => c.id === group.home_course_id);
+      if (course) return { lat: course.latitude, lon: course.longitude };
+    }
+    if (group.latitude != null && group.longitude != null) {
+      return { lat: group.latitude, lon: group.longitude };
+    }
+    return null;
+  }
+
+  function getGroupDistance(group: Group): number | null {
+    if (!userLocation) return null;
+    const coords = getGroupCoords(group);
+    if (!coords) return null;
+    return getDistanceMiles(userLocation.lat, userLocation.lon, coords.lat, coords.lon);
+  }
+
   const myGroups = groups.filter(g => g.is_member);
-  const discoverGroups = groups.filter(g => !g.is_member);
+
+  const discoverGroups = useMemo(() => {
+    const discover = groups.filter(g => !g.is_member);
+    if (sortOrder === 'distance' && userLocation) {
+      return [...discover].sort((a, b) => {
+        const da = getGroupDistance(a) ?? Infinity;
+        const db = getGroupDistance(b) ?? Infinity;
+        return da - db;
+      });
+    }
+    return discover;
+  }, [groups, sortOrder, userLocation, courses]);
 
   return (
     <View style={styles.container}>
@@ -50,11 +113,26 @@ export default function GroupsScreen() {
               <Text style={styles.createBtnText}>CREATE GROUP</Text>
             </Pressable>
 
+            <View style={styles.sortToggle}>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'default' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('default')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'default' && styles.sortBtnTextActive]}>A-Z</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
+                onPress={() => setSortOrder('distance')}
+              >
+                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEAR</Text>
+              </Pressable>
+            </View>
+
             {myGroups.length > 0 && (
               <>
                 <Text style={styles.sectionTitle}>MY GROUPS</Text>
                 {myGroups.map(g => (
-                  <GroupRow key={g.id} item={g} onPress={() => router.push(`/group/${g.id}`)} />
+                  <GroupRow key={g.id} item={g} onPress={() => router.push(`/group/${g.id}`)} distance={getGroupDistance(g)} />
                 ))}
                 <View style={styles.sectionSpacer} />
               </>
@@ -64,7 +142,7 @@ export default function GroupsScreen() {
               <>
                 <Text style={styles.sectionTitle}>DISCOVER</Text>
                 {discoverGroups.map(g => (
-                  <GroupRow key={g.id} item={g} onPress={() => router.push(`/group/${g.id}`)} />
+                  <GroupRow key={g.id} item={g} onPress={() => router.push(`/group/${g.id}`)} distance={getGroupDistance(g)} />
                 ))}
               </>
             )}
@@ -104,6 +182,30 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     letterSpacing: 0.5,
+  },
+  sortToggle: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  sortBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  sortBtnActive: {
+    backgroundColor: Colors.orange,
+  },
+  sortBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  sortBtnTextActive: {
+    color: Colors.black,
   },
   sectionTitle: {
     fontSize: 13,
