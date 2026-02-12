@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -7,15 +7,11 @@ import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
 import WordHighlight from '@/components/WordHighlight';
+import CourseMap from '@/components/course-map';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
 }
-
-// Lazy-load map component only on web
-const CourseMap = Platform.OS === 'web'
-  ? require('@/components/course-map').default
-  : () => null;
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -189,7 +185,6 @@ export default function CoursesScreen() {
     );
   }
 
-  const isWeb = Platform.OS === 'web';
 
   return (
     <View style={styles.container}>
@@ -203,22 +198,20 @@ export default function CoursesScreen() {
           )}
         </Pressable>
         <View style={styles.toolBarRight}>
-          {isWeb && (
-            <View style={styles.viewToggle}>
-              <Pressable
-                style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
-                onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
-              >
-                <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
-              </Pressable>
-              <Pressable
-                style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
-                onPress={() => setViewMode('map')}
-              >
-                <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
-              </Pressable>
-            </View>
-          )}
+          <View style={styles.viewToggle}>
+            <Pressable
+              style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
+              onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
+            >
+              <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
+              onPress={() => setViewMode('map')}
+            >
+              <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
+            </Pressable>
+          </View>
           {viewMode === 'list' && (
             <View style={styles.sortToggle}>
               <Pressable
