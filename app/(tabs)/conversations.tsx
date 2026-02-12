@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Conversation } from '@/types';
+import { ConversationListItem } from '@/types';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -17,19 +17,34 @@ function formatTime(iso: string): string {
   return `${days}d`;
 }
 
-function ConversationItem({ item, onPress }: { item: Conversation; onPress: () => void }) {
+function ConversationRow({ item, onPress }: { item: ConversationListItem; onPress: () => void }) {
+  const isGroup = item.type === 'group';
+
   return (
     <Pressable style={styles.item} onPress={onPress}>
       {item.unread && <View style={styles.unreadDot} />}
-      {item.other_user_image ? (
-        <Image source={{ uri: item.other_user_image }} style={styles.avatar} />
+      {isGroup ? (
+        item.image ? (
+          <Image source={{ uri: item.image }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="people" size={20} color={Colors.gray} />
+          </View>
+        )
       ) : (
-        <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={20} color={Colors.gray} />
-        </View>
+        item.image ? (
+          <Image source={{ uri: item.image }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={20} color={Colors.gray} />
+          </View>
+        )
       )}
       <View style={styles.itemContent}>
-        <Text style={[styles.itemName, item.unread && styles.itemNameUnread]}>{item.other_user_name ?? 'Member'}</Text>
+        <Text style={[styles.itemName, item.unread && styles.itemNameUnread]}>
+          {item.name}
+          {isGroup && item.member_count ? ` (${item.member_count})` : ''}
+        </Text>
         {item.last_message ? (
           <Text style={[styles.itemPreview, item.unread && styles.itemPreviewUnread]} numberOfLines={1}>{item.last_message}</Text>
         ) : (
@@ -44,22 +59,29 @@ function ConversationItem({ item, onPress }: { item: Conversation; onPress: () =
 }
 
 export default function ConversationsScreen() {
-  const { conversations, loadConversations } = useStore();
+  const { conversationListItems, loadConversations, loadGroups } = useStore();
   const router = useRouter();
 
   useEffect(() => {
     loadConversations();
-  }, [loadConversations]);
+    loadGroups();
+  }, [loadConversations, loadGroups]);
 
   return (
     <View style={styles.container}>
       <FlatList
-        data={conversations}
-        keyExtractor={(item) => item.id}
+        data={conversationListItems}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
         renderItem={({ item }) => (
-          <ConversationItem
+          <ConversationRow
             item={item}
-            onPress={() => router.push(`/conversation/${item.id}`)}
+            onPress={() => {
+              if (item.type === 'group') {
+                router.push(`/group-chat/${item.group_id ?? item.id}`);
+              } else {
+                router.push(`/conversation/${item.id}`);
+              }
+            }}
           />
         )}
         ListEmptyComponent={
@@ -67,11 +89,11 @@ export default function ConversationsScreen() {
             <Ionicons name="chatbubbles-outline" size={48} color={Colors.lightGray} />
             <Text style={styles.emptyTitle}>No conversations yet</Text>
             <Text style={styles.emptyText}>
-              Visit a member's profile and tap Message to start chatting
+              Visit a member's profile and tap Message to start chatting, or join a group
             </Text>
           </View>
         }
-        contentContainerStyle={conversations.length === 0 ? styles.emptyContainer : undefined}
+        contentContainerStyle={conversationListItems.length === 0 ? styles.emptyContainer : undefined}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
     </View>

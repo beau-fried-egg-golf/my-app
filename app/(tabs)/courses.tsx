@@ -195,13 +195,12 @@ export default function CoursesScreen() {
     <View style={styles.container}>
       <View style={styles.toolBar}>
         <Pressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
-          <Text style={styles.filterBarText}>FILTERS</Text>
+          <Text style={styles.filterBarText}>{showFilters ? 'CLOSE FILTERS' : 'OPEN FILTERS'}</Text>
           {activeFilterCount > 0 && (
             <View style={styles.filterCount}>
               <Text style={styles.filterCountText}>{activeFilterCount}</Text>
             </View>
           )}
-          <Text style={styles.chevronText}>{showFilters ? '^' : 'v'}</Text>
         </Pressable>
         <View style={styles.toolBarRight}>
           {isWeb && (

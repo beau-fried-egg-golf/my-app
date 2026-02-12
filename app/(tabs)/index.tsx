@@ -62,6 +62,30 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     );
   }
 
+  if (item.type === 'group_created') {
+    const name = item.user_name ?? '';
+    const groupName = item.group_name ?? 'a group';
+    return (
+      <Pressable style={styles.activityItem} onPress={onPress}>
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon}>
+            <Ionicons name="people" size={16} color={Colors.black} />
+          </View>
+        )}
+        <View style={styles.activityContent}>
+          <View style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> created a group </Text>
+            <Text style={styles.activityTextBold}>{groupName}</Text>
+          </View>
+          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   if (item.type === 'writeup') {
     const name = item.user_name ?? '';
     return (
@@ -182,7 +206,8 @@ export default function FeedScreen() {
             profiles={profiles}
             posts={posts}
             onPress={() => {
-              if (item.type === 'post' && item.post_id) router.push(`/post/${item.post_id}`);
+              if (item.type === 'group_created' && item.group_id) router.push(`/group/${item.group_id}`);
+              else if (item.type === 'post' && item.post_id) router.push(`/post/${item.post_id}`);
               else if (item.writeup_id) router.push(`/writeup/${item.writeup_id}`);
               else if (item.type === 'played' && item.course_id) router.push(`/course/${item.course_id}`);
             }}

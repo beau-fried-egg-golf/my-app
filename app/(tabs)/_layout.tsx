@@ -46,6 +46,7 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: Colors.white,
           borderTopColor: Colors.lightGray,
+          height: 75,
         },
         tabBarLabel: ({ focused, children }: { focused: boolean; children: string }) => {
           const words = (children ?? '').split(' ').filter(Boolean);
@@ -113,6 +114,16 @@ export default function TabLayout() {
         options={{
           title: 'MEMBERS',
           headerTitle: () => <LetterSpacedHeader text="MEMBERS" size={32} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="groups"
+        options={{
+          title: 'GROUPS',
+          headerTitle: () => <LetterSpacedHeader text="GROUPS" size={32} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, ConversationListItem, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -56,6 +56,17 @@ interface StoreContextType {
   dmsDisabled: boolean;
   hasUnreadMessages: boolean;
   markConversationRead: (conversationId: string) => Promise<void>;
+  // Groups
+  groups: Group[];
+  conversationListItems: ConversationListItem[];
+  loadGroups: () => Promise<void>;
+  createGroup: (data: { name: string; description: string; home_course_id: string | null; location_name: string; image: string | null }) => Promise<Group>;
+  joinGroup: (groupId: string) => Promise<void>;
+  leaveGroup: (groupId: string) => Promise<void>;
+  getGroupMembers: (groupId: string) => Promise<GroupMember[]>;
+  getGroupMessages: (groupId: string) => Promise<GroupMessage[]>;
+  sendGroupMessage: (groupId: string, content: string) => Promise<GroupMessage>;
+  markGroupRead: (groupId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -78,6 +89,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
   const [blockedByIds, setBlockedByIds] = useState<Set<string>>(new Set());
   const [dmsDisabled, setDmsDisabled] = useState(false);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const groupsRef = useRef<Group[]>([]);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -85,14 +98,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return new Set(follows.filter(f => f.follower_id === currentUserId).map(f => f.following_id));
   }, [follows, session]);
 
+  const hasUnreadGroupMessages = React.useMemo(() => {
+    return groups.some(g => g._has_unread);
+  }, [groups]);
+
   const hasUnreadMessages = React.useMemo(
-    () => conversations.some(c => c.unread),
-    [conversations],
+    () => conversations.some(c => c.unread) || hasUnreadGroupMessages,
+    [conversations, hasUnreadGroupMessages],
   );
+
+  const conversationListItems = React.useMemo((): ConversationListItem[] => {
+    const dmItems: ConversationListItem[] = conversations.map(c => ({
+      id: c.id,
+      type: 'dm' as const,
+      name: c.other_user_name ?? 'Member',
+      image: c.other_user_image ?? null,
+      last_message: c.last_message,
+      last_message_at: c.last_message_at,
+      unread: c.unread ?? false,
+      other_user_id: c.user1_id === session?.user?.id ? c.user2_id : c.user1_id,
+    }));
+
+    const groupItems: ConversationListItem[] = groups
+      .filter(g => g.is_member)
+      .map(g => ({
+        id: g.id,
+        type: 'group' as const,
+        name: g.name,
+        image: g.image,
+        last_message: g._last_message,
+        last_message_at: g._last_message_at,
+        unread: g._has_unread ?? false,
+        group_id: g.id,
+        member_count: g.member_count,
+      }));
+
+    return [...dmItems, ...groupItems].sort((a, b) => {
+      const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+      const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+      return bTime - aTime;
+    });
+  }, [conversations, groups, session]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -121,6 +175,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setBlockedUserIds(new Set());
         setBlockedByIds(new Set());
         setDmsDisabled(false);
+        setGroups([]);
       }
     });
 
@@ -189,6 +244,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const [activitiesRes] = await Promise.all([
         loadActivities(loadedCourses),
         currentUserId ? loadConversations(currentUserId) : Promise.resolve(),
+        currentUserId ? loadGroupsData(currentUserId) : Promise.resolve(),
       ]);
       if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
@@ -308,6 +364,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       : { data: [] };
     const postMap = new Map((postData ?? []).map(p => [p.id, p.content]));
 
+    // Load group names for group_created activities
+    const groupIds = [...new Set(data.filter(a => a.group_id).map(a => a.group_id!))];
+    const { data: groupData } = groupIds.length > 0
+      ? await supabase
+          .from('groups')
+          .select('id, name')
+          .in('id', groupIds)
+      : { data: [] };
+    const groupMap = new Map((groupData ?? []).map(g => [g.id, g.name]));
+
     return data.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
       const courseList = coursesData ?? coursesRef.current;
@@ -323,6 +389,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         course_name: courseName ?? '',
         target_user_name: a.target_user_id ? (profileMap.get(a.target_user_id) ?? 'another member') : undefined,
         post_content: a.post_id ? postMap.get(a.post_id) ?? '' : undefined,
+        group_name: a.group_id ? groupMap.get(a.group_id) ?? '' : undefined,
       };
     });
   }
@@ -1076,6 +1143,286 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  // ---- Group methods ----
+  async function loadGroupsData(overrideUserId?: string) {
+    const userId = overrideUserId ?? session?.user?.id;
+    if (!userId) return;
+
+    const { data: rawGroups } = await supabase
+      .from('groups')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!rawGroups || rawGroups.length === 0) { setGroups([]); return; }
+
+    const groupIds = rawGroups.map(g => g.id);
+
+    // Load members, creator profiles, and last messages in parallel
+    const [membersRes, lastMsgsRes] = await Promise.all([
+      supabase.from('group_members').select('*').in('group_id', groupIds),
+      supabase.from('group_messages').select('group_id, user_id, content, created_at').in('group_id', groupIds).order('created_at', { ascending: false }),
+    ]);
+
+    const members = membersRes.data ?? [];
+    const lastMsgs = lastMsgsRes.data ?? [];
+
+    // Creator IDs
+    const creatorIds = [...new Set(rawGroups.map(g => g.creator_id))];
+    const { data: creatorProfiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', creatorIds);
+    const creatorMap = new Map((creatorProfiles ?? []).map(p => [p.id, p.name]));
+
+    // Member counts per group
+    const memberCountMap = new Map<string, number>();
+    const membershipMap = new Map<string, boolean>();
+    const memberLastReadMap = new Map<string, string | null>();
+    for (const m of members) {
+      memberCountMap.set(m.group_id, (memberCountMap.get(m.group_id) ?? 0) + 1);
+      if (m.user_id === userId) {
+        membershipMap.set(m.group_id, true);
+        memberLastReadMap.set(m.group_id, m.last_read_at);
+      }
+    }
+
+    // Last message per group
+    const lastMsgMap = new Map<string, { content: string; created_at: string }>();
+    for (const msg of lastMsgs) {
+      if (!lastMsgMap.has(msg.group_id)) {
+        lastMsgMap.set(msg.group_id, msg);
+      }
+    }
+
+    const crs = coursesRef.current;
+
+    const enriched: Group[] = rawGroups.map(g => {
+      const lastMsg = lastMsgMap.get(g.id);
+      const lastReadAt = memberLastReadMap.get(g.id);
+      const isMember = membershipMap.get(g.id) ?? false;
+      const hasUnread = isMember && lastMsg
+        ? (!lastReadAt || new Date(lastMsg.created_at) > new Date(lastReadAt))
+        : false;
+      return {
+        ...g,
+        creator_name: creatorMap.get(g.creator_id) ?? 'Member',
+        home_course_name: g.home_course_id ? (crs.find(c => c.id === g.home_course_id)?.short_name ?? '') : undefined,
+        member_count: memberCountMap.get(g.id) ?? 0,
+        is_member: isMember,
+        _last_message: lastMsg?.content,
+        _last_message_at: lastMsg?.created_at,
+        _has_unread: hasUnread,
+        _member_last_read_at: lastReadAt,
+      };
+    });
+
+    setGroups(enriched);
+  }
+
+  const loadGroups = useCallback(async () => {
+    await loadGroupsData();
+  }, [session]);
+
+  const createGroup = useCallback(
+    async (data: { name: string; description: string; home_course_id: string | null; location_name: string; image: string | null }): Promise<Group> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: groupData, error } = await supabase
+        .from('groups')
+        .insert({
+          name: data.name,
+          description: data.description,
+          creator_id: userId,
+          home_course_id: data.home_course_id,
+          location_name: data.location_name,
+          image: data.image,
+        })
+        .select()
+        .single();
+
+      if (error || !groupData) throw error ?? new Error('Failed to create group');
+
+      // Add creator as member with role 'creator'
+      await supabase
+        .from('group_members')
+        .insert({ group_id: groupData.id, user_id: userId, role: 'creator' });
+
+      const group: Group = {
+        ...groupData,
+        creator_name: user?.name ?? 'Member',
+        home_course_name: data.home_course_id ? (courses.find(c => c.id === data.home_course_id)?.short_name ?? '') : undefined,
+        member_count: 1,
+        is_member: true,
+      };
+
+      setGroups(prev => [group, ...prev]);
+
+      // Insert activity for group creation
+      await supabase.from('activities').insert({
+        type: 'group_created',
+        user_id: userId,
+        group_id: groupData.id,
+      });
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+
+      return group;
+    },
+    [session, user, courses],
+  );
+
+  const joinGroup = useCallback(
+    async (groupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      // Optimistic update
+      setGroups(prev => prev.map(g =>
+        g.id === groupId ? { ...g, is_member: true, member_count: (g.member_count ?? 0) + 1 } : g
+      ));
+
+      const { error } = await supabase
+        .from('group_members')
+        .insert({ group_id: groupId, user_id: userId, role: 'member' });
+
+      if (error) {
+        // Revert on error
+        setGroups(prev => prev.map(g =>
+          g.id === groupId ? { ...g, is_member: false, member_count: (g.member_count ?? 1) - 1 } : g
+        ));
+      }
+    },
+    [session],
+  );
+
+  const leaveGroup = useCallback(
+    async (groupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const group = groupsRef.current.find(g => g.id === groupId);
+      if (group?.creator_id === userId) return; // Can't leave if creator
+
+      // Optimistic update
+      setGroups(prev => prev.map(g =>
+        g.id === groupId ? { ...g, is_member: false, member_count: Math.max(0, (g.member_count ?? 1) - 1) } : g
+      ));
+
+      await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', userId);
+    },
+    [session],
+  );
+
+  const getGroupMembers = useCallback(
+    async (groupId: string): Promise<GroupMember[]> => {
+      const { data: members } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('joined_at', { ascending: true });
+
+      if (!members || members.length === 0) return [];
+
+      const userIds = [...new Set(members.map(m => m.user_id))];
+      const { data: memberProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, image')
+        .in('id', userIds);
+      const profileMap = new Map((memberProfiles ?? []).map(p => [p.id, p]));
+
+      return members.map(m => ({
+        ...m,
+        user_name: profileMap.get(m.user_id)?.name ?? 'Member',
+        user_image: profileMap.get(m.user_id)?.image ?? null,
+      }));
+    },
+    [],
+  );
+
+  const getGroupMessages = useCallback(
+    async (groupId: string): Promise<GroupMessage[]> => {
+      const { data: msgs } = await supabase
+        .from('group_messages')
+        .select('*')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: true });
+
+      if (!msgs || msgs.length === 0) return [];
+
+      const userIds = [...new Set(msgs.map(m => m.user_id))];
+      const { data: senderProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, image')
+        .in('id', userIds);
+      const profileMap = new Map((senderProfiles ?? []).map(p => [p.id, p]));
+
+      return msgs.map(m => ({
+        ...m,
+        sender_name: profileMap.get(m.user_id)?.name ?? 'Member',
+        sender_image: profileMap.get(m.user_id)?.image ?? null,
+      }));
+    },
+    [],
+  );
+
+  const sendGroupMessage = useCallback(
+    async (groupId: string, content: string): Promise<GroupMessage> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data, error } = await supabase
+        .from('group_messages')
+        .insert({ group_id: groupId, user_id: userId, content })
+        .select()
+        .single();
+
+      if (error || !data) throw error ?? new Error('Failed to send group message');
+
+      // Update sender's last_read_at
+      const now = new Date().toISOString();
+      await supabase
+        .from('group_members')
+        .update({ last_read_at: now })
+        .eq('group_id', groupId)
+        .eq('user_id', userId);
+
+      // Update local state
+      setGroups(prev => prev.map(g =>
+        g.id === groupId
+          ? { ...g, _last_message: content, _last_message_at: now, _has_unread: false, _member_last_read_at: now }
+          : g
+      ));
+
+      return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
+    },
+    [session, user],
+  );
+
+  const markGroupRead = useCallback(
+    async (groupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const now = new Date().toISOString();
+
+      // Optimistic update
+      setGroups(prev => prev.map(g =>
+        g.id === groupId ? { ...g, _has_unread: false, _member_last_read_at: now } : g
+      ));
+
+      await supabase
+        .from('group_members')
+        .update({ last_read_at: now })
+        .eq('group_id', groupId)
+        .eq('user_id', userId);
+    },
+    [session],
+  );
+
   const blockUser = useCallback(
     async (userId: string) => {
       if (!session) return;
@@ -1188,6 +1535,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         dmsDisabled,
         hasUnreadMessages,
         markConversationRead,
+        groups,
+        conversationListItems,
+        loadGroups,
+        createGroup,
+        joinGroup,
+        leaveGroup,
+        getGroupMembers,
+        getGroupMessages,
+        sendGroupMessage,
+        markGroupRead,
       }}
     >
       {children}
