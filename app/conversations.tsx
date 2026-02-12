@@ -1,0 +1,164 @@
+import { useEffect } from 'react';
+import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useStore } from '@/data/store';
+import { Conversation } from '@/types';
+
+function formatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d`;
+}
+
+function ConversationItem({ item, onPress }: { item: Conversation; onPress: () => void }) {
+  return (
+    <Pressable style={styles.item} onPress={onPress}>
+      {item.unread && <View style={styles.unreadDot} />}
+      {item.other_user_image ? (
+        <Image source={{ uri: item.other_user_image }} style={styles.avatar} />
+      ) : (
+        <View style={styles.avatarPlaceholder}>
+          <Ionicons name="person" size={20} color={Colors.gray} />
+        </View>
+      )}
+      <View style={styles.itemContent}>
+        <Text style={[styles.itemName, item.unread && styles.itemNameUnread]}>{item.other_user_name ?? 'Member'}</Text>
+        {item.last_message ? (
+          <Text style={[styles.itemPreview, item.unread && styles.itemPreviewUnread]} numberOfLines={1}>{item.last_message}</Text>
+        ) : (
+          <Text style={styles.itemPreview}>No messages yet</Text>
+        )}
+      </View>
+      {item.last_message_at && (
+        <Text style={[styles.itemTime, item.unread && styles.itemTimeUnread]}>{formatTime(item.last_message_at)}</Text>
+      )}
+    </Pressable>
+  );
+}
+
+export default function ConversationsScreen() {
+  const { conversations, loadConversations } = useStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    loadConversations();
+  }, [loadConversations]);
+
+  return (
+    <View style={styles.container}>
+      <FlatList
+        data={conversations}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <ConversationItem
+            item={item}
+            onPress={() => router.push(`/conversation/${item.id}`)}
+          />
+        )}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Ionicons name="chatbubbles-outline" size={48} color={Colors.lightGray} />
+            <Text style={styles.emptyTitle}>No conversations yet</Text>
+            <Text style={styles.emptyText}>
+              Visit a member's profile and tap Message to start chatting
+            </Text>
+          </View>
+        }
+        contentContainerStyle={conversations.length === 0 ? styles.emptyContainer : undefined}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.white },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    position: 'relative',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.orange,
+    marginRight: 8,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: 12,
+  },
+  avatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  itemContent: { flex: 1 },
+  itemName: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  itemPreview: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  itemNameUnread: {
+    color: Colors.black,
+  },
+  itemPreviewUnread: {
+    color: Colors.black,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+  },
+  itemTime: {
+    fontSize: 12,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginLeft: 8,
+  },
+  itemTimeUnread: {
+    color: Colors.orange,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+  },
+  separator: {
+    height: 1,
+    backgroundColor: Colors.lightGray,
+    marginLeft: 72,
+  },
+  empty: { alignItems: 'center', gap: 8 },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    marginTop: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+});

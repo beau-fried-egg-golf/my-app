@@ -3,11 +3,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import PassportStamp from '@/components/PassportStamp';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profiles, writeups, coursesPlayed, courses } = useStore();
+  const { profiles, writeups, coursesPlayed, courses, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy } = useStore();
   const router = useRouter();
+  const isOwnProfile = session?.user?.id === id;
 
   const profile = profiles.find((p) => p.id === id);
 
@@ -43,17 +45,45 @@ export default function MemberProfileScreen() {
         )}
         <Text style={styles.name}>{profile.name}</Text>
         {profile.location ? <Text style={styles.location}>{profile.location}</Text> : null}
+        {!isOwnProfile && (
+          <View style={styles.actionRow}>
+            <Pressable
+              style={[styles.actionBtn, isFollowing(profile.id) && styles.actionBtnActive]}
+              onPress={() => toggleFollow(profile.id)}
+            >
+              <Text style={[styles.actionBtnText, isFollowing(profile.id) && styles.actionBtnTextActive]}>
+                {isFollowing(profile.id) ? 'Following' : 'Follow'}
+              </Text>
+            </Pressable>
+            {!isBlockedBy(profile.id) && !profile.dms_disabled && (
+              <Pressable
+                style={styles.actionBtn}
+                onPress={async () => {
+                  const convoId = await getOrCreateConversation(profile.id);
+                  router.push(`/conversation/${convoId}`);
+                }}
+              >
+                <Text style={styles.actionBtnText}>Message</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </View>
 
       <View style={styles.stats}>
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{memberWriteups.length}</Text>
-          <Text style={styles.statLabel}>Writeups</Text>
+          <Text style={styles.statValue}>{getFollowerCount(profile.id)}</Text>
+          <Text style={styles.statLabel}>Followers</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statValue}>{totalUpvotes}</Text>
-          <Text style={styles.statLabel}>Upvotes</Text>
+          <Text style={styles.statValue}>{getFollowingCount(profile.id)}</Text>
+          <Text style={styles.statLabel}>Following</Text>
+        </View>
+        <View style={styles.statDivider} />
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{memberWriteups.length}</Text>
+          <Text style={styles.statLabel}>Reviews</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
@@ -89,14 +119,25 @@ export default function MemberProfileScreen() {
       {passportCourses.length > 0 && (
         <View style={styles.passportSection}>
           <Text style={styles.passportTitle}>Course Passport</Text>
-          {passportCourses.map(c => (
-            <Pressable key={c.id} style={styles.passportItem} onPress={() => router.push(`/course/${c.id}`)}>
-              <Text style={styles.passportCourseName}>{c.short_name}</Text>
-              {writeupCourseIds.has(c.id) && (
-                <Ionicons name="pencil" size={14} color={Colors.gray} />
-              )}
-            </Pressable>
-          ))}
+          <View style={styles.stampGrid}>
+            {passportCourses.map(c => {
+              const playedRecord = coursesPlayed.find(cp => cp.user_id === profile.id && cp.course_id === c.id);
+              const courseWriteups = memberWriteups.filter(w => w.course_id === c.id);
+              const datePlayed = playedRecord?.created_at
+                ?? courseWriteups.sort((a, b) => a.created_at.localeCompare(b.created_at))[0]?.created_at
+                ?? new Date().toISOString();
+              return (
+                <PassportStamp
+                  key={c.id}
+                  courseId={c.id}
+                  courseName={c.short_name}
+                  city={c.city}
+                  datePlayed={datePlayed}
+                  onPress={() => router.push(`/course/${c.id}`)}
+                />
+              );
+            })}
+          </View>
         </View>
       )}
     </ScrollView>
@@ -108,20 +149,27 @@ const styles = StyleSheet.create({
   content: { padding: 24 },
   emptyText: { fontSize: 15, color: Colors.gray, textAlign: 'center', marginTop: 40, fontFamily: Fonts!.sans },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
-  avatar: { width: 88, height: 88, borderRadius: 4, borderWidth: 2, borderColor: Colors.black },
+  avatar: { width: 88, height: 88, borderRadius: 4 },
   avatarPlaceholder: {
     width: 88, height: 88, borderRadius: 4,
-    borderWidth: 2, borderColor: Colors.black,
     backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center',
   },
   name: { fontSize: 22, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginTop: 12 },
   location: { fontSize: 14, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
+  actionBtn: {
+    borderWidth: 1.5, borderColor: Colors.black, borderRadius: 20,
+    paddingHorizontal: 20, paddingVertical: 8,
+  },
+  actionBtnActive: { backgroundColor: Colors.black },
+  actionBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  actionBtnTextActive: { color: Colors.white },
   stats: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     marginBottom: 24, paddingVertical: 16,
     borderTopWidth: 1, borderBottomWidth: 1, borderColor: Colors.lightGray,
   },
-  statItem: { alignItems: 'center', paddingHorizontal: 32 },
+  statItem: { alignItems: 'center', paddingHorizontal: 16 },
   statValue: { fontSize: 20, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   statLabel: { fontSize: 12, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
   statDivider: { width: 1, height: 32, backgroundColor: Colors.lightGray },
@@ -131,6 +179,5 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   passportSection: { marginTop: 24 },
   passportTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
-  passportItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  passportCourseName: { fontSize: 15, fontFamily: Fonts!.sans, color: Colors.black },
+  stampGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
 });

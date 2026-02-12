@@ -8,6 +8,44 @@ export interface Profile {
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
+  dms_disabled?: boolean;
+}
+
+export interface Follow {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+}
+
+export interface Conversation {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  created_at: string;
+  updated_at: string;
+  user1_last_read_at?: string | null;
+  user2_last_read_at?: string | null;
+  other_user_name?: string;
+  other_user_image?: string | null;
+  last_message?: string;
+  last_message_at?: string;
+  unread?: boolean;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface UserBlock {
+  id: string;
+  blocker_id: string;
+  blocked_id: string;
+  created_at: string;
 }
 
 // Camel-case alias used in UI components
@@ -102,11 +140,42 @@ export interface CoursePlayed {
   created_at: string;
 }
 
+export interface PostPhoto {
+  id: string;
+  post_id: string;
+  user_id: string;
+  url: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface Post {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  photos: PostPhoto[];
+  reactions: Record<string, number>;
+  user_reactions: string[];
+  reply_count: number;
+  author_name?: string;
+}
+
+export interface PostReply {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string;
+}
+
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote' | 'played';
+  type: 'writeup' | 'upvote' | 'played' | 'post';
   user_id: string;
   writeup_id: string | null;
+  post_id?: string | null;
   course_id: string | null;
   target_user_id: string | null;
   created_at: string;
@@ -115,6 +184,7 @@ export interface Activity {
   writeup_title?: string;
   course_name?: string;
   target_user_name?: string;
+  post_content?: string;
 }
 
 export function profileToUser(p: Profile): User {

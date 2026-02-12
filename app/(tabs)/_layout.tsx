@@ -6,19 +6,25 @@ import { useStore } from '@/data/store';
 import { useRouter } from 'expo-router';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
-function ProfileButton() {
+function HeaderRight() {
   const router = useRouter();
-  const { user } = useStore();
+  const { user, hasUnreadMessages } = useStore();
   return (
-    <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
-      {user?.image ? (
-        <Image source={{ uri: user.image }} style={styles.profileImage} />
-      ) : (
-        <View style={styles.profilePlaceholder}>
-          <Ionicons name="person" size={18} color={Colors.black} />
-        </View>
-      )}
-    </Pressable>
+    <View style={styles.headerRightRow}>
+      <Pressable onPress={() => router.push('/conversations')} style={styles.chatBtn}>
+        <Ionicons name="chatbubble-outline" size={22} color={Colors.black} />
+        {hasUnreadMessages && <View style={styles.unreadBadge} />}
+      </Pressable>
+      <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
+        {user?.image ? (
+          <Image source={{ uri: user.image }} style={styles.profileImage} />
+        ) : (
+          <View style={styles.profilePlaceholder}>
+            <Ionicons name="person" size={18} color={Colors.black} />
+          </View>
+        )}
+      </Pressable>
+    </View>
   );
 }
 
@@ -78,7 +84,7 @@ export default function TabLayout() {
           fontWeight: FontWeights.bold,
           fontSize: 18,
         },
-        headerRight: () => <ProfileButton />,
+        headerRight: () => <HeaderRight />,
       }}
     >
       <Tabs.Screen
@@ -116,22 +122,38 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  profileBtn: {
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     marginRight: 16,
+  },
+  chatBtn: {
+    padding: 4,
+    position: 'relative',
+  },
+  unreadBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 1,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: Colors.orange,
+    borderWidth: 1.5,
+    borderColor: Colors.white,
+  },
+  profileBtn: {
   },
   profileImage: {
     width: 32,
     height: 32,
     borderRadius: 4,
-    borderWidth: 2,
-    borderColor: Colors.black,
   },
   profilePlaceholder: {
     width: 32,
     height: 32,
     borderRadius: 4,
-    borderWidth: 2,
-    borderColor: Colors.black,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.lightGray,

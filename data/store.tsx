@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -26,7 +26,36 @@ interface StoreContextType {
   getUserName: (userId: string) => string;
   markCoursePlayed: (courseId: string) => Promise<void>;
   unmarkCoursePlayed: (courseId: string) => Promise<void>;
+  posts: Post[];
+  addPost: (data: { content: string; photos: { url: string; caption: string }[] }) => Promise<Post>;
+  togglePostReaction: (postId: string, reaction: string) => Promise<void>;
+  getPostReplies: (postId: string) => Promise<PostReply[]>;
+  addPostReply: (postId: string, content: string) => Promise<PostReply>;
+  deletePost: (postId: string) => Promise<void>;
   refreshData: () => Promise<void>;
+  // Follows
+  follows: Follow[];
+  followingIds: Set<string>;
+  toggleFollow: (targetUserId: string) => Promise<void>;
+  isFollowing: (userId: string) => boolean;
+  getFollowerCount: (userId: string) => number;
+  getFollowingCount: (userId: string) => number;
+  // Conversations / DMs
+  conversations: Conversation[];
+  blockedUserIds: Set<string>;
+  blockedByIds: Set<string>;
+  loadConversations: () => Promise<void>;
+  getOrCreateConversation: (otherUserId: string) => Promise<string>;
+  getMessages: (conversationId: string) => Promise<Message[]>;
+  sendMessage: (conversationId: string, content: string) => Promise<Message>;
+  blockUser: (userId: string) => Promise<void>;
+  unblockUser: (userId: string) => Promise<void>;
+  toggleDms: (disabled: boolean) => Promise<void>;
+  isBlocked: (userId: string) => boolean;
+  isBlockedBy: (userId: string) => boolean;
+  dmsDisabled: boolean;
+  hasUnreadMessages: boolean;
+  markConversationRead: (conversationId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -39,8 +68,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [coursesPlayed, setCoursesPlayed] = useState<CoursePlayed[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [profileCache, setProfileCache] = useState<Map<string, string>>(new Map());
+  const coursesRef = useRef<Course[]>([]);
+  const [follows, setFollows] = useState<Follow[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const conversationsRef = useRef<Conversation[]>([]);
+  const [blockedUserIds, setBlockedUserIds] = useState<Set<string>>(new Set());
+  const [blockedByIds, setBlockedByIds] = useState<Set<string>>(new Set());
+  const [dmsDisabled, setDmsDisabled] = useState(false);
+
+  const followingIds = React.useMemo(() => {
+    const currentUserId = session?.user?.id;
+    if (!currentUserId) return new Set<string>();
+    return new Set(follows.filter(f => f.follower_id === currentUserId).map(f => f.following_id));
+  }, [follows, session]);
+
+  const hasUnreadMessages = React.useMemo(
+    () => conversations.some(c => c.unread),
+    [conversations],
+  );
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   // Listen for auth state changes
   useEffect(() => {
@@ -63,6 +115,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setWriteups([]);
         setActivities([]);
+        setPosts([]);
+        setFollows([]);
+        setConversations([]);
+        setBlockedUserIds(new Set());
+        setBlockedByIds(new Set());
+        setDmsDisabled(false);
       }
     });
 
@@ -89,18 +147,44 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   async function loadData() {
     try {
-      const [coursesRes, writeupsRes, profilesRes, playedRes] = await Promise.all([
+      const currentUserId = (await supabase.auth.getSession()).data.session?.user?.id;
+
+      const [coursesRes, writeupsRes, profilesRes, playedRes, postsRes, followsRes, blockerRes, blockedRes] = await Promise.all([
         supabase.from('courses').select('*').order('name'),
         loadWriteups(),
         supabase.from('profiles').select('*').order('name'),
         supabase.from('courses_played').select('*'),
+        loadPosts(),
+        currentUserId
+          ? supabase.from('follows').select('*').or(`follower_id.eq.${currentUserId},following_id.eq.${currentUserId}`)
+          : { data: [] },
+        currentUserId
+          ? supabase.from('user_blocks').select('*').eq('blocker_id', currentUserId)
+          : { data: [] },
+        currentUserId
+          ? supabase.from('user_blocks').select('*').eq('blocked_id', currentUserId)
+          : { data: [] },
       ]);
 
       const loadedCourses = coursesRes.data ?? [];
-      if (loadedCourses.length) setCourses(loadedCourses);
+      if (loadedCourses.length) {
+        setCourses(loadedCourses);
+        coursesRef.current = loadedCourses;
+      }
       if (writeupsRes) setWriteups(writeupsRes);
-      if (profilesRes.data) setProfiles(profilesRes.data);
+      if (profilesRes.data) {
+        setProfiles(profilesRes.data);
+        // Set dmsDisabled from own profile
+        if (currentUserId) {
+          const ownProfile = profilesRes.data.find((p: Profile) => p.id === currentUserId);
+          if (ownProfile) setDmsDisabled(!!ownProfile.dms_disabled);
+        }
+      }
       if (playedRes.data) setCoursesPlayed(playedRes.data);
+      if (postsRes) setPosts(postsRes);
+      if (followsRes.data) setFollows(followsRes.data);
+      if (blockerRes.data) setBlockedUserIds(new Set(blockerRes.data.map((b: UserBlock) => b.blocked_id)));
+      if (blockedRes.data) setBlockedByIds(new Set(blockedRes.data.map((b: UserBlock) => b.blocker_id)));
 
       const activitiesRes = await loadActivities(loadedCourses);
       if (activitiesRes) setActivities(activitiesRes);
@@ -211,9 +295,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     const writeupMap = new Map((writeupData ?? []).map(w => [w.id, w]));
 
+    // Load post content for post activities
+    const postIds = [...new Set(data.filter(a => a.post_id).map(a => a.post_id!))];
+    const { data: postData } = postIds.length > 0
+      ? await supabase
+          .from('posts')
+          .select('id, content')
+          .in('id', postIds)
+      : { data: [] };
+    const postMap = new Map((postData ?? []).map(p => [p.id, p.content]));
+
     return data.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
-      const courseList = coursesData ?? courses;
+      const courseList = coursesData ?? coursesRef.current;
       const courseName = w?.course_id
         ? courseList.find(c => c.id === w.course_id)?.short_name
         : a.course_id
@@ -225,6 +319,69 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         writeup_title: w?.title ?? '',
         course_name: courseName ?? '',
         target_user_name: a.target_user_id ? (profileMap.get(a.target_user_id) ?? 'another member') : undefined,
+        post_content: a.post_id ? postMap.get(a.post_id) ?? '' : undefined,
+      };
+    });
+  }
+
+  async function loadPosts(): Promise<Post[]> {
+    const { data: rawPosts } = await supabase
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!rawPosts || rawPosts.length === 0) return [];
+
+    const postIds = rawPosts.map(p => p.id);
+
+    // Load photos, reactions, reply counts in parallel
+    const [photosRes, reactionsRes, repliesRes] = await Promise.all([
+      supabase.from('post_photos').select('*').in('post_id', postIds),
+      supabase.from('post_reactions').select('*').in('post_id', postIds),
+      supabase.from('post_replies').select('post_id').in('post_id', postIds),
+    ]);
+
+    // Load author names
+    const authorIds = [...new Set(rawPosts.map(p => p.user_id))];
+    const { data: authorProfiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', authorIds);
+    const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+    const currentUserId = session?.user?.id;
+
+    const photosByPost = new Map<string, PostPhoto[]>();
+    for (const photo of photosRes.data ?? []) {
+      const list = photosByPost.get(photo.post_id) ?? [];
+      list.push(photo);
+      photosByPost.set(photo.post_id, list);
+    }
+
+    // Aggregate reactions per post
+    const reactionsByPost = new Map<string, { counts: Record<string, number>; userReactions: string[] }>();
+    for (const r of reactionsRes.data ?? []) {
+      const entry = reactionsByPost.get(r.post_id) ?? { counts: {}, userReactions: [] };
+      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+      if (r.user_id === currentUserId) entry.userReactions.push(r.reaction);
+      reactionsByPost.set(r.post_id, entry);
+    }
+
+    // Count replies per post
+    const replyCountByPost = new Map<string, number>();
+    for (const r of repliesRes.data ?? []) {
+      replyCountByPost.set(r.post_id, (replyCountByPost.get(r.post_id) ?? 0) + 1);
+    }
+
+    return rawPosts.map(p => {
+      const rData = reactionsByPost.get(p.id);
+      return {
+        ...p,
+        photos: photosByPost.get(p.id) ?? [],
+        reactions: rData?.counts ?? {},
+        user_reactions: rData?.userReactions ?? [],
+        reply_count: replyCountByPost.get(p.id) ?? 0,
+        author_name: authorMap.get(p.user_id) ?? 'Member',
       };
     });
   }
@@ -550,6 +707,406 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  const addPost = useCallback(
+    async (data: { content: string; photos: { url: string; caption: string }[] }): Promise<Post> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: postData, error: postError } = await supabase
+        .from('posts')
+        .insert({ user_id: userId, content: data.content })
+        .select()
+        .single();
+
+      if (postError || !postData) {
+        console.error('Failed to insert post:', postError);
+        throw postError ?? new Error('Failed to create post');
+      }
+
+      const photos: PostPhoto[] = [];
+      if (data.photos.length > 0) {
+        const photoInserts = data.photos.map(p => ({
+          post_id: postData.id,
+          user_id: userId,
+          url: p.url,
+          caption: p.caption,
+        }));
+        const { data: photoData, error: photoError } = await supabase
+          .from('post_photos')
+          .insert(photoInserts)
+          .select();
+        if (photoError) console.error('Failed to insert post photos:', photoError);
+        if (photoData) photos.push(...photoData);
+      }
+
+      const { error: activityError } = await supabase.from('activities').insert({
+        type: 'post',
+        user_id: userId,
+        post_id: postData.id,
+      });
+      if (activityError) console.error('Failed to insert post activity:', activityError);
+
+      const post: Post = {
+        ...postData,
+        photos,
+        reactions: {},
+        user_reactions: [],
+        reply_count: 0,
+        author_name: user?.name ?? 'Member',
+      };
+
+      setPosts(prev => [post, ...prev]);
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+
+      return post;
+    },
+    [session, user],
+  );
+
+  const togglePostReaction = useCallback(
+    async (postId: string, reaction: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      const hasReaction = post.user_reactions.includes(reaction);
+
+      // Optimistic update
+      setPosts(prev =>
+        prev.map(p => {
+          if (p.id !== postId) return p;
+          const newReactions = { ...p.reactions };
+          const newUserReactions = [...p.user_reactions];
+          if (hasReaction) {
+            newReactions[reaction] = Math.max(0, (newReactions[reaction] ?? 0) - 1);
+            if (newReactions[reaction] === 0) delete newReactions[reaction];
+            const idx = newUserReactions.indexOf(reaction);
+            if (idx >= 0) newUserReactions.splice(idx, 1);
+          } else {
+            newReactions[reaction] = (newReactions[reaction] ?? 0) + 1;
+            newUserReactions.push(reaction);
+          }
+          return { ...p, reactions: newReactions, user_reactions: newUserReactions };
+        }),
+      );
+
+      if (hasReaction) {
+        await supabase
+          .from('post_reactions')
+          .delete()
+          .eq('post_id', postId)
+          .eq('user_id', userId)
+          .eq('reaction', reaction);
+      } else {
+        await supabase
+          .from('post_reactions')
+          .insert({ post_id: postId, user_id: userId, reaction });
+      }
+    },
+    [session, posts],
+  );
+
+  const getPostReplies = useCallback(
+    async (postId: string): Promise<PostReply[]> => {
+      const { data: replies } = await supabase
+        .from('post_replies')
+        .select('*')
+        .eq('post_id', postId)
+        .order('created_at', { ascending: true });
+
+      if (!replies || replies.length === 0) return [];
+
+      const authorIds = [...new Set(replies.map(r => r.user_id))];
+      const { data: authorProfiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', authorIds);
+      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+      return replies.map(r => ({
+        ...r,
+        author_name: authorMap.get(r.user_id) ?? 'Member',
+      }));
+    },
+    [],
+  );
+
+  const addPostReply = useCallback(
+    async (postId: string, content: string): Promise<PostReply> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: reply, error } = await supabase
+        .from('post_replies')
+        .insert({ post_id: postId, user_id: userId, content })
+        .select()
+        .single();
+
+      if (error || !reply) throw error ?? new Error('Failed to add reply');
+
+      // Update reply count optimistically
+      setPosts(prev =>
+        prev.map(p => p.id === postId ? { ...p, reply_count: p.reply_count + 1 } : p),
+      );
+
+      return { ...reply, author_name: user?.name ?? 'Member' };
+    },
+    [session, user],
+  );
+
+  const deletePost = useCallback(
+    async (postId: string) => {
+      await supabase.from('posts').delete().eq('id', postId);
+      setPosts(prev => prev.filter(p => p.id !== postId));
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [],
+  );
+
+  // ---- Follow methods ----
+  const toggleFollow = useCallback(
+    async (targetUserId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const existing = follows.find(f => f.follower_id === userId && f.following_id === targetUserId);
+
+      if (existing) {
+        // Optimistic remove
+        setFollows(prev => prev.filter(f => f.id !== existing.id));
+        await supabase.from('follows').delete().eq('id', existing.id);
+      } else {
+        // Optimistic add
+        const optimistic: Follow = {
+          id: crypto.randomUUID(),
+          follower_id: userId,
+          following_id: targetUserId,
+          created_at: new Date().toISOString(),
+        };
+        setFollows(prev => [...prev, optimistic]);
+        const { data } = await supabase
+          .from('follows')
+          .insert({ follower_id: userId, following_id: targetUserId })
+          .select()
+          .single();
+        if (data) {
+          setFollows(prev => prev.map(f => f.id === optimistic.id ? data : f));
+        }
+      }
+    },
+    [session, follows],
+  );
+
+  const isFollowing = useCallback(
+    (userId: string) => followingIds.has(userId),
+    [followingIds],
+  );
+
+  const getFollowerCount = useCallback(
+    (userId: string) => follows.filter(f => f.following_id === userId).length,
+    [follows],
+  );
+
+  const getFollowingCount = useCallback(
+    (userId: string) => follows.filter(f => f.follower_id === userId).length,
+    [follows],
+  );
+
+  // ---- Conversation / DM methods ----
+  const loadConversations = useCallback(async () => {
+    if (!session) return;
+    const userId = session.user.id;
+
+    const { data: convos } = await supabase
+      .from('conversations')
+      .select('*')
+      .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+      .order('updated_at', { ascending: false });
+
+    if (!convos || convos.length === 0) { setConversations([]); return; }
+
+    // Get other user IDs
+    const otherIds = [...new Set(convos.map(c => c.user1_id === userId ? c.user2_id : c.user1_id))];
+    const { data: otherProfiles } = await supabase
+      .from('profiles')
+      .select('id, name, image')
+      .in('id', otherIds);
+    const profileMap = new Map((otherProfiles ?? []).map((p: { id: string; name: string; image: string | null }) => [p.id, p]));
+
+    // Get last message for each conversation
+    const convoIds = convos.map(c => c.id);
+    const { data: lastMessages } = await supabase
+      .from('messages')
+      .select('conversation_id, user_id, content, created_at')
+      .in('conversation_id', convoIds)
+      .order('created_at', { ascending: false });
+
+    const lastMsgMap = new Map<string, { user_id: string; content: string; created_at: string }>();
+    for (const msg of lastMessages ?? []) {
+      if (!lastMsgMap.has(msg.conversation_id)) {
+        lastMsgMap.set(msg.conversation_id, msg);
+      }
+    }
+
+    const enriched: Conversation[] = convos.map(c => {
+      const otherId = c.user1_id === userId ? c.user2_id : c.user1_id;
+      const otherProfile = profileMap.get(otherId);
+      const lastMsg = lastMsgMap.get(c.id);
+      const lastReadAt = c.user1_id === userId ? c.user1_last_read_at : c.user2_last_read_at;
+      // Only mark unread if the last message was sent by the OTHER user
+      const unread = lastMsg && lastMsg.user_id !== userId
+        ? (!lastReadAt || new Date(lastMsg.created_at) > new Date(lastReadAt))
+        : false;
+      return {
+        ...c,
+        other_user_name: otherProfile?.name ?? 'Member',
+        other_user_image: otherProfile?.image ?? null,
+        last_message: lastMsg?.content,
+        last_message_at: lastMsg?.created_at,
+        unread,
+      };
+    });
+
+    setConversations(enriched);
+  }, [session]);
+
+  const getOrCreateConversation = useCallback(
+    async (otherUserId: string): Promise<string> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+      const [u1, u2] = userId < otherUserId ? [userId, otherUserId] : [otherUserId, userId];
+
+      // Check existing
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('user1_id', u1)
+        .eq('user2_id', u2)
+        .single();
+
+      if (existing) return existing.id;
+
+      const { data: created, error } = await supabase
+        .from('conversations')
+        .insert({ user1_id: u1, user2_id: u2 })
+        .select()
+        .single();
+
+      if (error || !created) throw error ?? new Error('Failed to create conversation');
+
+      await loadConversations();
+      return created.id;
+    },
+    [session, loadConversations],
+  );
+
+  const getMessages = useCallback(
+    async (conversationId: string): Promise<Message[]> => {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+      return data ?? [];
+    },
+    [],
+  );
+
+  const sendMessage = useCallback(
+    async (conversationId: string, content: string): Promise<Message> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({ conversation_id: conversationId, user_id: userId, content })
+        .select()
+        .single();
+      if (error || !data) throw error ?? new Error('Failed to send message');
+
+      // Update conversation's updated_at and sender's last_read_at
+      const convo = conversationsRef.current.find(c => c.id === conversationId);
+      const readField = convo && convo.user1_id === userId ? 'user1_last_read_at' : 'user2_last_read_at';
+      const now = new Date().toISOString();
+      await supabase
+        .from('conversations')
+        .update({ updated_at: now, [readField]: now })
+        .eq('id', conversationId);
+
+      // Keep local state in sync so sender doesn't see unread badge
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, unread: false, [readField]: now, updated_at: now } : c
+      ));
+
+      return data;
+    },
+    [session],
+  );
+
+  const markConversationRead = useCallback(
+    async (conversationId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+      const convo = conversationsRef.current.find(c => c.id === conversationId);
+      if (!convo) return;
+
+      const now = new Date().toISOString();
+      const field = convo.user1_id === userId ? 'user1_last_read_at' : 'user2_last_read_at';
+
+      // Optimistic update
+      setConversations(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, unread: false, [field]: now } : c
+      ));
+
+      await supabase
+        .from('conversations')
+        .update({ [field]: now })
+        .eq('id', conversationId);
+    },
+    [session],
+  );
+
+  const blockUser = useCallback(
+    async (userId: string) => {
+      if (!session) return;
+      setBlockedUserIds(prev => new Set([...prev, userId]));
+      await supabase.from('user_blocks').insert({ blocker_id: session.user.id, blocked_id: userId });
+    },
+    [session],
+  );
+
+  const unblockUser = useCallback(
+    async (userId: string) => {
+      if (!session) return;
+      setBlockedUserIds(prev => { const next = new Set(prev); next.delete(userId); return next; });
+      await supabase.from('user_blocks').delete().eq('blocker_id', session.user.id).eq('blocked_id', userId);
+    },
+    [session],
+  );
+
+  const toggleDms = useCallback(
+    async (disabled: boolean) => {
+      if (!session) return;
+      setDmsDisabled(disabled);
+      await supabase.from('profiles').update({ dms_disabled: disabled }).eq('id', session.user.id);
+    },
+    [session],
+  );
+
+  const isBlocked = useCallback(
+    (userId: string) => blockedUserIds.has(userId),
+    [blockedUserIds],
+  );
+
+  const isBlockedBy = useCallback(
+    (userId: string) => blockedByIds.has(userId),
+    [blockedByIds],
+  );
+
   const getWriteupsForCourse = useCallback(
     (courseId: string) => {
       return writeups.filter(w => w.course_id === courseId);
@@ -597,7 +1154,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getUserName,
         markCoursePlayed,
         unmarkCoursePlayed,
+        posts,
+        addPost,
+        togglePostReaction,
+        getPostReplies,
+        addPostReply,
+        deletePost,
         refreshData,
+        follows,
+        followingIds,
+        toggleFollow,
+        isFollowing,
+        getFollowerCount,
+        getFollowingCount,
+        conversations,
+        blockedUserIds,
+        blockedByIds,
+        loadConversations,
+        getOrCreateConversation,
+        getMessages,
+        sendMessage,
+        blockUser,
+        unblockUser,
+        toggleDms,
+        isBlocked,
+        isBlockedBy,
+        dmsDisabled,
+        hasUnreadMessages,
+        markConversationRead,
       }}
     >
       {children}

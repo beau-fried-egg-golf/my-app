@@ -50,11 +50,21 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="create-writeup"
-          options={{ title: 'New Writeup', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW WRITEUP" size={32} /> }}
+          options={{ title: 'New Review', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW REVIEW" size={32} /> }}
+        />
+        <Stack.Screen
+          name="create-post"
+          options={{ title: 'New Post', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="NEW POST" size={32} /> }}
         />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="member/[id]" options={{ title: 'Member', headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
+        <Stack.Screen
+          name="conversations"
+          options={{ title: 'Messages', headerTitle: () => <LetterSpacedHeader text="MESSAGES" size={32} /> }}
+        />
+        <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="onboarding"
           options={{ headerShown: false, presentation: 'fullScreenModal' }}
