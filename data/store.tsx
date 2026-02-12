@@ -188,7 +188,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       const [activitiesRes] = await Promise.all([
         loadActivities(loadedCourses),
-        loadConversations(),
+        currentUserId ? loadConversations(currentUserId) : Promise.resolve(),
       ]);
       if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
@@ -921,9 +921,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ---- Conversation / DM methods ----
-  const loadConversations = useCallback(async () => {
-    if (!session) return;
-    const userId = session.user.id;
+  const loadConversations = useCallback(async (overrideUserId?: string) => {
+    const userId = overrideUserId ?? session?.user?.id;
+    if (!userId) return;
 
     const { data: convos } = await supabase
       .from('conversations')
