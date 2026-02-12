@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, Notification, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -70,13 +70,18 @@ interface StoreContextType {
   // Meetups
   meetups: Meetup[];
   loadMeetups: () => Promise<void>;
-  createMeetup: (data: { name: string; description: string; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }) => Promise<Meetup>;
+  createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }) => Promise<Meetup>;
   joinMeetup: (meetupId: string) => Promise<void>;
   leaveMeetup: (meetupId: string) => Promise<void>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
   sendMeetupMessage: (meetupId: string, content: string) => Promise<MeetupMessage>;
   markMeetupRead: (meetupId: string) => Promise<void>;
+  // Notifications
+  notifications: Notification[];
+  hasUnreadNotifications: boolean;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -103,6 +108,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const groupsRef = useRef<Group[]>([]);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
   const meetupsRef = useRef<Meetup[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const notificationsRef = useRef<Notification[]>([]);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -121,6 +128,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const hasUnreadMessages = React.useMemo(
     () => conversations.some(c => c.unread) || hasUnreadGroupMessages || hasUnreadMeetupMessages,
     [conversations, hasUnreadGroupMessages, hasUnreadMeetupMessages],
+  );
+
+  const hasUnreadNotifications = React.useMemo(
+    () => notifications.some(n => !n.is_read),
+    [notifications],
   );
 
   const conversationListItems = React.useMemo((): ConversationListItem[] => {
@@ -182,6 +194,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     meetupsRef.current = meetups;
   }, [meetups]);
 
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
   // Listen for auth state changes
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -211,6 +227,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setDmsDisabled(false);
         setGroups([]);
         setMeetups([]);
+        setNotifications([]);
       }
     });
 
@@ -281,6 +298,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         currentUserId ? loadConversations(currentUserId) : Promise.resolve(),
         currentUserId ? loadGroupsData(currentUserId) : Promise.resolve(),
         currentUserId ? loadMeetupsData(currentUserId) : Promise.resolve(),
+        currentUserId ? loadNotificationsData(currentUserId) : Promise.resolve(),
       ]);
       if (activitiesRes) setActivities(activitiesRes);
     } catch (e) {
@@ -503,6 +521,149 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  async function generateMeetupReminders(userId: string) {
+    // Fetch meetups the user is a member of
+    const { data: memberships } = await supabase
+      .from('meetup_members')
+      .select('meetup_id')
+      .eq('user_id', userId);
+
+    if (!memberships || memberships.length === 0) return;
+
+    const meetupIds = memberships.map(m => m.meetup_id);
+    const { data: meetupData } = await supabase
+      .from('meetups')
+      .select('id, name, meetup_date')
+      .in('id', meetupIds);
+
+    if (!meetupData || meetupData.length === 0) return;
+
+    const now = new Date();
+
+    // Check existing reminders to dedup
+    const { data: existingReminders } = await supabase
+      .from('notifications')
+      .select('type, meetup_id')
+      .eq('user_id', userId)
+      .in('type', ['meetup_reminder_7d', 'meetup_reminder_1d'])
+      .in('meetup_id', meetupIds);
+
+    const existingSet = new Set(
+      (existingReminders ?? []).map(r => `${r.type}:${r.meetup_id}`)
+    );
+
+    const toInsert: { user_id: string; type: string; meetup_id: string }[] = [];
+
+    for (const m of meetupData) {
+      const meetupDate = new Date(m.meetup_date);
+      const daysUntil = (meetupDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+
+      if (daysUntil <= 7 && daysUntil > 1 && !existingSet.has(`meetup_reminder_7d:${m.id}`)) {
+        toInsert.push({ user_id: userId, type: 'meetup_reminder_7d', meetup_id: m.id });
+      }
+      if (daysUntil <= 1 && daysUntil > 0 && !existingSet.has(`meetup_reminder_1d:${m.id}`)) {
+        toInsert.push({ user_id: userId, type: 'meetup_reminder_1d', meetup_id: m.id });
+      }
+    }
+
+    if (toInsert.length > 0) {
+      await supabase.from('notifications').insert(toInsert);
+    }
+  }
+
+  async function loadNotificationsData(overrideUserId?: string) {
+    const userId = overrideUserId ?? session?.user?.id;
+    if (!userId) return;
+
+    // Generate meetup reminders first
+    await generateMeetupReminders(userId);
+
+    const { data: rawNotifications } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (!rawNotifications || rawNotifications.length === 0) {
+      setNotifications([]);
+      return;
+    }
+
+    // Batch fetch actor profiles
+    const actorIds = [...new Set(rawNotifications.filter(n => n.actor_id).map(n => n.actor_id!))];
+    const { data: actorProfiles } = actorIds.length > 0
+      ? await supabase.from('profiles').select('id, name, image').in('id', actorIds)
+      : { data: [] };
+    const actorMap = new Map((actorProfiles ?? []).map(p => [p.id, p]));
+
+    // Batch fetch writeup titles + course_ids
+    const writeupIds = [...new Set(rawNotifications.filter(n => n.writeup_id).map(n => n.writeup_id!))];
+    const { data: writeupData } = writeupIds.length > 0
+      ? await supabase.from('writeups').select('id, title, course_id').in('id', writeupIds)
+      : { data: [] };
+    const writeupMap = new Map((writeupData ?? []).map(w => [w.id, w]));
+
+    // Batch fetch meetup names + dates
+    const meetupIds = [...new Set(rawNotifications.filter(n => n.meetup_id).map(n => n.meetup_id!))];
+    const { data: meetupInfo } = meetupIds.length > 0
+      ? await supabase.from('meetups').select('id, name, meetup_date').in('id', meetupIds)
+      : { data: [] };
+    const meetupMap = new Map((meetupInfo ?? []).map(m => [m.id, m]));
+
+    // Batch fetch group names
+    const groupIds = [...new Set(rawNotifications.filter(n => n.group_id).map(n => n.group_id!))];
+    const { data: groupInfo } = groupIds.length > 0
+      ? await supabase.from('groups').select('id, name').in('id', groupIds)
+      : { data: [] };
+    const groupMap = new Map((groupInfo ?? []).map(g => [g.id, g.name]));
+
+    const crs = coursesRef.current;
+
+    const enriched: Notification[] = rawNotifications.map(n => {
+      const actor = n.actor_id ? actorMap.get(n.actor_id) : null;
+      const writeup = n.writeup_id ? writeupMap.get(n.writeup_id) : null;
+      const meetup = n.meetup_id ? meetupMap.get(n.meetup_id) : null;
+      const courseName = writeup?.course_id
+        ? crs.find(c => c.id === writeup.course_id)?.short_name ?? ''
+        : '';
+      return {
+        ...n,
+        actor_name: actor?.name,
+        actor_image: actor?.image ?? null,
+        writeup_title: writeup?.title,
+        course_name: courseName,
+        meetup_name: meetup?.name,
+        meetup_date: meetup?.meetup_date,
+        group_name: n.group_id ? groupMap.get(n.group_id) : undefined,
+      };
+    });
+
+    setNotifications(enriched);
+  }
+
+  const markNotificationRead = useCallback(
+    async (id: string) => {
+      // Optimistic update
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    },
+    [],
+  );
+
+  const markAllNotificationsRead = useCallback(
+    async () => {
+      if (!session) return;
+      const unreadIds = notificationsRef.current.filter(n => !n.is_read).map(n => n.id);
+      if (unreadIds.length === 0) return;
+
+      // Optimistic update
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      await supabase.from('notifications').update({ is_read: true }).eq('user_id', session.user.id).eq('is_read', false);
+    },
+    [session],
+  );
+
   const refreshData = useCallback(async () => {
     await loadData();
   }, []);
@@ -693,6 +854,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           .eq('type', 'upvote')
           .eq('user_id', userId)
           .eq('writeup_id', writeupId);
+
+        // Remove upvote notification
+        if (writeup.user_id !== userId) {
+          await supabase
+            .from('notifications')
+            .delete()
+            .eq('type', 'upvote')
+            .eq('actor_id', userId)
+            .eq('writeup_id', writeupId);
+        }
       } else {
         // Add upvote
         await supabase
@@ -707,6 +878,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           course_id: writeup.course_id,
           target_user_id: writeup.user_id,
         });
+
+        // Add upvote notification (no self-notification)
+        if (writeup.user_id !== userId) {
+          await supabase.from('notifications').insert({
+            user_id: writeup.user_id,
+            type: 'upvote',
+            actor_id: userId,
+            writeup_id: writeupId,
+          });
+        }
       }
 
       // Optimistic update
@@ -1339,6 +1520,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setGroups(prev => prev.map(g =>
           g.id === groupId ? { ...g, is_member: false, member_count: (g.member_count ?? 1) - 1 } : g
         ));
+        return;
+      }
+
+      // Notify group creator (no self-notification)
+      const group = groupsRef.current.find(g => g.id === groupId);
+      if (group && group.creator_id !== userId) {
+        await supabase.from('notifications').insert({
+          user_id: group.creator_id,
+          type: 'group_join',
+          actor_id: userId,
+          group_id: groupId,
+        });
       }
     },
     [session],
@@ -1547,7 +1740,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   const createMeetup = useCallback(
-    async (data: { name: string; description: string; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }): Promise<Meetup> => {
+    async (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }): Promise<Meetup> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
@@ -1557,6 +1750,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           name: data.name,
           description: data.description,
           host_id: userId,
+          course_id: data.course_id,
           location_name: data.location_name,
           meetup_date: data.meetup_date,
           cost: data.cost,
@@ -1628,6 +1822,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         user_id: userId,
         meetup_id: meetupId,
       });
+
+      // Notify meetup host (no self-notification)
+      const meetup = meetupsRef.current.find(m => m.id === meetupId);
+      if (meetup && meetup.host_id !== userId) {
+        await supabase.from('notifications').insert({
+          user_id: meetup.host_id,
+          type: 'meetup_signup',
+          actor_id: userId,
+          meetup_id: meetupId,
+        });
+      }
 
       const newActivities = await loadActivities();
       setActivities(newActivities);
@@ -1892,6 +2097,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getMeetupMessages,
         sendMeetupMessage,
         markMeetupRead,
+        notifications,
+        hasUnreadNotifications,
+        markNotificationRead,
+        markAllNotificationsRead,
       }}
     >
       {children}

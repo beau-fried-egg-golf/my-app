@@ -267,6 +267,7 @@ export interface Meetup {
   name: string;
   description: string;
   host_id: string;
+  course_id: string | null;
   location_name: string;
   meetup_date: string;
   cost: string;
@@ -302,6 +303,28 @@ export interface MeetupMessage {
   created_at: string;
   sender_name?: string;
   sender_image?: string | null;
+}
+
+export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d';
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  actor_id: string | null;
+  writeup_id: string | null;
+  meetup_id: string | null;
+  group_id: string | null;
+  is_read: boolean;
+  created_at: string;
+  // Enriched
+  actor_name?: string;
+  actor_image?: string | null;
+  writeup_title?: string;
+  course_name?: string;
+  meetup_name?: string;
+  meetup_date?: string;
+  group_name?: string;
 }
 
 export function userToProfile(u: User): Omit<Profile, 'id'> {

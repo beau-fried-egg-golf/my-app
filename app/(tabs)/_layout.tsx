@@ -8,9 +8,13 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function HeaderRight() {
   const router = useRouter();
-  const { user, hasUnreadMessages } = useStore();
+  const { user, hasUnreadMessages, hasUnreadNotifications } = useStore();
   return (
     <View style={styles.headerRightRow}>
+      <Pressable onPress={() => router.push('/notifications')} style={styles.notifBtn}>
+        <Ionicons name="notifications-outline" size={22} color={Colors.black} />
+        {hasUnreadNotifications && <View style={styles.unreadBadge} />}
+      </Pressable>
       <Pressable onPress={() => router.push('/conversations')} style={styles.chatBtn}>
         <Ionicons name="chatbubble-outline" size={22} color={Colors.black} />
         {hasUnreadMessages && <View style={styles.unreadBadge} />}
@@ -151,6 +155,18 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null,
+          headerTitle: () => <LetterSpacedHeader text="NOTIFICATIONS" size={24} />,
+          headerLeft: () => (
+            <Pressable onPress={() => router.push('/')} style={{ marginLeft: 16, paddingRight: 4 }}>
+              <Text style={{ fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black }}>{'<'}</Text>
+            </Pressable>
+          ),
+        }}
+      />
     </Tabs>
   );
 }
@@ -161,6 +177,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     marginRight: 16,
+  },
+  notifBtn: {
+    padding: 4,
+    position: 'relative',
   },
   chatBtn: {
     padding: 4,
