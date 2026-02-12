@@ -110,12 +110,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="members"
+        name="meetups"
         options={{
-          title: 'MEMBERS',
-          headerTitle: () => <LetterSpacedHeader text="MEMBERS" size={32} />,
+          title: 'MEETUPS',
+          headerTitle: () => <LetterSpacedHeader text="MEETUPS" size={32} />,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="people-outline" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
@@ -130,12 +130,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="meetups"
+        name="members"
         options={{
-          title: 'MEETUPS',
-          headerTitle: () => <LetterSpacedHeader text="MEETUPS" size={32} />,
+          title: 'MEMBERS',
+          headerTitle: () => <LetterSpacedHeader text="MEMBERS" size={32} />,
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
+            <Ionicons name="people-outline" size={size} color={color} />
           ),
         }}
       />
