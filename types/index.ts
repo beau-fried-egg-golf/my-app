@@ -95,9 +95,16 @@ export interface Writeup {
   author_name?: string;
 }
 
+export interface CoursePlayed {
+  id: string;
+  user_id: string;
+  course_id: string;
+  created_at: string;
+}
+
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote';
+  type: 'writeup' | 'upvote' | 'played';
   user_id: string;
   writeup_id: string | null;
   course_id: string | null;

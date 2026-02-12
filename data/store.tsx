@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -10,6 +10,7 @@ interface StoreContextType {
   activities: Activity[];
   courses: Course[];
   profiles: Profile[];
+  coursesPlayed: CoursePlayed[];
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null }>;
@@ -23,6 +24,8 @@ interface StoreContextType {
   getWriteupsForCourse: (courseId: string) => Writeup[];
   getCourseName: (courseId: string) => string;
   getUserName: (userId: string) => string;
+  markCoursePlayed: (courseId: string) => Promise<void>;
+  unmarkCoursePlayed: (courseId: string) => Promise<void>;
   refreshData: () => Promise<void>;
 }
 
@@ -35,6 +38,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [coursesPlayed, setCoursesPlayed] = useState<CoursePlayed[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [profileCache, setProfileCache] = useState<Map<string, string>>(new Map());
 
@@ -85,16 +89,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   async function loadData() {
     try {
-      const [coursesRes, writeupsRes, profilesRes] = await Promise.all([
+      const [coursesRes, writeupsRes, profilesRes, playedRes] = await Promise.all([
         supabase.from('courses').select('*').order('name'),
         loadWriteups(),
         supabase.from('profiles').select('*').order('name'),
+        supabase.from('courses_played').select('*'),
       ]);
 
       const loadedCourses = coursesRes.data ?? [];
       if (loadedCourses.length) setCourses(loadedCourses);
       if (writeupsRes) setWriteups(writeupsRes);
       if (profilesRes.data) setProfiles(profilesRes.data);
+      if (playedRes.data) setCoursesPlayed(playedRes.data);
 
       const activitiesRes = await loadActivities(loadedCourses);
       if (activitiesRes) setActivities(activitiesRes);
@@ -208,7 +214,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return data.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
       const courseList = coursesData ?? courses;
-      const courseName = w?.course_id ? courseList.find(c => c.id === w.course_id)?.short_name : '';
+      const courseName = w?.course_id
+        ? courseList.find(c => c.id === w.course_id)?.short_name
+        : a.course_id
+          ? courseList.find(c => c.id === a.course_id)?.short_name
+          : '';
       return {
         ...a,
         user_name: profileMap.get(a.user_id) ?? 'Member',
@@ -487,6 +497,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session, writeups],
   );
 
+  const markCoursePlayed = useCallback(
+    async (courseId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      // Optimistic update
+      const optimistic: CoursePlayed = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        course_id: courseId,
+        created_at: new Date().toISOString(),
+      };
+      setCoursesPlayed(prev => [...prev, optimistic]);
+
+      const { data } = await supabase
+        .from('courses_played')
+        .insert({ user_id: userId, course_id: courseId })
+        .select()
+        .single();
+
+      if (data) {
+        setCoursesPlayed(prev => prev.map(cp => cp.id === optimistic.id ? data : cp));
+      }
+
+      // Insert activity
+      await supabase.from('activities').insert({
+        type: 'played',
+        user_id: userId,
+        course_id: courseId,
+      });
+
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session, courses],
+  );
+
+  const unmarkCoursePlayed = useCallback(
+    async (courseId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      setCoursesPlayed(prev => prev.filter(cp => !(cp.user_id === userId && cp.course_id === courseId)));
+
+      await supabase
+        .from('courses_played')
+        .delete()
+        .eq('user_id', userId)
+        .eq('course_id', courseId);
+    },
+    [session],
+  );
+
   const getWriteupsForCourse = useCallback(
     (courseId: string) => {
       return writeups.filter(w => w.course_id === courseId);
@@ -518,6 +581,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         activities,
         courses,
         profiles,
+        coursesPlayed,
         isLoading,
         signIn,
         signUp,
@@ -531,6 +595,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getWriteupsForCourse,
         getCourseName,
         getUserName,
+        markCoursePlayed,
+        unmarkCoursePlayed,
         refreshData,
       }}
     >

@@ -2,10 +2,11 @@ import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native
 import { useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Activity, Writeup } from '@/types';
+import { Activity, Profile, Writeup } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 
-function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: () => void; writeups: Writeup[] }) {
+function ActivityItem({ item, onPress, writeups, profiles }: { item: Activity; onPress: () => void; writeups: Writeup[]; profiles: Profile[] }) {
+  const userProfile = profiles.find(p => p.id === item.user_id);
   const thumbnail = item.type === 'writeup' && item.writeup_id
     ? writeups.find(w => w.id === item.writeup_id)?.photos[0]?.url
     : undefined;
@@ -14,7 +15,11 @@ function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: ()
     const name = item.user_name ?? '';
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
-        <View style={styles.activityIcon} />
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon} />
+        )}
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
@@ -30,14 +35,39 @@ function ActivityItem({ item, onPress, writeups }: { item: Activity; onPress: ()
     );
   }
 
+  if (item.type === 'played') {
+    const name = item.user_name ?? '';
+    return (
+      <Pressable style={styles.activityItem} onPress={onPress}>
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon} />
+        )}
+        <View style={styles.activityContent}>
+          <View style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> played{' '}</Text>
+          </View>
+          <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   const name = item.user_name ?? '';
   const targetName = item.target_user_name ?? '';
 
   return (
     <Pressable style={styles.activityItem} onPress={onPress}>
-      <View style={styles.activityIcon}>
-        <Text style={styles.arrowText}>^</Text>
-      </View>
+      {userProfile?.image ? (
+        <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+      ) : (
+        <View style={styles.activityIcon}>
+          <Text style={styles.arrowText}>^</Text>
+        </View>
+      )}
       <View style={styles.activityContent}>
         <View style={styles.activityRow}>
           <Text style={styles.activityTextBold}>{name}</Text>
@@ -64,7 +94,7 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, session } = useStore();
+  const { activities, writeups, profiles, session } = useStore();
   const router = useRouter();
 
   if (!session) return null;
@@ -78,7 +108,11 @@ export default function FeedScreen() {
           <ActivityItem
             item={item}
             writeups={writeups}
-            onPress={() => item.writeup_id ? router.push(`/writeup/${item.writeup_id}`) : undefined}
+            profiles={profiles}
+            onPress={() => {
+              if (item.writeup_id) router.push(`/writeup/${item.writeup_id}`);
+              else if (item.type === 'played' && item.course_id) router.push(`/course/${item.course_id}`);
+            }}
           />
         )}
         ListEmptyComponent={
@@ -114,6 +148,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 14,
+  },
+  activityAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
   },
   activityIcon: {
     width: 36,

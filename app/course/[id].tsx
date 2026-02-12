@@ -80,9 +80,10 @@ interface GalleryPhoto extends Photo {
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { courses, writeups, getUserName, user, togglePhotoUpvote } = useStore();
+  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed } = useStore();
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
+  const [activeTab, setActiveTab] = useState<'writeups' | 'photos'>('writeups');
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const course = courses.find((c) => c.id === id);
@@ -124,7 +125,7 @@ export default function CourseDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.courseNameBlock}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/courses')} style={styles.backArrow}>
           <Text style={styles.backArrowText}>{'<'}</Text>
         </Pressable>
         <View style={styles.courseNameContent}>
@@ -147,21 +148,34 @@ export default function CourseDetailScreen() {
       )}
 
       <View style={styles.courseHeader}>
-        <View style={styles.courseDetails}>
-          <Text style={styles.courseAddress}>
-            {course.address}, {course.city}
-          </Text>
-          <View style={styles.courseTagsRow}>
-            <WordHighlight
-              words={[
-                course.is_private ? 'PRIVATE' : 'PUBLIC',
-                `${course.holes} HOLES`,
-                `PAR ${course.par}`,
-                `EST. ${course.year_established}`,
-              ]}
-              size={11}
-            />
+        <View style={styles.courseDetailsRow}>
+          <View style={styles.courseDetails}>
+            <Text style={styles.courseAddress}>
+              {course.address}, {course.city}
+            </Text>
+            <View style={styles.courseTagsRow}>
+              <WordHighlight
+                words={[
+                  course.is_private ? 'PRIVATE' : 'PUBLIC',
+                  `${course.holes} HOLES`,
+                  `PAR ${course.par}`,
+                  `EST. ${course.year_established}`,
+                ]}
+                size={11}
+              />
+            </View>
           </View>
+          {user && (
+            coursesPlayed.some(cp => cp.course_id === course.id && cp.user_id === user.id) ? (
+              <Pressable style={styles.playedButtonActive} onPress={() => unmarkCoursePlayed(course.id)}>
+                <Text style={styles.playedButtonActiveText}>Played</Text>
+              </Pressable>
+            ) : (
+              <Pressable style={styles.playedButton} onPress={() => markCoursePlayed(course.id)}>
+                <Text style={styles.playedButtonText}>Mark Played</Text>
+              </Pressable>
+            )
+          )}
         </View>
         <Text style={styles.courseDescription}>{course.description}</Text>
       </View>
@@ -189,89 +203,97 @@ export default function CourseDetailScreen() {
         </Pressable>
       )}
 
-      <View style={styles.statsRow}>
-        <Text style={styles.statsText}>
-          {courseWriteups.length} writeup{courseWriteups.length !== 1 ? 's' : ''}
-        </Text>
-        {courseWriteups.length > 0 && (
-          <Text style={styles.statsSubtext}>
-            Latest {formatTime(courseWriteups[0].created_at)}
+      <View style={styles.tabBar}>
+        <Pressable
+          style={[styles.tab, activeTab === 'writeups' && styles.tabActive]}
+          onPress={() => setActiveTab('writeups')}
+        >
+          <Text style={[styles.tabText, activeTab === 'writeups' && styles.tabTextActive]}>
+            Writeups ({courseWriteups.length})
           </Text>
-        )}
+        </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'photos' && styles.tabActive]}
+          onPress={() => setActiveTab('photos')}
+        >
+          <Text style={[styles.tabText, activeTab === 'photos' && styles.tabTextActive]}>
+            Photos ({sortedPhotos.length})
+          </Text>
+        </Pressable>
       </View>
 
-      {sortedPhotos.length > 0 && (
-        <View style={styles.gallerySection}>
-          <Text style={styles.sectionTitle}>Photos ({sortedPhotos.length})</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gallery}>
-            {sortedPhotos.map((photo, i) => (
-              <Pressable
-                key={photo.id}
-                onPress={() => {
-                  setSelectedPhoto(i);
-                  setGalleryVisible(true);
-                }}
-              >
-                <View style={styles.galleryItem}>
-                  <Image source={{ uri: photo.url }} style={styles.galleryThumb} />
-                  {(photo.upvote_count ?? 0) > 0 && (
-                    <View style={styles.thumbUpvoteBadge}>
-                      <Text style={styles.thumbUpvoteText}>^ {photo.upvote_count}</Text>
-                    </View>
-                  )}
-                </View>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
+      {activeTab === 'writeups' && (
+        <>
+          {mostUpvoted && (mostUpvoted.upvote_count ?? 0) > 0 && (
+            <View style={styles.section}>
+              <WriteupCard
+                writeup={mostUpvoted}
+                userName={mostUpvoted.author_name ?? getUserName(mostUpvoted.user_id)}
+                onPress={() => router.push(`/writeup/${mostUpvoted.id}`)}
+                isFeatured
+              />
+            </View>
+          )}
+
+          {courseWriteups.length > 0 && (
+            <View style={styles.section}>
+              {courseWriteups.map((w) => (
+                <WriteupCard
+                  key={w.id}
+                  writeup={w}
+                  userName={w.author_name ?? getUserName(w.user_id)}
+                  onPress={() => router.push(`/writeup/${w.id}`)}
+                />
+              ))}
+            </View>
+          )}
+
+          {courseWriteups.length === 0 && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No writeups yet</Text>
+            </View>
+          )}
+
+          <View style={styles.addWriteupRow}>
+            <Pressable
+              style={styles.writeButton}
+              onPress={() => router.push(`/create-writeup?courseId=${id}`)}
+            >
+              <Text style={styles.writeButtonText}>Post a writeup</Text>
+            </Pressable>
+          </View>
+        </>
       )}
 
-      {mostUpvoted && (mostUpvoted.upvote_count ?? 0) > 0 && (
-        <View style={styles.section}>
-          <WriteupCard
-            writeup={mostUpvoted}
-            userName={mostUpvoted.author_name ?? getUserName(mostUpvoted.user_id)}
-            onPress={() => router.push(`/writeup/${mostUpvoted.id}`)}
-            isFeatured
-          />
-        </View>
-      )}
-
-      {courseWriteups.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Writeups</Text>
-          {courseWriteups.map((w) => (
-            <WriteupCard
-              key={w.id}
-              writeup={w}
-              userName={w.author_name ?? getUserName(w.user_id)}
-              onPress={() => router.push(`/writeup/${w.id}`)}
-            />
-          ))}
-        </View>
-      )}
-
-      {courseWriteups.length === 0 && (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>No writeups yet</Text>
-          <Pressable
-            style={styles.writeButton}
-            onPress={() => router.push(`/create-writeup?courseId=${id}`)}
-          >
-            <Text style={styles.writeButtonText}>Post a writeup</Text>
-          </Pressable>
-        </View>
-      )}
-
-      {courseWriteups.length > 0 && (
-        <View style={styles.addWriteupRow}>
-          <Pressable
-            style={styles.writeButton}
-            onPress={() => router.push(`/create-writeup?courseId=${id}`)}
-          >
-            <Text style={styles.writeButtonText}>Post a writeup</Text>
-          </Pressable>
-        </View>
+      {activeTab === 'photos' && (
+        <>
+          {sortedPhotos.length > 0 ? (
+            <View style={styles.photoGrid}>
+              {sortedPhotos.map((photo, i) => (
+                <Pressable
+                  key={photo.id}
+                  onPress={() => {
+                    setSelectedPhoto(i);
+                    setGalleryVisible(true);
+                  }}
+                >
+                  <View style={styles.photoGridItem}>
+                    <Image source={{ uri: photo.url }} style={styles.photoGridThumb} />
+                    {(photo.upvote_count ?? 0) > 0 && (
+                      <View style={styles.thumbUpvoteBadge}>
+                        <Text style={styles.thumbUpvoteText}>^ {photo.upvote_count}</Text>
+                      </View>
+                    )}
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No photos yet</Text>
+            </View>
+          )}
+        </>
       )}
 
       <Modal visible={galleryVisible} transparent animationType="fade">
@@ -300,19 +322,17 @@ export default function CourseDetailScreen() {
                     style={styles.modalImage}
                     resizeMode="contain"
                   />
-                  <View style={styles.modalOverlay}>
+                  <View style={styles.modalBelow}>
+                    <Pressable
+                      style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
+                      onPress={() => togglePhotoUpvote(photo.id)}
+                    >
+                      <Text style={styles.modalUpvoteText}>^ {photo.upvote_count ?? 0}</Text>
+                    </Pressable>
                     {photo.caption ? (
-                      <Text style={styles.modalCaption}>{photo.caption}</Text>
+                      <Text style={styles.modalCaption} numberOfLines={2}>{photo.caption}</Text>
                     ) : null}
-                    <View style={styles.modalActions}>
-                      <Pressable
-                        style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
-                        onPress={() => togglePhotoUpvote(photo.id)}
-                      >
-                        <Text style={styles.modalUpvoteText}>^ {photo.upvote_count ?? 0}</Text>
-                      </Pressable>
-                      <Text style={styles.modalTime}>{formatTime(photo.created_at)}</Text>
-                    </View>
+                    <Text style={styles.modalTime}>{formatTime(photo.created_at)}</Text>
                   </View>
                 </View>
               );
@@ -332,18 +352,23 @@ const styles = StyleSheet.create({
   backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   courseNameContent: { flex: 1 },
   courseHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  courseDetails: { marginTop: 12 },
+  courseDetails: { flex: 1 },
   courseAddress: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
   courseTagsRow: { marginTop: 10 },
   courseDescription: { fontSize: 15, color: Colors.darkGray, lineHeight: 22, marginTop: 12, fontFamily: Fonts!.sans },
-  statsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
-  statsText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  statsSubtext: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
-  gallerySection: { paddingTop: 16, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, paddingBottom: 16 },
-  sectionTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, paddingHorizontal: 16, marginBottom: 10 },
-  gallery: { paddingHorizontal: 16 },
-  galleryItem: { position: 'relative', marginRight: 8 },
-  galleryThumb: { width: 100, height: 100, borderRadius: 6 },
+  courseDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 12 },
+  playedButton: { borderWidth: 1, borderColor: Colors.black, borderRadius: 4, paddingHorizontal: 15, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
+  playedButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  playedButtonActive: { backgroundColor: Colors.black, borderRadius: 4, paddingHorizontal: 15, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
+  playedButtonActiveText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: 12 },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.black },
+  tabText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
+  tabTextActive: { fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  photoGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 12, gap: 8 },
+  photoGridItem: { position: 'relative' },
+  photoGridThumb: { width: (SCREEN_WIDTH - 24 - 16) / 3, height: (SCREEN_WIDTH - 24 - 16) / 3, borderRadius: 4 },
   thumbUpvoteBadge: { position: 'absolute', bottom: 4, right: 4, flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 2 },
   thumbUpvoteText: { fontSize: 10, color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   section: { paddingHorizontal: 16, paddingTop: 16 },
@@ -366,11 +391,11 @@ const styles = StyleSheet.create({
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
   modalClose: { position: 'absolute', top: 60, right: 20, zIndex: 10, padding: 8 },
   modalCloseText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
-  modalSlide: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center' },
-  modalImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.65 },
-  modalOverlay: { position: 'absolute', bottom: 100, left: 0, right: 0, paddingHorizontal: 20, gap: 8 },
-  modalCaption: { color: Colors.white, fontSize: 15, lineHeight: 22, fontFamily: Fonts!.sans },
-  modalActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  modalSlide: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' },
+  modalImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.55 },
+  modalBelow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, width: SCREEN_WIDTH, gap: 12 },
+  modalCaption: { flex: 1, color: Colors.white, fontSize: 15, lineHeight: 22, fontFamily: Fonts!.sans, textAlign: 'center' },
+  modalActions: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   modalUpvote: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },
   modalUpvoteActive: { backgroundColor: 'rgba(255,255,255,0.25)', borderColor: Colors.white },
   modalUpvoteText: { color: Colors.white, fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },

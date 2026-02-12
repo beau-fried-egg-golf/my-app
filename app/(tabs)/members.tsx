@@ -6,7 +6,7 @@ import { useStore } from '@/data/store';
 import { Profile } from '@/types';
 
 export default function MembersScreen() {
-  const { profiles, writeups, session } = useStore();
+  const { profiles, writeups, session, coursesPlayed } = useStore();
   const router = useRouter();
 
   if (!session) return null;
@@ -15,8 +15,16 @@ export default function MembersScreen() {
     return writeups.filter((w) => w.user_id === userId).length;
   }
 
+  function getCoursesPlayedCount(userId: string) {
+    const playedIds = new Set(coursesPlayed.filter(cp => cp.user_id === userId).map(cp => cp.course_id));
+    const writeupIds = writeups.filter(w => w.user_id === userId).map(w => w.course_id);
+    for (const id of writeupIds) playedIds.add(id);
+    return playedIds.size;
+  }
+
   function renderMember({ item }: { item: Profile }) {
     const count = getWriteupCount(item.id);
+    const played = getCoursesPlayedCount(item.id);
     const isMe = item.id === session?.user?.id;
 
     return (
@@ -35,7 +43,7 @@ export default function MembersScreen() {
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.meta}>
             {item.location ? `${item.location} · ` : ''}
-            {count} writeup{count !== 1 ? 's' : ''}
+            {count} writeup{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
           </Text>
         </View>
       </Pressable>
