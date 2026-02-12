@@ -43,7 +43,7 @@ export default function MembersScreen() {
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.meta}>
             {item.location ? `${item.location} · ` : ''}
-            {count} writeup{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
+            {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
           </Text>
         </View>
       </Pressable>

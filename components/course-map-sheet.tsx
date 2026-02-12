@@ -4,10 +4,6 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { Course } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 
-function hasFEContent(course: Course): boolean {
-  return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
-}
-
 interface CourseMapSheetProps {
   course: Course;
   writeupCount: number;
@@ -25,28 +21,28 @@ export default function CourseMapSheet({ course, writeupCount, distance, onClose
       </Pressable>
 
       <Pressable style={styles.body} onPress={() => router.push(`/course/${course.id}`)}>
-        <View style={styles.header}>
-          <WordHighlight words={course.short_name.split(' ')} size={16} />
-          {hasFEContent(course) && (
-            <View style={styles.feBadge}>
-              <Text style={styles.feBadgeText}>FE</Text>
-            </View>
-          )}
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{course.is_private ? 'PRIVATE' : 'PUBLIC'}</Text>
+        <View style={styles.courseHeader}>
+          <View style={styles.courseInfo}>
+            <WordHighlight words={course.short_name.split(' ')} size={16} />
+            <Text style={styles.courseCity}>{course.city}</Text>
+          </View>
+          <View style={styles.courseMeta}>
+            {distance !== null ? (
+              <Text style={styles.distanceText}>{Math.round(distance)} mi</Text>
+            ) : (
+              <Text style={styles.distanceText}>--</Text>
+            )}
           </View>
         </View>
-
-        <Text style={styles.city}>{course.city}</Text>
-
-        <View style={styles.stats}>
-          <Text style={styles.statText}>{course.holes} holes · Par {course.par}</Text>
-          <Text style={styles.statText}>
-            {writeupCount} writeup{writeupCount !== 1 ? 's' : ''}
-          </Text>
-          {distance !== null && (
-            <Text style={styles.statText}>{Math.round(distance)} mi away</Text>
-          )}
+        <View style={styles.courseStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statText}>
+              {writeupCount} review{writeupCount !== 1 ? 's' : ''}
+            </Text>
+            {!!course.fe_profile_url && (
+              <Text style={styles.feBlurb}> · Has a Fried Egg course profile</Text>
+            )}
+          </View>
         </View>
       </Pressable>
     </View>
@@ -85,49 +81,48 @@ const styles = StyleSheet.create({
   body: {
     gap: 8,
   },
-  header: {
+  courseHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingRight: 28,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingRight: 20,
   },
-  badge: {
-    backgroundColor: Colors.orange,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  courseInfo: {
+    flex: 1,
   },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  city: {
+  courseCity: {
     fontSize: 13,
-    color: Colors.gray,
+    color: Colors.black,
+    marginTop: 6,
     fontFamily: Fonts!.sans,
   },
-  stats: {
+  courseMeta: {
+    marginLeft: 12,
+    alignItems: 'flex-end',
+  },
+  distanceText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.black,
+  },
+  courseStats: {
+    marginTop: 0,
+    gap: 4,
+  },
+  statItem: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
+    alignItems: 'center',
+    gap: 4,
   },
   statText: {
     fontSize: 13,
-    color: Colors.darkGray,
+    color: Colors.black,
     fontFamily: Fonts!.sans,
   },
-  feBadge: {
-    backgroundColor: '#FFEE54',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  feBadgeText: {
-    fontSize: 11,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
+  feBlurb: {
+    fontSize: 13,
+    color: Colors.gray,
+    fontFamily: Fonts!.sans,
   },
 });

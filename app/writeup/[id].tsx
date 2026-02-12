@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Photo } from '@/types';
@@ -98,7 +99,7 @@ export default function WriteupDetailScreen() {
   }
 
   function handleDelete() {
-    Alert.alert('Delete Writeup', 'Are you sure you want to delete this writeup?', [
+    Alert.alert('Delete Review', 'Are you sure you want to delete this review?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -186,7 +187,7 @@ export default function WriteupDetailScreen() {
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
           <Text style={styles.backArrowText}>{'<'}</Text>
         </Pressable>
-        <LetterSpacedHeader text="WRITEUP" size={32} />
+        <LetterSpacedHeader text="REVIEW" size={32} />
       </View>
       <Pressable onPress={() => router.push(`/course/${writeup.course_id}`)}>
         <Text style={styles.courseName}>{course?.short_name?.toUpperCase()}</Text>
@@ -216,8 +217,9 @@ export default function WriteupDetailScreen() {
                     style={[styles.photoUpvote, photoUpvoted && styles.photoUpvoteActive]}
                     onPress={() => togglePhotoUpvote(photo.id)}
                   >
+                    <Ionicons name={photoUpvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={12} color={photoUpvoted ? Colors.white : Colors.black} />
                     <Text style={[styles.photoUpvoteText, photoUpvoted && styles.photoUpvoteTextActive]}>
-                      ^ {photo.upvote_count ?? 0}
+                      {photo.upvote_count ?? 0}
                     </Text>
                   </Pressable>
                 </View>
@@ -232,8 +234,9 @@ export default function WriteupDetailScreen() {
           style={[styles.upvoteButton, hasUpvoted && styles.upvoteButtonActive]}
           onPress={() => toggleUpvote(writeup.id)}
         >
+          <Ionicons name={hasUpvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={hasUpvoted ? Colors.white : Colors.black} />
           <Text style={[styles.upvoteText, hasUpvoted && styles.upvoteTextActive]}>
-            ^ {writeup.upvote_count ?? 0}
+            {writeup.upvote_count ?? 0}
           </Text>
         </Pressable>
 

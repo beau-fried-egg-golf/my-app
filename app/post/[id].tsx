@@ -1,0 +1,250 @@
+import { useEffect, useState } from 'react';
+import {
+  FlatList,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useStore } from '@/data/store';
+import { PostReply } from '@/types';
+import WordHighlight from '@/components/WordHighlight';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+
+const REACTION_EMOJI: Record<string, string> = {
+  like: '\uD83D\uDC4D',
+  love: '\u2764\uFE0F',
+  fire: '\uD83D\uDD25',
+  laugh: '\uD83D\uDE02',
+};
+
+const REACTION_KEYS = ['like', 'love', 'fire', 'laugh'];
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
+export default function PostDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost } = useStore();
+
+  const [replies, setReplies] = useState<PostReply[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+
+  const post = posts.find(p => p.id === id);
+
+  useEffect(() => {
+    if (id) {
+      getPostReplies(id).then(setReplies);
+    }
+  }, [id]);
+
+  if (!post) return null;
+
+  const isOwner = user?.id === post.user_id;
+  const authorParts = (post.author_name ?? 'Member').split(' ').filter(Boolean);
+
+  async function handleSendReply() {
+    if (!replyText.trim() || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const reply = await addPostReply(post!.id, replyText.trim());
+      setReplies(prev => [...prev, reply]);
+      setReplyText('');
+    } catch (e) {
+      console.error('Failed to add reply', e);
+    } finally {
+      setSendingReply(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Are you sure you want to delete this post?')) return;
+      await deletePost(post!.id);
+      router.back();
+    } else {
+      const { Alert } = require('react-native');
+      Alert.alert('Delete Post', 'Are you sure you want to delete this post?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deletePost(post!.id);
+            router.back();
+          },
+        },
+      ]);
+    }
+  }
+
+  const headerContent = (
+    <>
+      <View style={styles.headerRow}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Text style={styles.backArrowText}>{'<'}</Text>
+        </Pressable>
+        <LetterSpacedHeader text="POST" size={32} />
+      </View>
+
+      <View style={styles.authorRow}>
+        <WordHighlight words={authorParts} size={12} />
+        <Text style={styles.date}> · {formatDate(post.created_at)}</Text>
+      </View>
+
+      <Text style={styles.body}>{post.content}</Text>
+
+      {post.photos.length > 0 && (
+        <View style={styles.photos}>
+          {post.photos.map((photo) => (
+            <View key={photo.id} style={styles.photoContainer}>
+              <Image source={{ uri: photo.url }} style={styles.photo} />
+              {photo.caption ? (
+                <Text style={styles.photoCaption}>{photo.caption}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Reactions bar */}
+      <View style={styles.reactionsBar}>
+        {REACTION_KEYS.map(key => {
+          const active = post.user_reactions.includes(key);
+          const count = post.reactions[key] ?? 0;
+          return (
+            <Pressable
+              key={key}
+              style={[styles.reactionButton, active && styles.reactionButtonActive]}
+              onPress={() => togglePostReaction(post.id, key)}
+            >
+              <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
+              {count > 0 && (
+                <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>{count}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {isOwner && (
+        <View style={styles.ownerActions}>
+          <Pressable style={styles.ownerButton} onPress={handleDelete}>
+            <Text style={styles.ownerButtonText}>Delete</Text>
+          </Pressable>
+        </View>
+      )}
+
+      <View style={styles.repliesHeader}>
+        <Text style={styles.repliesTitle}>Replies ({replies.length})</Text>
+      </View>
+    </>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
+      <FlatList
+        data={replies}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={headerContent}
+        contentContainerStyle={styles.content}
+        renderItem={({ item }) => {
+          const replyAuthorParts = (item.author_name ?? 'Member').split(' ').filter(Boolean);
+          return (
+            <View style={styles.replyItem}>
+              <View style={styles.replyAuthorRow}>
+                <WordHighlight words={replyAuthorParts} size={11} />
+                <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
+              </View>
+              <Text style={styles.replyContent}>{item.content}</Text>
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
+        }
+      />
+      <View style={styles.replyInputBar}>
+        <TextInput
+          style={styles.replyInput}
+          value={replyText}
+          onChangeText={setReplyText}
+          placeholder="Write a reply..."
+          placeholderTextColor={Colors.gray}
+          multiline
+        />
+        <Pressable
+          style={[styles.sendButton, (!replyText.trim() || sendingReply) && styles.sendButtonDisabled]}
+          onPress={handleSendReply}
+          disabled={!replyText.trim() || sendingReply}
+        >
+          <Text style={styles.sendButtonText}>Send</Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.white },
+  content: { padding: 16, paddingBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
+  backArrow: { paddingRight: 12, paddingTop: 4 },
+  backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
+  date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
+  body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
+  photos: { marginTop: 16, gap: 12 },
+  photoContainer: { gap: 6 },
+  photo: { width: '100%', height: 240, borderRadius: 8 },
+  photoCaption: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, fontFamily: Fonts!.sans },
+  reactionsBar: { flexDirection: 'row', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray },
+  reactionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  reactionButtonActive: { backgroundColor: Colors.black, borderColor: Colors.black },
+  reactionEmoji: { fontSize: 16 },
+  reactionCount: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  reactionCountActive: { color: Colors.white },
+  ownerActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
+  ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  repliesHeader: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginBottom: 12 },
+  repliesTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  replyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
+  replyAuthorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
+  replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
+  noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
+  replyInputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
+  replyInput: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, color: Colors.black, maxHeight: 100, fontFamily: Fonts!.sans },
+  sendButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  sendButtonDisabled: { opacity: 0.4 },
+  sendButtonText: { color: Colors.white, fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+});

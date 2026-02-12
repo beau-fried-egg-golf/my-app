@@ -14,6 +14,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import { Ionicons } from '@expo/vector-icons';
 import { Course, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
@@ -54,8 +55,8 @@ function WriteupCard({
     <Pressable style={[styles.writeupCard, isFeatured && styles.featuredCard]} onPress={onPress}>
       {isFeatured && (
         <View style={styles.featuredBadge}>
-          <Text style={styles.featuredArrow}>^</Text>
-          <Text style={styles.featuredText}>MOST UPVOTED</Text>
+          <Ionicons name="thumbs-up" size={12} color={Colors.black} />
+          <Text style={styles.featuredText}>MOST LIKED</Text>
         </View>
       )}
       <Text style={styles.writeupTitle}>{writeup.title}</Text>
@@ -67,7 +68,8 @@ function WriteupCard({
         <Text style={styles.writeupDot}> · </Text>
         <Text style={styles.writeupTime}>{formatTime(writeup.created_at)}</Text>
         <Text style={styles.writeupDot}> · </Text>
-        <Text style={styles.writeupUpvotes}>^ {writeup.upvote_count ?? 0}</Text>
+        <Ionicons name="thumbs-up-outline" size={12} color={Colors.gray} />
+        <Text style={styles.writeupUpvotes}>{writeup.upvote_count ?? 0}</Text>
       </View>
     </Pressable>
   );
@@ -209,7 +211,7 @@ export default function CourseDetailScreen() {
           onPress={() => setActiveTab('writeups')}
         >
           <Text style={[styles.tabText, activeTab === 'writeups' && styles.tabTextActive]}>
-            Writeups ({courseWriteups.length})
+            Reviews ({courseWriteups.length})
           </Text>
         </Pressable>
         <Pressable
@@ -250,7 +252,7 @@ export default function CourseDetailScreen() {
 
           {courseWriteups.length === 0 && (
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>No writeups yet</Text>
+              <Text style={styles.emptyText}>No reviews yet</Text>
             </View>
           )}
 
@@ -259,7 +261,7 @@ export default function CourseDetailScreen() {
               style={styles.writeButton}
               onPress={() => router.push(`/create-writeup?courseId=${id}`)}
             >
-              <Text style={styles.writeButtonText}>Post a writeup</Text>
+              <Text style={styles.writeButtonText}>Post a review</Text>
             </Pressable>
           </View>
         </>
@@ -281,7 +283,7 @@ export default function CourseDetailScreen() {
                     <Image source={{ uri: photo.url }} style={styles.photoGridThumb} />
                     {(photo.upvote_count ?? 0) > 0 && (
                       <View style={styles.thumbUpvoteBadge}>
-                        <Text style={styles.thumbUpvoteText}>^ {photo.upvote_count}</Text>
+                        <Text style={styles.thumbUpvoteText}>{photo.upvote_count}</Text>
                       </View>
                     )}
                   </View>
@@ -327,7 +329,8 @@ export default function CourseDetailScreen() {
                       style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
                       onPress={() => togglePhotoUpvote(photo.id)}
                     >
-                      <Text style={styles.modalUpvoteText}>^ {photo.upvote_count ?? 0}</Text>
+                      <Ionicons name={photo.user_has_upvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={13} color={Colors.white} />
+                      <Text style={styles.modalUpvoteText}>{photo.upvote_count ?? 0}</Text>
                     </Pressable>
                     {photo.caption ? (
                       <Text style={styles.modalCaption} numberOfLines={2}>{photo.caption}</Text>
@@ -375,7 +378,7 @@ const styles = StyleSheet.create({
   writeupCard: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 14, marginBottom: 10 },
   featuredCard: { borderColor: Colors.orange },
   featuredBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
-  featuredArrow: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  featuredIcon: { marginRight: 2 },
   featuredText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange },
   writeupTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   writeupPreview: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, marginTop: 4, fontFamily: Fonts!.sans },

@@ -173,7 +173,7 @@ export default function CoursesScreen() {
         <View style={styles.courseStats}>
           <View style={styles.statItem}>
             <Text style={styles.statText}>
-              {count} writeup{count !== 1 ? 's' : ''}
+              {count} review{count !== 1 ? 's' : ''}
             </Text>
             {!!item.fe_profile_url && (
               <Text style={styles.feBlurb}> · Has a Fried Egg course profile</Text>
@@ -285,12 +285,12 @@ export default function CoursesScreen() {
           </View>
 
           <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>WRITEUPS</Text>
+            <Text style={styles.filterLabel}>REVIEWS</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {([
                   ['all', 'ALL'],
-                  ['has_writeups', 'HAS WRITEUPS'],
+                  ['has_writeups', 'HAS REVIEWS'],
                 ] as [WriteupFilter, string][]).map(([val, label]) => (
                   <Pressable
                     key={val}
