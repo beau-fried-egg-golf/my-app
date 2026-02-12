@@ -46,7 +46,7 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="edit-profile"
-          options={{ title: 'Edit Profile', presentation: 'modal', headerTitle: () => <LetterSpacedHeader text="EDIT PROFILE" size={32} /> }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen
           name="create-writeup"

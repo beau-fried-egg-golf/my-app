@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function EditProfileScreen() {
   const { user, saveUser } = useStore();
@@ -64,6 +65,12 @@ export default function EditProfileScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <View style={styles.headerRow}>
+          <Pressable onPress={() => router.back()} style={styles.backArrow}>
+            <Text style={styles.backArrowText}>{'<'}</Text>
+          </Pressable>
+          <LetterSpacedHeader text="EDIT PROFILE" size={32} />
+        </View>
         <Pressable style={styles.avatarSection} onPress={pickImage}>
           {image ? (
             <Image source={{ uri: image }} style={styles.avatar} />
@@ -131,7 +138,10 @@ export default function EditProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  content: { padding: 24 },
+  content: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 40 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 24 },
+  backArrow: { paddingRight: 12, paddingTop: 4 },
+  backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
   avatar: { width: 88, height: 88, borderRadius: 4, borderWidth: 2, borderColor: Colors.black },
   avatarPlaceholder: { width: 88, height: 88, borderRadius: 4, borderWidth: 2, borderColor: Colors.black, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },

@@ -92,7 +92,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
   },
   content: {
-    padding: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 40,
   },
   headerRow: {
     flexDirection: 'row',

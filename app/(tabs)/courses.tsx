@@ -307,7 +307,7 @@ export default function CoursesScreen() {
           </View>
 
           <View style={styles.filterGroup}>
-            <Text style={styles.filterLabel}>FRIED EGG</Text>
+            <Text style={styles.filterLabel}>FE COURSE PROFILE</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {([

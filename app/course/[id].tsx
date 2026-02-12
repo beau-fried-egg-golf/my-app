@@ -17,6 +17,7 @@ import { useStore } from '@/data/store';
 import { Course, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
+import EggRating from '@/components/EggRating';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -133,7 +134,15 @@ export default function CourseDetailScreen() {
 
       {course.fe_hero_image && (
         <View style={styles.feHeroWrap}>
-          <Image source={{ uri: course.fe_hero_image }} style={styles.feHero} resizeMode="cover" />
+          {Platform.OS === 'web' ? (
+            <img
+              src={course.fe_hero_image}
+              style={{ width: '100%', maxHeight: SCREEN_HEIGHT * 0.5, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+              alt={course.short_name}
+            />
+          ) : (
+            <Image source={{ uri: course.fe_hero_image }} style={styles.feHero} resizeMode="cover" />
+          )}
         </View>
       )}
 
@@ -176,19 +185,7 @@ export default function CourseDetailScreen() {
               {new Date(course.fe_profile_date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </Text>
           )}
-          <View style={styles.feEggRow}>
-            {course.fe_egg_rating !== null ? (
-              course.fe_egg_rating === 0 ? (
-                <Text style={styles.feEggLabel}>0 Eggs</Text>
-              ) : (
-                Array.from({ length: course.fe_egg_rating }).map((_, i) => (
-                  <Text key={i} style={styles.feEgg}>🥚</Text>
-                ))
-              )
-            ) : (
-              <Text style={styles.feEggLabel}>Not rated</Text>
-            )}
-          </View>
+          <EggRating rating={course.fe_egg_rating} />
         </Pressable>
       )}
 
@@ -379,11 +376,8 @@ const styles = StyleSheet.create({
   modalUpvoteText: { color: Colors.white, fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   modalTime: { color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: Fonts!.sans },
   feHeroWrap: { paddingHorizontal: 16, paddingTop: 12 },
-  feHero: { width: '100%', aspectRatio: 9 / 16, borderRadius: 8 } as any,
+  feHero: { width: '100%', height: SCREEN_HEIGHT * 0.4, borderRadius: 8 } as any,
   feProfileSection: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.lightGray, gap: 4 },
   feProfileLink: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, textDecorationLine: 'underline' },
   feProfileDate: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
-  feEggRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 4 },
-  feEgg: { fontSize: 18 },
-  feEggLabel: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
 });
