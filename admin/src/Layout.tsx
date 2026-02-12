@@ -6,7 +6,9 @@ const NAV_ITEMS = [
   { to: '/courses', label: 'Courses' },
   { to: '/writeups', label: 'Writeups' },
   { to: '/photos', label: 'Photos' },
+  { to: '/posts', label: 'Posts' },
   { to: '/users', label: 'Users' },
+  { to: '/messages', label: 'Messages' },
 ];
 
 export default function Layout() {

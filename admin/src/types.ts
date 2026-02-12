@@ -8,6 +8,7 @@ export interface Profile {
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
+  dms_disabled?: boolean;
 }
 
 export interface Course {
@@ -53,11 +54,63 @@ export interface Writeup {
   upvote_count?: number;
 }
 
+export interface PostPhoto {
+  id: string;
+  post_id: string;
+  user_id: string;
+  url: string;
+  caption: string;
+  created_at: string;
+}
+
+export interface Post {
+  id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  photos: PostPhoto[];
+  reaction_count: number;
+  reply_count: number;
+  author_name?: string;
+}
+
+export interface PostReply {
+  id: string;
+  post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string;
+}
+
+export interface Conversation {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  created_at: string;
+  updated_at: string;
+  user1_name?: string;
+  user2_name?: string;
+  message_count: number;
+  last_message?: string;
+  last_message_at?: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string;
+}
+
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote';
+  type: 'writeup' | 'upvote' | 'played' | 'post';
   user_id: string;
   writeup_id: string | null;
+  post_id?: string | null;
   course_id: string | null;
   target_user_id: string | null;
   created_at: string;

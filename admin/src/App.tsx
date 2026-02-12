@@ -9,8 +9,11 @@ import CourseForm from './CourseForm';
 import WriteupList from './WriteupList';
 import WriteupDetail from './WriteupDetail';
 import PhotoList from './PhotoList';
+import PostList from './PostList';
+import PostDetail from './PostDetail';
 import UserList from './UserList';
 import UserDetail from './UserDetail';
+import MessageList from './MessageList';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -45,8 +48,11 @@ export default function App() {
         <Route path="writeups" element={<WriteupList />} />
         <Route path="writeups/:id" element={<WriteupDetail />} />
         <Route path="photos" element={<PhotoList />} />
+        <Route path="posts" element={<PostList />} />
+        <Route path="posts/:id" element={<PostDetail />} />
         <Route path="users" element={<UserList />} />
         <Route path="users/:id" element={<UserDetail />} />
+        <Route path="messages" element={<MessageList />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

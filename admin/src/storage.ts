@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -88,4 +88,160 @@ export async function getProfile(id: string): Promise<Profile | null> {
 
 export async function updateProfile(id: string, data: Partial<Profile>): Promise<void> {
   await supabase.from('profiles').update(data).eq('id', id);
+}
+
+// ---- Posts ----
+
+export async function getPosts(): Promise<Post[]> {
+  const { data: rawPosts } = await supabase
+    .from('posts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!rawPosts || rawPosts.length === 0) return [];
+
+  const postIds = rawPosts.map(p => p.id);
+
+  const [photosRes, reactionsRes, repliesRes] = await Promise.all([
+    supabase.from('post_photos').select('*').in('post_id', postIds),
+    supabase.from('post_reactions').select('post_id').in('post_id', postIds),
+    supabase.from('post_replies').select('post_id').in('post_id', postIds),
+  ]);
+
+  // Author names
+  const authorIds = [...new Set(rawPosts.map(p => p.user_id))];
+  const { data: authorProfiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', authorIds);
+  const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+  const photosByPost = new Map<string, PostPhoto[]>();
+  for (const photo of photosRes.data ?? []) {
+    const list = photosByPost.get(photo.post_id) ?? [];
+    list.push(photo);
+    photosByPost.set(photo.post_id, list);
+  }
+
+  const reactionCountByPost = new Map<string, number>();
+  for (const r of reactionsRes.data ?? []) {
+    reactionCountByPost.set(r.post_id, (reactionCountByPost.get(r.post_id) ?? 0) + 1);
+  }
+
+  const replyCountByPost = new Map<string, number>();
+  for (const r of repliesRes.data ?? []) {
+    replyCountByPost.set(r.post_id, (replyCountByPost.get(r.post_id) ?? 0) + 1);
+  }
+
+  return rawPosts.map(p => ({
+    ...p,
+    photos: photosByPost.get(p.id) ?? [],
+    reaction_count: reactionCountByPost.get(p.id) ?? 0,
+    reply_count: replyCountByPost.get(p.id) ?? 0,
+    author_name: authorMap.get(p.user_id) ?? 'Member',
+  }));
+}
+
+export async function deletePost(id: string): Promise<void> {
+  await supabase.from('posts').delete().eq('id', id);
+}
+
+export async function getPostReplies(postId: string): Promise<PostReply[]> {
+  const { data: replies } = await supabase
+    .from('post_replies')
+    .select('*')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
+
+  if (!replies || replies.length === 0) return [];
+
+  const authorIds = [...new Set(replies.map(r => r.user_id))];
+  const { data: authorProfiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', authorIds);
+  const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+  return replies.map(r => ({
+    ...r,
+    author_name: authorMap.get(r.user_id) ?? 'Member',
+  }));
+}
+
+export async function deletePostReply(id: string): Promise<void> {
+  await supabase.from('post_replies').delete().eq('id', id);
+}
+
+// ---- Conversations / Messages ----
+
+export async function getConversations(): Promise<Conversation[]> {
+  const { data: convos } = await supabase
+    .from('conversations')
+    .select('*')
+    .order('updated_at', { ascending: false });
+
+  if (!convos || convos.length === 0) return [];
+
+  // Get all participant IDs
+  const userIds = [...new Set(convos.flatMap(c => [c.user1_id, c.user2_id]))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', userIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  // Get message counts and last messages
+  const convoIds = convos.map(c => c.id);
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('conversation_id, content, created_at')
+    .in('conversation_id', convoIds)
+    .order('created_at', { ascending: false });
+
+  const lastMsgMap = new Map<string, { content: string; created_at: string }>();
+  const msgCountMap = new Map<string, number>();
+  for (const msg of messages ?? []) {
+    msgCountMap.set(msg.conversation_id, (msgCountMap.get(msg.conversation_id) ?? 0) + 1);
+    if (!lastMsgMap.has(msg.conversation_id)) {
+      lastMsgMap.set(msg.conversation_id, msg);
+    }
+  }
+
+  return convos.map(c => {
+    const lastMsg = lastMsgMap.get(c.id);
+    return {
+      ...c,
+      user1_name: profileMap.get(c.user1_id) ?? 'Member',
+      user2_name: profileMap.get(c.user2_id) ?? 'Member',
+      message_count: msgCountMap.get(c.id) ?? 0,
+      last_message: lastMsg?.content,
+      last_message_at: lastMsg?.created_at,
+    };
+  });
+}
+
+export async function getConversationMessages(conversationId: string): Promise<Message[]> {
+  const { data: messages } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true });
+
+  if (!messages || messages.length === 0) return [];
+
+  const authorIds = [...new Set(messages.map(m => m.user_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', authorIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  return messages.map(m => ({
+    ...m,
+    author_name: profileMap.get(m.user_id) ?? 'Member',
+  }));
+}
+
+export async function deleteMessage(id: string): Promise<void> {
+  await supabase.from('messages').delete().eq('id', id);
 }

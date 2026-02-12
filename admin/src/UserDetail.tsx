@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getProfile, getWriteups, getCourses, updateProfile } from './storage';
-import type { Profile, Writeup, Course } from './types';
+import { getProfile, getWriteups, getCourses, getPosts, updateProfile } from './storage';
+import type { Profile, Writeup, Course, Post } from './types';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -15,6 +15,7 @@ export default function UserDetail() {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [writeups, setWriteups] = useState<Writeup[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [suspending, setSuspending] = useState(false);
 
@@ -23,10 +24,12 @@ export default function UserDetail() {
       getProfile(id!),
       getWriteups(),
       getCourses(),
-    ]).then(([p, ws, c]) => {
+      getPosts(),
+    ]).then(([p, ws, c, ps]) => {
       setProfile(p);
       setWriteups(ws.filter((w) => w.user_id === id));
       setCourses(c);
+      setPosts(ps.filter((p) => p.user_id === id));
     });
   }, [id]);
 
@@ -65,6 +68,9 @@ export default function UserDetail() {
             {profile && (
               <div className="detail-meta">
                 {profile.location} &middot; Handicap: {profile.handicap ?? 'N/A'} &middot; Member since {formatDate(profile.member_since)}
+                {profile.dms_disabled && (
+                  <> &middot; <span style={{ color: '#999' }}>DMs disabled</span></>
+                )}
               </div>
             )}
           </div>
@@ -120,6 +126,47 @@ export default function UserDetail() {
                           {w.hidden ? 'Hidden' : 'Visible'}
                         </span>
                       </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <h3 className="section-title">
+          Posts ({posts.length})
+        </h3>
+
+        {posts.length === 0 ? (
+          <div className="empty-state">No posts from this user</div>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Content</th>
+                  <th>Date</th>
+                  <th>Photos</th>
+                  <th>Reactions</th>
+                  <th>Replies</th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts
+                  .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                  .map((p) => (
+                    <tr key={p.id}>
+                      <td>
+                        <Link to={`/posts/${p.id}`} className="link">
+                          <span className="truncate" style={{ display: 'inline-block', maxWidth: 300 }}>
+                            {p.content.length > 80 ? p.content.slice(0, 80) + '...' : p.content}
+                          </span>
+                        </Link>
+                      </td>
+                      <td>{formatDate(p.created_at)}</td>
+                      <td>{p.photos.length}</td>
+                      <td>{p.reaction_count}</td>
+                      <td>{p.reply_count}</td>
                     </tr>
                   ))}
               </tbody>
