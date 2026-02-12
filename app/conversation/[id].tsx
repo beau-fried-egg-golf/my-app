@@ -16,7 +16,7 @@ export default function ConversationScreen() {
   const {
     session, getMessages, sendMessage, conversations,
     profiles, blockUser, unblockUser, isBlocked, isBlockedBy,
-    markConversationRead,
+    markConversationRead, loadConversations,
   } = useStore();
   const router = useRouter();
 
@@ -48,11 +48,12 @@ export default function ConversationScreen() {
   }, [id, getMessages]);
 
   useEffect(() => {
+    loadConversations();
     loadMessages();
     if (id) markConversationRead(id);
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [loadMessages, id, markConversationRead]);
+  }, [loadConversations, loadMessages, id, markConversationRead]);
 
   const handleSend = async () => {
     if (!text.trim() || sending || !id) return;
@@ -87,7 +88,7 @@ export default function ConversationScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
             <Text style={styles.backArrowText}>{'<'}</Text>
           </Pressable>
           {otherProfile?.image ? (

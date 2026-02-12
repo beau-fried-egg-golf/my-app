@@ -60,10 +60,6 @@ export default function RootLayout() {
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="member/[id]" options={{ title: 'Member', headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
-        <Stack.Screen
-          name="conversations"
-          options={{ title: 'Messages', headerTitle: () => <LetterSpacedHeader text="MESSAGES" size={32} /> }}
-        />
         <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="onboarding"

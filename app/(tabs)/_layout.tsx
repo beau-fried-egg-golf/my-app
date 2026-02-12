@@ -30,6 +30,7 @@ function HeaderRight() {
 
 export default function TabLayout() {
   const { session, isLoading } = useStore();
+  const router = useRouter();
 
   if (isLoading) return null;
 
@@ -114,6 +115,18 @@ export default function TabLayout() {
           headerTitle: () => <LetterSpacedHeader text="MEMBERS" size={32} />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="conversations"
+        options={{
+          href: null,
+          headerTitle: () => <LetterSpacedHeader text="MESSAGES" size={32} />,
+          headerLeft: () => (
+            <Pressable onPress={() => router.push('/')} style={{ marginLeft: 16, paddingRight: 4 }}>
+              <Text style={{ fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black }}>{'<'}</Text>
+            </Pressable>
           ),
         }}
       />

@@ -989,7 +989,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .eq('user2_id', u2)
         .single();
 
-      if (existing) return existing.id;
+      if (existing) {
+        await loadConversations();
+        return existing.id;
+      }
 
       const { data: created, error } = await supabase
         .from('conversations')
