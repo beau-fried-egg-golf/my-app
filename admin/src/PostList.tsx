@@ -23,7 +23,7 @@ export default function PostList() {
   async function handleDelete(id: string) {
     if (!window.confirm('Delete this post permanently?')) return;
     await deletePost(id);
-    setPosts(posts.filter(p => p.id !== id));
+    setPosts(prev => prev.filter(p => p.id !== id));
   }
 
   const filtered = useMemo(() => {
