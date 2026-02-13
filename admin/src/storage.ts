@@ -148,6 +148,7 @@ export async function getPosts(): Promise<Post[]> {
 
 export async function deletePost(id: string): Promise<void> {
   await supabase.from('posts').delete().eq('id', id);
+  await supabase.from('activities').delete().eq('post_id', id);
 }
 
 export async function getPostReplies(postId: string): Promise<PostReply[]> {
@@ -429,7 +430,7 @@ export async function createFEPost(data: {
   const postId = crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await supabase.from('posts').insert({
+  const { error: postError } = await supabase.from('posts').insert({
     id: postId,
     user_id: data.user_id,
     content: data.content,
@@ -441,11 +442,15 @@ export async function createFEPost(data: {
     link_image: data.link_image,
   });
 
-  await supabase.from('activities').insert({
+  if (postError) throw postError;
+
+  const { error: activityError } = await supabase.from('activities').insert({
     id: crypto.randomUUID(),
     type: 'post',
     user_id: data.user_id,
     post_id: postId,
     created_at: now,
   });
+
+  if (activityError) throw activityError;
 }

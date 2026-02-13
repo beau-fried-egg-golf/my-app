@@ -23,6 +23,33 @@ function detectPlatform(url: string): string {
   }
 }
 
+async function fetchLinkMeta(url: string): Promise<{ title: string; description: string; image: string }> {
+  // Try noembed (works for YouTube, Twitter, Instagram, Vimeo, etc.)
+  try {
+    const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+    const data = await res.json();
+    if (data.title && !data.error) {
+      return {
+        title: data.title,
+        description: data.author_name ? `by ${data.author_name} on ${data.provider_name ?? ''}`.trim() : '',
+        image: data.thumbnail_url ?? '',
+      };
+    }
+  } catch {
+    // fall through
+  }
+  // Fallback for YouTube specifically
+  const ytId = extractYouTubeId(url);
+  if (ytId) {
+    return {
+      title: '',
+      description: '',
+      image: `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`,
+    };
+  }
+  return { title: '', description: '', image: '' };
+}
+
 export default function FEPostForm() {
   const navigate = useNavigate();
   const [content, setContent] = useState('');
@@ -31,14 +58,27 @@ export default function FEPostForm() {
   const [linkDescription, setLinkDescription] = useState('');
   const [linkImage, setLinkImage] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [error, setError] = useState('');
 
   const platform = linkUrl ? detectPlatform(linkUrl) : '';
 
-  function handleUrlChange(url: string) {
-    setLinkUrl(url);
-    const ytId = extractYouTubeId(url);
-    if (ytId) {
-      setLinkImage(`https://img.youtube.com/vi/${ytId}/hqdefault.jpg`);
+  async function handleFetchPreview() {
+    if (!linkUrl.trim()) return;
+    setFetching(true);
+    setError('');
+    try {
+      const meta = await fetchLinkMeta(linkUrl.trim());
+      if (meta.title) setLinkTitle(meta.title);
+      if (meta.description) setLinkDescription(meta.description);
+      if (meta.image) setLinkImage(meta.image);
+      if (!meta.title && !meta.image) {
+        setError('Could not fetch preview data for this URL. Fill in fields manually.');
+      }
+    } catch {
+      setError('Failed to fetch preview. Fill in fields manually.');
+    } finally {
+      setFetching(false);
     }
   }
 
@@ -47,6 +87,7 @@ export default function FEPostForm() {
     if (!linkUrl.trim()) return;
 
     setSubmitting(true);
+    setError('');
     try {
       await createFEPost({
         user_id: FE_USER_ID,
@@ -57,9 +98,10 @@ export default function FEPostForm() {
         link_image: linkImage.trim(),
       });
       navigate('/posts');
-    } catch (err) {
+    } catch (err: any) {
+      const msg = err?.message ?? String(err);
       console.error('Failed to create FE post', err);
-      alert('Failed to create post. Check console for details.');
+      setError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -85,13 +127,25 @@ export default function FEPostForm() {
 
         <div className="form-group">
           <label className="form-label">URL *</label>
-          <input
-            className="form-input"
-            value={linkUrl}
-            onChange={(e) => handleUrlChange(e.target.value)}
-            placeholder="https://..."
-            required
-          />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="form-input"
+              style={{ flex: 1 }}
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://..."
+              required
+            />
+            <button
+              type="button"
+              className="btn"
+              onClick={handleFetchPreview}
+              disabled={fetching || !linkUrl.trim()}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              {fetching ? 'Fetching...' : 'Fetch Preview'}
+            </button>
+          </div>
           {platform && (
             <span
               style={{
@@ -153,6 +207,12 @@ export default function FEPostForm() {
             />
           )}
         </div>
+
+        {error && (
+          <div style={{ padding: 12, backgroundColor: '#fee', border: '1px solid #c00', borderRadius: 6, color: '#c00', fontSize: 14 }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 12, marginTop: 16 }}>
           <button
