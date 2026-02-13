@@ -26,7 +26,7 @@ export default function CourseMapSheet({ course, writeupCount, distance, upcomin
         <View style={styles.courseHeader}>
           <View style={styles.courseInfo}>
             <WordHighlight words={course.short_name.split(' ')} size={16} />
-            <Text style={styles.courseCity}>{course.city}</Text>
+            <Text style={styles.courseCity}>{course.city}{course.state ? `, ${course.state}` : ''}</Text>
             <View style={styles.tagsRow}>
               <WordHighlight
                 words={[

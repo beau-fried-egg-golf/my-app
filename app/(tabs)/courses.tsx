@@ -193,7 +193,7 @@ export default function CoursesScreen() {
         <View style={styles.courseHeader}>
           <View style={styles.courseInfo}>
             <WordHighlight words={item.short_name.split(' ')} size={16} />
-            <Text style={styles.courseCity}>{item.city}</Text>
+            <Text style={styles.courseCity}>{item.city}{item.state ? `, ${item.state}` : ''}</Text>
           </View>
           <View style={styles.courseMeta}>
             {distance !== null ? (

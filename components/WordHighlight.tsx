@@ -37,7 +37,7 @@ const styles = StyleSheet.create({
   },
   wordBox: {
     backgroundColor: Colors.orange,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
     paddingVertical: 4,
   },
   word: {
