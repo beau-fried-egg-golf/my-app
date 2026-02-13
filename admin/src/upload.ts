@@ -50,21 +50,29 @@ function resizeImageOnWeb(file: File): Promise<Blob> {
 
 /**
  * Upload an image file to Supabase Storage and return the public URL.
+ * GIFs are uploaded as-is to preserve animation.
  */
 export async function uploadImage(file: File): Promise<string> {
+  const isGif = file.type === 'image/gif';
+  const ext = isGif ? 'gif' : 'jpg';
+  const contentType = isGif ? 'image/gif' : 'image/jpeg';
   const hash = Math.random().toString(36).slice(2, 8);
-  const fileName = `admin/${Date.now()}-${hash}.jpg`;
+  const fileName = `admin/${Date.now()}-${hash}.${ext}`;
 
   let blob: Blob;
-  try {
-    blob = await resizeImageOnWeb(file);
-  } catch {
+  if (isGif) {
     blob = file;
+  } else {
+    try {
+      blob = await resizeImageOnWeb(file);
+    } catch {
+      blob = file;
+    }
   }
 
   const { error } = await supabase.storage
     .from('photos')
-    .upload(fileName, blob, { contentType: 'image/jpeg' });
+    .upload(fileName, blob, { contentType });
 
   if (error) throw error;
 

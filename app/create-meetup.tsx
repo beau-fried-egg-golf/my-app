@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -31,7 +31,9 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 
 export default function CreateMeetupScreen() {
   const router = useRouter();
-  const { user, courses, createMeetup } = useStore();
+  const navigation = useNavigation();
+  const { meetupId } = useLocalSearchParams<{ meetupId?: string }>();
+  const { user, courses, meetups, createMeetup, updateMeetup } = useStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [courseId, setCourseId] = useState<string | null>(null);
@@ -41,10 +43,46 @@ export default function CreateMeetupScreen() {
   const [totalSlots, setTotalSlots] = useState('4');
   const [hostTakesSlot, setHostTakesSlot] = useState(true);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [isFeCoordinated, setIsFeCoordinated] = useState(false);
+  const [stripePaymentUrl, setStripePaymentUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  const isEditing = !!meetupId;
+
+  // Load existing meetup data when editing
+  useEffect(() => {
+    if (!meetupId) return;
+    const existing = meetups.find(m => m.id === meetupId);
+    if (!existing) return;
+    setName(existing.name);
+    setDescription(existing.description ?? '');
+    setCourseId(existing.course_id);
+    // Format date for datetime-local input
+    const d = new Date(existing.meetup_date);
+    const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    setMeetupDate(localDate);
+    setCost(existing.cost ?? 'Free');
+    setTotalSlots(String(existing.total_slots ?? 4));
+    setHostTakesSlot(existing.host_takes_slot ?? true);
+    setExistingImageUrl(existing.image);
+    setIsFeCoordinated(existing.is_fe_coordinated ?? false);
+    setStripePaymentUrl(existing.stripe_payment_url ?? '');
+  }, [meetupId]);
+
+  // Dynamic header title
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <Text style={{ fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, letterSpacing: 3 }}>
+          {isEditing ? 'EDIT MEETUP' : 'NEW MEETUP'}
+        </Text>
+      ),
+    });
+  }, [isEditing, navigation]);
 
   useEffect(() => {
     (async () => {
@@ -79,6 +117,7 @@ export default function CreateMeetupScreen() {
 
   const selectedCourse = courseId ? courses.find(c => c.id === courseId) : null;
   const canSubmit = name.trim() && courseId && meetupDate && !submitting;
+  const displayImage = imageUri ?? existingImageUrl;
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -95,12 +134,12 @@ export default function CreateMeetupScreen() {
     if (!canSubmit || !selectedCourse) return;
     setSubmitting(true);
     try {
-      let imageUrl: string | null = null;
+      let imageUrl: string | null = existingImageUrl;
       if (imageUri) {
         imageUrl = await uploadPhoto(imageUri, user!.id);
       }
 
-      await createMeetup({
+      const meetupPayload = {
         name: name.trim(),
         description: description.trim(),
         course_id: courseId,
@@ -108,12 +147,23 @@ export default function CreateMeetupScreen() {
         meetup_date: new Date(meetupDate).toISOString(),
         cost: cost.trim() || 'Free',
         total_slots: parseInt(totalSlots, 10) || 4,
-        host_takes_slot: hostTakesSlot,
+        host_takes_slot: isFeCoordinated ? false : hostTakesSlot,
         image: imageUrl,
-      });
+        is_fe_coordinated: isFeCoordinated,
+        stripe_payment_url: isFeCoordinated && stripePaymentUrl.trim() ? stripePaymentUrl.trim() : null,
+      };
+
+      if (isEditing) {
+        await updateMeetup(meetupId!, meetupPayload);
+      } else {
+        await createMeetup({
+          ...meetupPayload,
+          host_id: isFeCoordinated ? null : undefined,
+        });
+      }
       router.back();
     } catch (e) {
-      console.error('Failed to create meetup', e);
+      console.error(isEditing ? 'Failed to update meetup' : 'Failed to create meetup', e);
       setSubmitting(false);
     }
   }
@@ -125,8 +175,8 @@ export default function CreateMeetupScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.imageSection} onPress={pickImage}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          {displayImage ? (
+            <Image source={{ uri: displayImage }} style={styles.imagePreview} />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={styles.imagePlaceholderText}>ADD IMAGE</Text>
@@ -278,22 +328,57 @@ export default function CreateMeetupScreen() {
           </View>
         </View>
 
+        {!isFeCoordinated && (
+          <View style={styles.toggleRow}>
+            <Text style={styles.toggleLabel}>Host takes a spot</Text>
+            <Pressable
+              style={[styles.toggleTrack, hostTakesSlot && styles.toggleTrackOn]}
+              onPress={() => setHostTakesSlot(!hostTakesSlot)}
+            >
+              <View style={[styles.toggleThumb, hostTakesSlot && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>Host takes a spot</Text>
+          <Text style={styles.toggleLabel}>FE Coordinated</Text>
           <Pressable
-            style={[styles.toggleTrack, hostTakesSlot && styles.toggleTrackOn]}
-            onPress={() => setHostTakesSlot(!hostTakesSlot)}
+            style={[styles.toggleTrack, isFeCoordinated && styles.toggleTrackOn]}
+            onPress={() => {
+              setIsFeCoordinated(!isFeCoordinated);
+              if (!isFeCoordinated) setHostTakesSlot(false);
+            }}
           >
-            <View style={[styles.toggleThumb, hostTakesSlot && styles.toggleThumbOn]} />
+            <View style={[styles.toggleThumb, isFeCoordinated && styles.toggleThumbOn]} />
           </Pressable>
         </View>
+
+        {isFeCoordinated && (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Stripe Payment URL</Text>
+            <TextInput
+              style={styles.textInput}
+              value={stripePaymentUrl}
+              onChangeText={setStripePaymentUrl}
+              placeholder="https://buy.stripe.com/..."
+              placeholderTextColor={Colors.gray}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+          </View>
+        )}
 
         <Pressable
           style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={!canSubmit}
         >
-          <Text style={styles.submitButtonText}>{submitting ? 'Creating...' : 'Create Meetup'}</Text>
+          <Text style={styles.submitButtonText}>
+            {submitting
+              ? (isEditing ? 'Saving...' : 'Creating...')
+              : (isEditing ? 'Save Changes' : 'Create Meetup')}
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>

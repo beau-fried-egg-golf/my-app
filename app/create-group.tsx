@@ -10,7 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -31,17 +31,45 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 
 export default function CreateGroupScreen() {
   const router = useRouter();
-  const { user, courses, createGroup } = useStore();
+  const navigation = useNavigation();
+  const { groupId } = useLocalSearchParams<{ groupId?: string }>();
+  const { user, courses, groups, createGroup, updateGroup } = useStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [homeCourseId, setHomeCourseId] = useState<string | null>(null);
   const [locationName, setLocationName] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  const isEditing = !!groupId;
+
+  // Load existing group data when editing
+  useEffect(() => {
+    if (!groupId) return;
+    const existing = groups.find(g => g.id === groupId);
+    if (!existing) return;
+    setName(existing.name);
+    setDescription(existing.description ?? '');
+    setHomeCourseId(existing.home_course_id);
+    setLocationName(existing.location_name ?? '');
+    setExistingImageUrl(existing.image);
+  }, [groupId]);
+
+  // Dynamic header title
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <Text style={{ fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, letterSpacing: 3 }}>
+          {isEditing ? 'EDIT GROUP' : 'NEW GROUP'}
+        </Text>
+      ),
+    });
+  }, [isEditing, navigation]);
 
   useEffect(() => {
     (async () => {
@@ -76,6 +104,7 @@ export default function CreateGroupScreen() {
 
   const canSubmit = name.trim() && !submitting;
   const selectedCourse = homeCourseId ? courses.find(c => c.id === homeCourseId) : null;
+  const displayImage = imageUri ?? existingImageUrl;
 
   async function pickImage() {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -92,21 +121,27 @@ export default function CreateGroupScreen() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      let imageUrl: string | null = null;
+      let imageUrl: string | null = existingImageUrl;
       if (imageUri) {
         imageUrl = await uploadPhoto(imageUri, user!.id);
       }
 
-      await createGroup({
+      const groupPayload = {
         name: name.trim(),
         description: description.trim(),
         home_course_id: homeCourseId,
         location_name: locationName.trim(),
         image: imageUrl,
-      });
+      };
+
+      if (isEditing) {
+        await updateGroup(groupId!, groupPayload);
+      } else {
+        await createGroup(groupPayload);
+      }
       router.back();
     } catch (e) {
-      console.error('Failed to create group', e);
+      console.error(isEditing ? 'Failed to update group' : 'Failed to create group', e);
       setSubmitting(false);
     }
   }
@@ -118,8 +153,8 @@ export default function CreateGroupScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.imageSection} onPress={pickImage}>
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          {displayImage ? (
+            <Image source={{ uri: displayImage }} style={styles.imagePreview} />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={styles.imagePlaceholderText}>ADD GROUP IMAGE</Text>
@@ -234,7 +269,11 @@ export default function CreateGroupScreen() {
           onPress={handleSubmit}
           disabled={!canSubmit}
         >
-          <Text style={styles.submitButtonText}>{submitting ? 'Creating...' : 'Create Group'}</Text>
+          <Text style={styles.submitButtonText}>
+            {submitting
+              ? (isEditing ? 'Saving...' : 'Creating...')
+              : (isEditing ? 'Save Changes' : 'Create Group')}
+          </Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>

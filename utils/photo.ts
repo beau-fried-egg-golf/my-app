@@ -47,37 +47,36 @@ function resizeImageOnWeb(uri: string): Promise<Blob> {
 
 /**
  * Upload a photo to Supabase Storage and return the public URL.
+ * GIFs are uploaded as-is to preserve animation.
  */
 export async function uploadPhoto(uri: string, userId: string): Promise<string> {
-  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  // Fetch the original blob to detect type
+  const originalResponse = await fetch(uri);
+  const originalBlob = await originalResponse.blob();
+  const isGif = originalBlob.type === 'image/gif';
 
-  if (Platform.OS === 'web') {
-    // On web, resize first then upload blob
-    let blob: Blob;
+  const ext = isGif ? 'gif' : 'jpg';
+  const contentType = isGif ? 'image/gif' : 'image/jpeg';
+  const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+
+  let blob: Blob;
+  if (isGif) {
+    blob = originalBlob;
+  } else if (Platform.OS === 'web') {
     try {
       blob = await resizeImageOnWeb(uri);
     } catch {
-      // Fallback: fetch the URI as blob directly
-      const response = await fetch(uri);
-      blob = await response.blob();
+      blob = originalBlob;
     }
-
-    const { error } = await supabase.storage
-      .from('photos')
-      .upload(fileName, blob, { contentType: 'image/jpeg' });
-
-    if (error) throw error;
   } else {
-    // On native, upload from file URI
-    const response = await fetch(uri);
-    const blob = await response.blob();
-
-    const { error } = await supabase.storage
-      .from('photos')
-      .upload(fileName, blob, { contentType: 'image/jpeg' });
-
-    if (error) throw error;
+    blob = originalBlob;
   }
+
+  const { error } = await supabase.storage
+    .from('photos')
+    .upload(fileName, blob, { contentType });
+
+  if (error) throw error;
 
   const { data } = supabase.storage.from('photos').getPublicUrl(fileName);
   return data.publicUrl;

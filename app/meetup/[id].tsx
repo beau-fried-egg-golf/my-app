@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -15,7 +15,7 @@ function formatMeetupDate(iso: string): string {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, joinMeetup, leaveMeetup, getMeetupMembers, loadMeetups } = useStore();
+  const { meetups, session, joinMeetup, leaveMeetup, getMeetupMembers, loadMeetups, deleteMeetup } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -24,6 +24,7 @@ export default function MeetupDetailScreen() {
   const currentUserId = session?.user?.id;
   const isMember = meetup?.is_member ?? false;
   const isHost = meetup?.host_id === currentUserId;
+  const canManage = isHost || (meetup?.is_fe_coordinated && !meetup?.host_id);
   const slotsRemaining = meetup ? meetup.total_slots - (meetup.member_count ?? 0) : 0;
   const isFull = slotsRemaining <= 0;
 
@@ -68,6 +69,30 @@ export default function MeetupDetailScreen() {
           <Text style={styles.backArrowText}>{'<'}</Text>
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{meetup.name}</Text>
+        {canManage && (
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => router.push(`/create-meetup?meetupId=${meetup.id}`)}>
+              <Text style={styles.headerActionText}>Edit</Text>
+            </Pressable>
+            <Text style={styles.headerActionDivider}>|</Text>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  if (confirm('Delete this meetup? This cannot be undone.')) {
+                    deleteMeetup(meetup.id).then(() => router.back());
+                  }
+                } else {
+                  Alert.alert('Delete Meetup', 'Delete this meetup? This cannot be undone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => deleteMeetup(meetup.id).then(() => router.back()) },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.headerActionTextMuted}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -130,19 +155,26 @@ export default function MeetupDetailScreen() {
         ) : null}
 
         {/* Details */}
-        <Pressable
-          style={styles.detailRow}
-          onPress={() => {
-            if (meetup.host_id === currentUserId) {
-              router.push('/profile');
-            } else {
-              router.push(`/member/${meetup.host_id}`);
-            }
-          }}
-        >
-          <Text style={styles.detailLabel}>Hosted by</Text>
-          <Text style={styles.detailValue}>{meetup.host_name ?? 'Member'}</Text>
-        </Pressable>
+        {meetup.host_id ? (
+          <Pressable
+            style={styles.detailRow}
+            onPress={() => {
+              if (meetup.host_id === currentUserId) {
+                router.push('/profile');
+              } else {
+                router.push(`/member/${meetup.host_id}`);
+              }
+            }}
+          >
+            <Text style={styles.detailLabel}>Hosted by</Text>
+            <Text style={styles.detailValue}>{meetup.host_name ?? 'Member'}</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Hosted by</Text>
+            <Text style={styles.detailValue}>FE Coordinated</Text>
+          </View>
+        )}
 
         <View style={styles.detailRow}>
           <Text style={styles.detailLabel}>Date & Time</Text>
@@ -236,6 +268,28 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  headerActionTextMuted: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.gray,
+  },
+  headerActionDivider: {
+    fontSize: 13,
+    color: Colors.lightGray,
+    fontFamily: Fonts!.sans,
   },
   content: { padding: 24, paddingBottom: 40 },
   emptyText: {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -8,7 +8,7 @@ import { GroupMember } from '@/types';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { groups, session, joinGroup, leaveGroup, getGroupMembers, loadGroups } = useStore();
+  const { groups, session, joinGroup, leaveGroup, getGroupMembers, loadGroups, deleteGroup } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -61,6 +61,30 @@ export default function GroupDetailScreen() {
           <Text style={styles.backArrowText}>{'<'}</Text>
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
+        {isCreator && (
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => router.push(`/create-group?groupId=${group.id}`)}>
+              <Text style={styles.headerActionText}>Edit</Text>
+            </Pressable>
+            <Text style={styles.headerActionDivider}>|</Text>
+            <Pressable
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  if (confirm('Delete this group? This cannot be undone.')) {
+                    deleteGroup(group.id).then(() => router.back());
+                  }
+                } else {
+                  Alert.alert('Delete Group', 'Delete this group? This cannot be undone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => deleteGroup(group.id).then(() => router.back()) },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.headerActionTextMuted}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -207,6 +231,28 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
     flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerActionText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  headerActionTextMuted: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.gray,
+  },
+  headerActionDivider: {
+    fontSize: 13,
+    color: Colors.lightGray,
+    fontFamily: Fonts!.sans,
   },
   content: { padding: 24, paddingBottom: 40 },
   emptyText: {
