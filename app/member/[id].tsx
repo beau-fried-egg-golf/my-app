@@ -44,7 +44,7 @@ export default function MemberProfileScreen() {
           </View>
         )}
         <Text style={styles.name}>{profile.name}</Text>
-        {profile.location ? <Text style={styles.location}>{profile.location}</Text> : null}
+        {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
         {!isOwnProfile && (
           <View style={styles.actionRow}>
             <Pressable
@@ -99,10 +99,10 @@ export default function MemberProfileScreen() {
             <Text style={styles.detailValue}>{profile.handicap}</Text>
           </View>
         )}
-        {profile.home_course ? (
+        {profile.home_course_id ? (
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Home Course</Text>
-            <Text style={styles.detailValue}>{profile.home_course}</Text>
+            <Text style={styles.detailValue}>{courses.find(c => c.id === profile.home_course_id)?.short_name ?? ''}</Text>
           </View>
         ) : null}
         <View style={styles.detailRow}>

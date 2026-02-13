@@ -56,7 +56,7 @@ export default function ProfileScreen() {
           </View>
         )}
         <Text style={styles.name}>{user.name}</Text>
-        {user.location ? <Text style={styles.location}>{user.location}</Text> : null}
+        {(user.city || user.state) ? <Text style={styles.location}>{[user.city, user.state].filter(Boolean).join(', ')}</Text> : null}
       </View>
 
       <View style={styles.stats}>
@@ -88,10 +88,10 @@ export default function ProfileScreen() {
             <Text style={styles.detailValue}>{user.handicap}</Text>
           </View>
         )}
-        {user.homeCourse ? (
+        {user.homeCourseId ? (
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Home Course</Text>
-            <Text style={styles.detailValue}>{user.homeCourse}</Text>
+            <Text style={styles.detailValue}>{courses.find(c => c.id === user.homeCourseId)?.short_name ?? ''}</Text>
           </View>
         ) : null}
         <View style={styles.detailRow}>

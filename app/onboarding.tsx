@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,24 +10,78 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Location from 'expo-location';
 import { Colors } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import { Course } from '@/types';
+
+function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { user, saveUser } = useStore();
-  const [location, setLocation] = useState(user?.location ?? '');
+  const { user, saveUser, courses } = useStore();
+  const [streetAddress, setStreetAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [zip, setZip] = useState('');
   const [handicap, setHandicap] = useState('');
-  const [homeCourse, setHomeCourse] = useState('');
+  const [homeCourseId, setHomeCourseId] = useState<string | null>(null);
   const [favoriteBall, setFavoriteBall] = useState('');
+  const [showPicker, setShowPicker] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+  const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        setUserLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      }
+    })();
+  }, []);
+
+  function getCourseDistance(course: Course): number | null {
+    if (!userLocation) return null;
+    return getDistanceMiles(userLocation.lat, userLocation.lon, course.latitude, course.longitude);
+  }
+
+  const filteredCourses = useMemo(() => {
+    let result = [...courses];
+    if (courseSearch.trim()) {
+      const q = courseSearch.trim().toLowerCase();
+      result = result.filter(c => c.short_name.toLowerCase().includes(q) || c.name.toLowerCase().includes(q));
+    }
+    if (courseSortOrder === 'distance' && userLocation) {
+      result.sort((a, b) => (getCourseDistance(a) ?? Infinity) - (getCourseDistance(b) ?? Infinity));
+    } else {
+      result.sort((a, b) => a.short_name.localeCompare(b.short_name));
+    }
+    return result;
+  }, [courses, courseSearch, courseSortOrder, userLocation]);
+
+  const selectedCourse = homeCourseId ? courses.find(c => c.id === homeCourseId) : null;
 
   async function handleCreate() {
     if (!user) return;
     await saveUser({
       ...user,
-      location: location.trim(),
+      streetAddress: streetAddress.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      zip: zip.trim(),
       handicap: handicap ? parseFloat(handicap) : null,
-      homeCourse: homeCourse.trim(),
+      homeCourseId,
       favoriteBall: favoriteBall.trim(),
     });
     router.replace('/');
@@ -46,14 +100,50 @@ export default function OnboardingScreen() {
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={styles.label}>Street Address</Text>
             <TextInput
               style={styles.input}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="e.g. San Francisco, CA"
+              value={streetAddress}
+              onChangeText={setStreetAddress}
+              placeholder="e.g. 123 Main St"
               placeholderTextColor={Colors.gray}
             />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>City</Text>
+            <TextInput
+              style={styles.input}
+              value={city}
+              onChangeText={setCity}
+              placeholder="e.g. San Francisco"
+              placeholderTextColor={Colors.gray}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>State</Text>
+              <TextInput
+                style={styles.input}
+                value={state}
+                onChangeText={setState}
+                placeholder="e.g. CA"
+                placeholderTextColor={Colors.gray}
+                autoCapitalize="characters"
+              />
+            </View>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>Zip</Text>
+              <TextInput
+                style={styles.input}
+                value={zip}
+                onChangeText={setZip}
+                placeholder="e.g. 94102"
+                placeholderTextColor={Colors.gray}
+                keyboardType="number-pad"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -70,13 +160,75 @@ export default function OnboardingScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Home Course</Text>
-            <TextInput
-              style={styles.input}
-              value={homeCourse}
-              onChangeText={setHomeCourse}
-              placeholder="e.g. Harding Park"
-              placeholderTextColor={Colors.gray}
-            />
+            <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
+              <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
+                {selectedCourse ? selectedCourse.short_name : 'Home Course (optional)'}
+              </Text>
+              <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+            </Pressable>
+
+            {showPicker && (
+              <>
+                <View style={styles.pickerToolbar}>
+                  <TextInput
+                    style={styles.courseSearchInput}
+                    value={courseSearch}
+                    onChangeText={setCourseSearch}
+                    placeholder="Search courses..."
+                    placeholderTextColor={Colors.gray}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <View style={styles.pickerSortToggle}>
+                    <Pressable
+                      style={[styles.pickerSortBtn, courseSortOrder === 'alpha' && styles.pickerSortBtnActive]}
+                      onPress={() => setCourseSortOrder('alpha')}
+                    >
+                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'alpha' && styles.pickerSortBtnTextActive]}>A-Z</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.pickerSortBtn, courseSortOrder === 'distance' && styles.pickerSortBtnActive]}
+                      onPress={() => setCourseSortOrder('distance')}
+                    >
+                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEAR</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <ScrollView style={styles.courseList} nestedScrollEnabled>
+                  <Pressable
+                    style={[styles.courseOption, homeCourseId === null && styles.courseOptionSelected]}
+                    onPress={() => { setHomeCourseId(null); setShowPicker(false); setCourseSearch(''); }}
+                  >
+                    <Text style={[styles.courseOptionText, homeCourseId === null && styles.courseOptionTextSelected]}>None</Text>
+                  </Pressable>
+                  {filteredCourses.map((c) => {
+                    const dist = getCourseDistance(c);
+                    return (
+                      <Pressable
+                        key={c.id}
+                        style={[styles.courseOption, homeCourseId === c.id && styles.courseOptionSelected]}
+                        onPress={() => { setHomeCourseId(c.id); setShowPicker(false); setCourseSearch(''); }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.courseOptionText, homeCourseId === c.id && styles.courseOptionTextSelected]}>
+                            {c.short_name}
+                          </Text>
+                          <Text style={[styles.courseOptionCity, homeCourseId === c.id && { color: 'rgba(255,255,255,0.7)' }]}>{c.city}</Text>
+                        </View>
+                        {dist != null && (
+                          <Text style={[styles.courseOptionCity, homeCourseId === c.id && { color: 'rgba(255,255,255,0.7)' }]}>{Math.round(dist)} mi</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                  {filteredCourses.length === 0 && (
+                    <View style={{ padding: 14, alignItems: 'center' }}>
+                      <Text style={styles.courseOptionCity}>No courses found</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
           </View>
 
           <View style={styles.field}>
@@ -131,6 +283,10 @@ const styles = StyleSheet.create({
   field: {
     gap: 6,
   },
+  row: {
+    flexDirection: 'row',
+    gap: 12,
+  },
   label: {
     fontSize: 14,
     fontWeight: '600',
@@ -159,4 +315,67 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  coursePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  coursePickerText: { fontSize: 16, color: Colors.black },
+  placeholder: { color: Colors.gray },
+  chevronText: { fontSize: 18, fontWeight: '700', color: Colors.gray },
+  pickerToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  courseSearchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    color: Colors.black,
+  },
+  pickerSortToggle: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  pickerSortBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  pickerSortBtnActive: {
+    backgroundColor: Colors.orange,
+  },
+  pickerSortBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  pickerSortBtnTextActive: {
+    color: Colors.black,
+  },
+  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginTop: 6, maxHeight: 250 },
+  courseOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  courseOptionSelected: { backgroundColor: Colors.orange },
+  courseOptionText: { fontSize: 15, color: Colors.black },
+  courseOptionTextSelected: { color: Colors.white, fontWeight: '700' },
+  courseOptionCity: { fontSize: 12, color: Colors.gray },
 });

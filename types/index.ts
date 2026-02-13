@@ -2,9 +2,12 @@ export interface Profile {
   id: string; // uuid from auth.users
   name: string;
   image: string | null;
-  location: string;
+  street_address: string;
+  city: string;
+  state: string;
+  zip: string;
   handicap: number | null;
-  home_course: string;
+  home_course_id: string | null;
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
@@ -53,9 +56,12 @@ export interface User {
   id: string;
   name: string;
   image: string | null;
-  location: string;
+  streetAddress: string;
+  city: string;
+  state: string;
+  zip: string;
   handicap: number | null;
-  homeCourse: string;
+  homeCourseId: string | null;
   favoriteBall: string;
   memberSince: string;
 }
@@ -218,9 +224,12 @@ export function profileToUser(p: Profile): User {
     id: p.id,
     name: p.name,
     image: p.image,
-    location: p.location,
+    streetAddress: p.street_address,
+    city: p.city,
+    state: p.state,
+    zip: p.zip,
     handicap: p.handicap,
-    homeCourse: p.home_course,
+    homeCourseId: p.home_course_id,
     favoriteBall: p.favorite_ball,
     memberSince: p.member_since,
   };
@@ -357,9 +366,12 @@ export function userToProfile(u: User): Omit<Profile, 'id'> {
   return {
     name: u.name,
     image: u.image,
-    location: u.location,
+    street_address: u.streetAddress,
+    city: u.city,
+    state: u.state,
+    zip: u.zip,
     handicap: u.handicap,
-    home_course: u.homeCourse,
+    home_course_id: u.homeCourseId,
     favorite_ball: u.favoriteBall,
     member_since: u.memberSince,
   };

@@ -42,7 +42,7 @@ export default function MembersScreen() {
         <View style={styles.info}>
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.meta}>
-            {item.location ? `${item.location} · ` : ''}
+            {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
             {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
           </Text>
         </View>

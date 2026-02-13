@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
@@ -12,22 +12,73 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
+import { Course } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
+function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export default function EditProfileScreen() {
-  const { user, saveUser } = useStore();
+  const { user, saveUser, courses } = useStore();
   const router = useRouter();
 
   const [name, setName] = useState(user?.name ?? '');
   const [image, setImage] = useState(user?.image ?? null);
-  const [location, setLocation] = useState(user?.location ?? '');
+  const [streetAddress, setStreetAddress] = useState(user?.streetAddress ?? '');
+  const [city, setCity] = useState(user?.city ?? '');
+  const [state, setState] = useState(user?.state ?? '');
+  const [zip, setZip] = useState(user?.zip ?? '');
   const [handicap, setHandicap] = useState(user?.handicap?.toString() ?? '');
-  const [homeCourse, setHomeCourse] = useState(user?.homeCourse ?? '');
+  const [homeCourseId, setHomeCourseId] = useState<string | null>(user?.homeCourseId ?? null);
   const [favoriteBall, setFavoriteBall] = useState(user?.favoriteBall ?? '');
+  const [showPicker, setShowPicker] = useState(false);
+  const [courseSearch, setCourseSearch] = useState('');
+  const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({});
+        setUserLocation({ lat: loc.coords.latitude, lon: loc.coords.longitude });
+      }
+    })();
+  }, []);
+
+  function getCourseDistance(course: Course): number | null {
+    if (!userLocation) return null;
+    return getDistanceMiles(userLocation.lat, userLocation.lon, course.latitude, course.longitude);
+  }
+
+  const filteredCourses = useMemo(() => {
+    let result = [...courses];
+    if (courseSearch.trim()) {
+      const q = courseSearch.trim().toLowerCase();
+      result = result.filter(c => c.short_name.toLowerCase().includes(q) || c.name.toLowerCase().includes(q));
+    }
+    if (courseSortOrder === 'distance' && userLocation) {
+      result.sort((a, b) => (getCourseDistance(a) ?? Infinity) - (getCourseDistance(b) ?? Infinity));
+    } else {
+      result.sort((a, b) => a.short_name.localeCompare(b.short_name));
+    }
+    return result;
+  }, [courses, courseSearch, courseSortOrder, userLocation]);
+
+  const selectedCourse = homeCourseId ? courses.find(c => c.id === homeCourseId) : null;
 
   if (!user) return null;
 
@@ -51,9 +102,12 @@ export default function EditProfileScreen() {
       memberSince: user!.memberSince,
       name: name.trim(),
       image,
-      location: location.trim(),
+      streetAddress: streetAddress.trim(),
+      city: city.trim(),
+      state: state.trim(),
+      zip: zip.trim(),
       handicap: handicap ? parseFloat(handicap) : null,
-      homeCourse: homeCourse.trim(),
+      homeCourseId,
       favoriteBall: favoriteBall.trim(),
     });
     router.back();
@@ -94,14 +148,50 @@ export default function EditProfileScreen() {
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Location</Text>
+            <Text style={styles.label}>Street Address</Text>
             <TextInput
               style={styles.input}
-              value={location}
-              onChangeText={setLocation}
-              placeholder="e.g. San Francisco, CA"
+              value={streetAddress}
+              onChangeText={setStreetAddress}
+              placeholder="e.g. 123 Main St"
               placeholderTextColor={Colors.gray}
             />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>City</Text>
+            <TextInput
+              style={styles.input}
+              value={city}
+              onChangeText={setCity}
+              placeholder="e.g. San Francisco"
+              placeholderTextColor={Colors.gray}
+            />
+          </View>
+
+          <View style={styles.row}>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>State</Text>
+              <TextInput
+                style={styles.input}
+                value={state}
+                onChangeText={setState}
+                placeholder="e.g. CA"
+                placeholderTextColor={Colors.gray}
+                autoCapitalize="characters"
+              />
+            </View>
+            <View style={[styles.field, { flex: 1 }]}>
+              <Text style={styles.label}>Zip</Text>
+              <TextInput
+                style={styles.input}
+                value={zip}
+                onChangeText={setZip}
+                placeholder="e.g. 94102"
+                placeholderTextColor={Colors.gray}
+                keyboardType="number-pad"
+              />
+            </View>
           </View>
 
           <View style={styles.field}>
@@ -118,10 +208,84 @@ export default function EditProfileScreen() {
 
           <View style={styles.field}>
             <Text style={styles.label}>Home Course</Text>
+            <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
+              <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
+                {selectedCourse ? selectedCourse.short_name : 'Home Course (optional)'}
+              </Text>
+              <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+            </Pressable>
+
+            {showPicker && (
+              <>
+                <View style={styles.pickerToolbar}>
+                  <TextInput
+                    style={styles.courseSearchInput}
+                    value={courseSearch}
+                    onChangeText={setCourseSearch}
+                    placeholder="Search courses..."
+                    placeholderTextColor={Colors.gray}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                  <View style={styles.pickerSortToggle}>
+                    <Pressable
+                      style={[styles.pickerSortBtn, courseSortOrder === 'alpha' && styles.pickerSortBtnActive]}
+                      onPress={() => setCourseSortOrder('alpha')}
+                    >
+                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'alpha' && styles.pickerSortBtnTextActive]}>A-Z</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.pickerSortBtn, courseSortOrder === 'distance' && styles.pickerSortBtnActive]}
+                      onPress={() => setCourseSortOrder('distance')}
+                    >
+                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEAR</Text>
+                    </Pressable>
+                  </View>
+                </View>
+                <ScrollView style={styles.courseList} nestedScrollEnabled>
+                  <Pressable
+                    style={[styles.courseOption, homeCourseId === null && styles.courseOptionSelected]}
+                    onPress={() => { setHomeCourseId(null); setShowPicker(false); setCourseSearch(''); }}
+                  >
+                    <Text style={[styles.courseOptionText, homeCourseId === null && styles.courseOptionTextSelected]}>None</Text>
+                  </Pressable>
+                  {filteredCourses.map((c) => {
+                    const dist = getCourseDistance(c);
+                    return (
+                      <Pressable
+                        key={c.id}
+                        style={[styles.courseOption, homeCourseId === c.id && styles.courseOptionSelected]}
+                        onPress={() => { setHomeCourseId(c.id); setShowPicker(false); setCourseSearch(''); }}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.courseOptionText, homeCourseId === c.id && styles.courseOptionTextSelected]}>
+                            {c.short_name}
+                          </Text>
+                          <Text style={[styles.courseOptionCity, homeCourseId === c.id && { color: 'rgba(255,255,255,0.7)' }]}>{c.city}</Text>
+                        </View>
+                        {dist != null && (
+                          <Text style={[styles.courseOptionCity, homeCourseId === c.id && { color: 'rgba(255,255,255,0.7)' }]}>{Math.round(dist)} mi</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                  {filteredCourses.length === 0 && (
+                    <View style={{ padding: 14, alignItems: 'center' }}>
+                      <Text style={styles.courseOptionCity}>No courses found</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Favorite Ball</Text>
             <TextInput
               style={styles.input}
-              value={homeCourse}
-              onChangeText={setHomeCourse}
+              value={favoriteBall}
+              onChangeText={setFavoriteBall}
+              placeholder="e.g. Pro V1"
               placeholderTextColor={Colors.gray}
             />
           </View>
@@ -148,8 +312,74 @@ const styles = StyleSheet.create({
   changePhoto: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginTop: 8 },
   form: { gap: 20, marginBottom: 32 },
   field: { gap: 6 },
+  row: { flexDirection: 'row', gap: 12 },
   label: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   input: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, fontFamily: Fonts!.sans },
   saveButton: { backgroundColor: Colors.black, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
   saveButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  coursePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
+  placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
+  chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
+  pickerToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+  },
+  courseSearchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+  },
+  pickerSortToggle: {
+    flexDirection: 'row',
+    gap: 4,
+  },
+  pickerSortBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  pickerSortBtnActive: {
+    backgroundColor: Colors.orange,
+  },
+  pickerSortBtnText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  pickerSortBtnTextActive: {
+    color: Colors.black,
+  },
+  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginTop: 6, maxHeight: 250 },
+  courseOption: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  courseOptionSelected: { backgroundColor: Colors.orange },
+  courseOptionText: { fontSize: 15, color: Colors.black, fontFamily: Fonts!.sans },
+  courseOptionTextSelected: { color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  courseOptionCity: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
 });

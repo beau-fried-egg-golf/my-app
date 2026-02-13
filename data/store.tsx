@@ -777,9 +777,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .update({
         name: u.name,
         image: u.image,
-        location: u.location,
+        street_address: u.streetAddress,
+        city: u.city,
+        state: u.state,
+        zip: u.zip,
         handicap: u.handicap,
-        home_course: u.homeCourse,
+        home_course_id: u.homeCourseId,
         favorite_ball: u.favoriteBall,
       })
       .eq('id', session.user.id);
