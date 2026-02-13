@@ -106,6 +106,28 @@ export default function PostDetail() {
           {post.content}
         </div>
 
+        {post.link_url && (
+          <div style={{ margin: '16px 0', padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
+            <h3 className="section-title" style={{ marginTop: 0 }}>Link Preview</h3>
+            {post.link_image && (
+              <img
+                src={post.link_image}
+                alt={post.link_title ?? 'Link preview'}
+                style={{ maxWidth: 320, maxHeight: 180, borderRadius: 6, objectFit: 'cover', marginBottom: 8 }}
+              />
+            )}
+            {post.link_title && (
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{post.link_title}</div>
+            )}
+            {post.link_description && (
+              <div style={{ fontSize: 14, color: '#666', marginBottom: 8 }}>{post.link_description}</div>
+            )}
+            <a href={post.link_url} target="_blank" rel="noopener noreferrer" className="link">
+              {post.link_url}
+            </a>
+          </div>
+        )}
+
         {post.photos.length > 0 && (
           <>
             <h3 className="section-title">Photos ({post.photos.length})</h3>

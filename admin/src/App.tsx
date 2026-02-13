@@ -18,6 +18,7 @@ import MessageList from './MessageList';
 import MeetupList from './MeetupList';
 import MeetupForm from './MeetupForm';
 import FlagQueue from './FlagQueue';
+import FEPostForm from './FEPostForm';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -54,6 +55,7 @@ export default function App() {
         <Route path="writeups/:id" element={<WriteupDetail />} />
         <Route path="photos" element={<PhotoList />} />
         <Route path="posts" element={<PostList />} />
+        <Route path="posts/fe-post" element={<FEPostForm />} />
         <Route path="posts/:id" element={<PostDetail />} />
         <Route path="users" element={<UserList />} />
         <Route path="users/:id" element={<UserDetail />} />

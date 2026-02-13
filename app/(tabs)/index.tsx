@@ -6,6 +6,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Activity, Profile, Writeup, Post } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
+import LinkPreview from '@/components/LinkPreview';
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -25,6 +26,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
   if (item.type === 'post') {
     const name = item.user_name ?? '';
     const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
+    const isLinkPost = !!post?.link_url;
     const contentPreview = (item.post_content ?? '').length > 80
       ? (item.post_content ?? '').slice(0, 80) + '...'
       : item.post_content ?? '';
@@ -50,12 +52,20 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           {contentPreview ? (
             <Text style={styles.postPreview} numberOfLines={2}>{contentPreview}</Text>
           ) : null}
+          {isLinkPost && post ? (
+            <LinkPreview
+              url={post.link_url!}
+              title={post.link_title}
+              description={post.link_description}
+              image={post.link_image}
+            />
+          ) : null}
           {reactionSummary ? (
             <Text style={styles.reactionSummary}>{reactionSummary}</Text>
           ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-        {thumbnail && (
+        {!isLinkPost && thumbnail && (
           <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
         )}
       </Pressable>

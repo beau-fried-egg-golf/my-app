@@ -417,3 +417,35 @@ export async function keepContentHidden(contentType: 'post' | 'writeup', content
 export async function togglePostHidden(postId: string, currentHidden: boolean): Promise<void> {
   await supabase.from('posts').update({ hidden: !currentHidden }).eq('id', postId);
 }
+
+export async function createFEPost(data: {
+  user_id: string;
+  content: string;
+  link_url: string;
+  link_title: string;
+  link_description: string;
+  link_image: string;
+}): Promise<void> {
+  const postId = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  await supabase.from('posts').insert({
+    id: postId,
+    user_id: data.user_id,
+    content: data.content,
+    hidden: false,
+    created_at: now,
+    link_url: data.link_url,
+    link_title: data.link_title,
+    link_description: data.link_description,
+    link_image: data.link_image,
+  });
+
+  await supabase.from('activities').insert({
+    id: crypto.randomUUID(),
+    type: 'post',
+    user_id: data.user_id,
+    post_id: postId,
+    created_at: now,
+  });
+}

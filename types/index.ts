@@ -168,6 +168,10 @@ export interface Post {
   user_reactions: string[];
   reply_count: number;
   author_name?: string;
+  link_url?: string | null;
+  link_title?: string | null;
+  link_description?: string | null;
+  link_image?: string | null;
 }
 
 export interface PostReply {

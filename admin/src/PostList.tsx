@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getPosts, deletePost } from './storage';
 import type { Post } from './types';
 
@@ -12,6 +12,7 @@ function formatDate(iso: string): string {
 }
 
 export default function PostList() {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<Post[]>([]);
   const [search, setSearch] = useState('');
 
@@ -40,6 +41,9 @@ export default function PostList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Posts</h1>
+        <button className="btn btn-primary" onClick={() => navigate('/posts/fe-post')}>
+          Create FE Post
+        </button>
       </div>
 
       <div className="filters-bar">

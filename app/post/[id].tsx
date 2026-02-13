@@ -17,6 +17,7 @@ import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import LinkPreview from '@/components/LinkPreview';
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -135,6 +136,15 @@ export default function PostDetailScreen() {
       </View>
 
       <Text style={styles.body}>{post.content}</Text>
+
+      {post.link_url ? (
+        <LinkPreview
+          url={post.link_url}
+          title={post.link_title}
+          description={post.link_description}
+          image={post.link_image}
+        />
+      ) : null}
 
       {post.photos.length > 0 && (
         <View style={styles.photos}>
