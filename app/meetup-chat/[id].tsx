@@ -64,7 +64,7 @@ export default function MeetupChatScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Text style={styles.backArrowText}>{'<'}</Text>
+            <Ionicons name="chevron-back" size={28} color={Colors.black} />
           </Pressable>
           <Pressable
             style={styles.headerTitleArea}

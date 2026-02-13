@@ -137,7 +137,7 @@ export default function CourseDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.courseNameBlock}>
         <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/courses')} style={styles.backArrow}>
-          <Text style={styles.backArrowText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={28} color={Colors.black} />
         </Pressable>
         <View style={styles.courseNameContent}>
           <LetterSpacedHeader text={course.short_name} size={32} />

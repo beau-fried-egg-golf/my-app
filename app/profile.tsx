@@ -34,7 +34,7 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Text style={styles.backArrowText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={28} color={Colors.black} />
         </Pressable>
         <LetterSpacedHeader text="PROFILE" size={32} />
         <View style={styles.headerActions}>

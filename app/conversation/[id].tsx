@@ -89,7 +89,7 @@ export default function ConversationScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Text style={styles.backArrowText}>{'<'}</Text>
+            <Ionicons name="chevron-back" size={28} color={Colors.black} />
           </Pressable>
           {otherProfile?.image ? (
             <Image source={{ uri: otherProfile.image }} style={styles.headerAvatar} />

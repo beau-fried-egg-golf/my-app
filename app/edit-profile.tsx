@@ -67,7 +67,7 @@ export default function EditProfileScreen() {
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Text style={styles.backArrowText}>{'<'}</Text>
+            <Ionicons name="chevron-back" size={28} color={Colors.black} />
           </Pressable>
           <LetterSpacedHeader text="EDIT PROFILE" size={32} />
         </View>

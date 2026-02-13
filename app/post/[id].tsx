@@ -125,7 +125,7 @@ export default function PostDetailScreen() {
     <>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Text style={styles.backArrowText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={28} color={Colors.black} />
         </Pressable>
         <LetterSpacedHeader text="POST" size={32} />
       </View>

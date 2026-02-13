@@ -42,7 +42,7 @@ export default function MeetupDetailScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Text style={styles.backArrowText}>{'<'}</Text>
+            <Ionicons name="chevron-back" size={28} color={Colors.black} />
           </Pressable>
         </View>
         <Text style={styles.emptyText}>Meetup not found</Text>
@@ -66,7 +66,7 @@ export default function MeetupDetailScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Text style={styles.backArrowText}>{'<'}</Text>
+          <Ionicons name="chevron-back" size={28} color={Colors.black} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{meetup.name}</Text>
         {canManage && (
