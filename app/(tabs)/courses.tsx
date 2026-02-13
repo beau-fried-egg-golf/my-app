@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Course } from '@/types';
+import { Course, Meetup } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
 import WordHighlight from '@/components/WordHighlight';
 import CourseMap from '@/components/course-map';
@@ -49,7 +50,7 @@ type FEFilter = 'all' | 'has_fe';
 type SortOrder = 'alpha' | 'distance';
 
 export default function CoursesScreen() {
-  const { courses, writeups } = useStore();
+  const { courses, writeups, meetups } = useStore();
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -85,6 +86,13 @@ export default function CoursesScreen() {
 
   function getWriteupCount(courseId: string) {
     return writeups.filter((w) => w.course_id === courseId).length;
+  }
+
+  function getUpcomingMeetup(courseId: string) {
+    const now = Date.now();
+    return meetups
+      .filter((m) => m.course_id === courseId && new Date(m.meetup_date).getTime() > now)
+      .sort((a, b) => new Date(a.meetup_date).getTime() - new Date(b.meetup_date).getTime())[0] ?? null;
   }
 
   function getMostRecentWriteup(courseId: string) {
@@ -149,10 +157,33 @@ export default function CoursesScreen() {
     setDisplayCount(15);
   }, [searchQuery, accessFilter, distanceFilter, writeupFilter, feFilter, sortOrder]);
 
+  function renderMeetupCallout(meetup: Meetup) {
+    const spots = meetup.total_slots - (meetup.member_count ?? 0);
+    return (
+      <Pressable
+        style={styles.meetupCallout}
+        onPress={() => router.push(`/meetup/${meetup.id}`)}
+      >
+        <Ionicons name="calendar" size={14} color={Colors.black} />
+        <View style={styles.meetupCalloutText}>
+          <Text style={styles.meetupName} numberOfLines={1}>{meetup.name}</Text>
+          <Text style={styles.meetupDate}>
+            {new Date(meetup.meetup_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+            {' · '}
+            {new Date(meetup.meetup_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            {' · '}
+            {spots} spot{spots !== 1 ? 's' : ''} left
+          </Text>
+        </View>
+      </Pressable>
+    );
+  }
+
   function renderCourse({ item }: { item: Course }) {
     const count = getWriteupCount(item.id);
     const recent = getMostRecentWriteup(item.id);
     const distance = getDistance(item);
+    const upcoming = getUpcomingMeetup(item.id);
 
     return (
       <Pressable
@@ -187,6 +218,7 @@ export default function CoursesScreen() {
             </Text>
           )}
         </View>
+        {upcoming && renderMeetupCallout(upcoming)}
       </Pressable>
     );
   }
@@ -396,6 +428,7 @@ export default function CoursesScreen() {
               course={selectedCourse}
               writeupCount={getWriteupCount(selectedCourse.id)}
               distance={getDistance(selectedCourse)}
+              upcomingMeetup={getUpcomingMeetup(selectedCourse.id)}
               onClose={() => setSelectedCourse(null)}
             />
           )}
@@ -452,4 +485,8 @@ const styles = StyleSheet.create({
   loadMoreText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange, letterSpacing: 0.5 },
   mapContainer: { flex: 1, position: 'relative' },
   feBlurb: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
+  meetupCallout: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8 },
+  meetupCalloutText: { flex: 1 },
+  meetupName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  meetupDate: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 2 },
 });

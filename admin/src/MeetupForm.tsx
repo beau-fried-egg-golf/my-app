@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { getMeetups, saveMeetup, getCourses, getProfiles } from './storage';
 import type { Course, Profile, Meetup } from './types';
 import { supabase } from './supabase';
+import ImageUpload from './ImageUpload';
 
 interface MeetupFormData {
   name: string;
@@ -197,10 +198,7 @@ export default function MeetupForm() {
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Image URL</label>
-          <input className="form-input" value={form.image ?? ''} onChange={(e) => handleChange('image', e.target.value || null)} />
-        </div>
+        <ImageUpload value={form.image} onChange={(url) => handleChange('image', url)} label="Image" />
 
         <h2 style={{ marginTop: 24, marginBottom: 12, fontSize: 18 }}>Fried Egg Coordination</h2>
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { getCourses, saveCourse } from './storage';
 import type { Course } from './types';
+import ImageUpload from './ImageUpload';
 
 const EMPTY_COURSE: Omit<Course, 'id'> = {
   name: '',
@@ -174,10 +175,7 @@ export default function CourseForm() {
 
         <h2 style={{ marginTop: 24, marginBottom: 12, fontSize: 18 }}>Fried Egg Content</h2>
 
-        <div className="form-group">
-          <label className="form-label">Hero Image URL</label>
-          <input className="form-input" value={form.fe_hero_image ?? ''} onChange={(e) => handleChange('fe_hero_image', e.target.value || null)} />
-        </div>
+        <ImageUpload value={form.fe_hero_image} onChange={(url) => handleChange('fe_hero_image', url)} label="Hero Image" />
 
         <div className="form-group">
           <label className="form-label">Profile URL</label>

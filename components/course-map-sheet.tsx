@@ -1,17 +1,19 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
-import { Course } from '@/types';
+import { Course, Meetup } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 
 interface CourseMapSheetProps {
   course: Course;
   writeupCount: number;
   distance: number | null;
+  upcomingMeetup: Meetup | null;
   onClose: () => void;
 }
 
-export default function CourseMapSheet({ course, writeupCount, distance, onClose }: CourseMapSheetProps) {
+export default function CourseMapSheet({ course, writeupCount, distance, upcomingMeetup, onClose }: CourseMapSheetProps) {
   const router = useRouter();
 
   return (
@@ -25,6 +27,17 @@ export default function CourseMapSheet({ course, writeupCount, distance, onClose
           <View style={styles.courseInfo}>
             <WordHighlight words={course.short_name.split(' ')} size={16} />
             <Text style={styles.courseCity}>{course.city}</Text>
+            <View style={styles.tagsRow}>
+              <WordHighlight
+                words={[
+                  course.is_private ? 'PRIVATE' : 'PUBLIC',
+                  `${course.holes} HOLES`,
+                  `PAR ${course.par}`,
+                  `EST. ${course.year_established}`,
+                ]}
+                size={9}
+              />
+            </View>
           </View>
           <View style={styles.courseMeta}>
             {distance !== null ? (
@@ -44,6 +57,27 @@ export default function CourseMapSheet({ course, writeupCount, distance, onClose
             )}
           </View>
         </View>
+        {upcomingMeetup && (
+          <Pressable
+            style={styles.meetupCallout}
+            onPress={(e) => {
+              e.stopPropagation();
+              router.push(`/meetup/${upcomingMeetup.id}`);
+            }}
+          >
+            <Ionicons name="calendar" size={14} color={Colors.black} />
+            <View style={styles.meetupCalloutText}>
+              <Text style={styles.meetupName} numberOfLines={1}>{upcomingMeetup.name}</Text>
+              <Text style={styles.meetupDate}>
+                {new Date(upcomingMeetup.meetup_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                {' · '}
+                {new Date(upcomingMeetup.meetup_date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                {' · '}
+                {(upcomingMeetup.total_slots - (upcomingMeetup.member_count ?? 0))} spot{(upcomingMeetup.total_slots - (upcomingMeetup.member_count ?? 0)) !== 1 ? 's' : ''} left
+              </Text>
+            </View>
+          </Pressable>
+        )}
       </Pressable>
     </View>
   );
@@ -96,6 +130,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontFamily: Fonts!.sans,
   },
+  tagsRow: {
+    marginTop: 8,
+  },
   courseMeta: {
     marginLeft: 12,
     alignItems: 'flex-end',
@@ -124,5 +161,26 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.gray,
     fontFamily: Fonts!.sans,
+  },
+  meetupCallout: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 2,
+  },
+  meetupCalloutText: {
+    flex: 1,
+  },
+  meetupName: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  meetupDate: {
+    fontSize: 12,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 2,
   },
 });
