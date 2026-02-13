@@ -129,7 +129,7 @@ export default function ProfileScreen() {
                   key={c.id}
                   courseId={c.id}
                   courseName={c.short_name}
-                  city={c.city}
+                  state={c.state}
                   datePlayed={datePlayed}
                   onPress={() => router.push(`/course/${c.id}`)}
                 />
@@ -306,6 +306,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 8,
   },
 });

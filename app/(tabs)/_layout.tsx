@@ -36,7 +36,11 @@ export default function TabLayout() {
   const { session, isLoading } = useStore();
   const router = useRouter();
 
-  if (isLoading) return null;
+  if (isLoading) return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
+      <Image source={require('../../assets/images/FEGC App Icon.png')} style={{ width: 120, height: 120 }} />
+    </View>
+  );
 
   if (!session) {
     return <Redirect href="/(auth)/login" />;

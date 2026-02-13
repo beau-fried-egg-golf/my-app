@@ -131,7 +131,7 @@ export default function MemberProfileScreen() {
                   key={c.id}
                   courseId={c.id}
                   courseName={c.short_name}
-                  city={c.city}
+                  state={c.state}
                   datePlayed={datePlayed}
                   onPress={() => router.push(`/course/${c.id}`)}
                 />
@@ -179,5 +179,5 @@ const styles = StyleSheet.create({
   detailValue: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   passportSection: { marginTop: 24 },
   passportTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
-  stampGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12 },
+  stampGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
 });
