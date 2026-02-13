@@ -55,10 +55,21 @@ export default function ConversationsScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('dms');
 
+  const hasUnreadDms = conversationListItems.some(i => i.type === 'dm' && i.unread);
+  const hasUnreadGroups = conversationListItems.some(i => i.type === 'group' && i.unread);
+  const hasUnreadMeetups = conversationListItems.some(i => i.type === 'meetup' && i.unread);
+  const tabUnread: Record<TabType, boolean> = { dms: hasUnreadDms, groups: hasUnreadGroups, meetups: hasUnreadMeetups };
+
   useEffect(() => {
     loadConversations();
     loadGroups();
     loadMeetups();
+    const interval = setInterval(() => {
+      loadConversations();
+      loadGroups();
+      loadMeetups();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [loadConversations, loadGroups, loadMeetups]);
 
   const filteredItems = conversationListItems.filter(item => {
@@ -76,9 +87,12 @@ export default function ConversationsScreen() {
             style={[styles.tab, activeTab === tab && styles.tabActive]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab.toUpperCase()}
-            </Text>
+            <View style={styles.tabLabelRow}>
+              <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+                {tab.toUpperCase()}
+              </Text>
+              {tabUnread[tab] && <View style={styles.tabUnreadDot} />}
+            </View>
           </Pressable>
         ))}
       </View>
@@ -134,6 +148,17 @@ const styles = StyleSheet.create({
   tabActive: {
     borderBottomWidth: 2,
     borderBottomColor: Colors.black,
+  },
+  tabLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  tabUnreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: Colors.orange,
   },
   tabText: {
     fontSize: 13,

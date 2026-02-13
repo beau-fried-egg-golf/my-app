@@ -234,6 +234,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Global polling for unread badges — refreshes conversations, groups, meetups every 15s
+  useEffect(() => {
+    if (!session) return;
+    const userId = session.user.id;
+
+    const poll = () => {
+      loadConversations(userId);
+      loadGroupsData(userId);
+      loadMeetupsData(userId);
+      loadNotificationsData(userId);
+    };
+
+    const interval = setInterval(poll, 15000);
+    return () => clearInterval(interval);
+  }, [session]);
+
   async function loadProfile(userId: string) {
     const { data } = await supabase
       .from('profiles')
@@ -1784,6 +1800,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         type: 'meetup_created',
         user_id: userId,
         meetup_id: meetupData.id,
+        course_id: data.course_id || null,
       });
 
       const newActivities = await loadActivities();
