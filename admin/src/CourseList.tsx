@@ -38,9 +38,14 @@ export default function CourseList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Courses</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/courses/new')}>
-          + Add Course
-        </button>
+        <div className="btn-group">
+          <button className="btn" onClick={() => navigate('/courses/import')}>
+            Import CSV
+          </button>
+          <button className="btn btn-primary" onClick={() => navigate('/courses/new')}>
+            + Add Course
+          </button>
+        </div>
       </div>
 
       <div className="table-container">

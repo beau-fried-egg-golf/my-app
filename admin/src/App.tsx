@@ -6,6 +6,7 @@ import Layout from './Layout';
 import Dashboard from './Dashboard';
 import CourseList from './CourseList';
 import CourseForm from './CourseForm';
+import CourseImport from './CourseImport';
 import WriteupList from './WriteupList';
 import WriteupDetail from './WriteupDetail';
 import PhotoList from './PhotoList';
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="courses" element={<CourseList />} />
         <Route path="courses/new" element={<CourseForm />} />
         <Route path="courses/:id/edit" element={<CourseForm />} />
+        <Route path="courses/import" element={<CourseImport />} />
         <Route path="writeups" element={<WriteupList />} />
         <Route path="writeups/:id" element={<WriteupDetail />} />
         <Route path="photos" element={<PhotoList />} />

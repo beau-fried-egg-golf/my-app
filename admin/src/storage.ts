@@ -10,6 +10,10 @@ export async function saveCourse(course: Course): Promise<void> {
   await supabase.from('courses').upsert(course);
 }
 
+export async function saveCourses(courses: Course[]): Promise<void> {
+  await supabase.from('courses').upsert(courses);
+}
+
 export async function deleteCourse(id: string): Promise<void> {
   await supabase.from('courses').delete().eq('id', id);
 }
