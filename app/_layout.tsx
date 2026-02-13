@@ -11,7 +11,7 @@ function BackArrow() {
   const router = useRouter();
   return (
     <Pressable onPress={() => router.back()} style={{ marginLeft: 16, paddingRight: 4 }}>
-      <Text style={{ fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black }}>{'<'}</Text>
+      <Ionicons name="chevron-back" size={28} color={Colors.black} />
     </Pressable>
   );
 }
@@ -68,7 +68,7 @@ export default function RootLayout() {
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="member/[id]" options={{ title: 'Member', headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
+        <Stack.Screen name="member/[id]" options={{ title: 'Member', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
         <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-group"
