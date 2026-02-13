@@ -660,6 +660,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       : { data: [] };
     const meetupMap = new Map((meetupInfo ?? []).map(m => [m.id, m]));
 
+    // Batch fetch post data for notifications with post_id
+    const postIds = [...new Set(rawNotifications.filter(n => n.post_id).map(n => n.post_id!))];
+    const { data: postInfo } = postIds.length > 0
+      ? await supabase.from('posts').select('id, content').in('id', postIds)
+      : { data: [] };
+    const postMap = new Map((postInfo ?? []).map(p => [p.id, p.content]));
+
     // Batch fetch group names
     const groupIds = [...new Set(rawNotifications.filter(n => n.group_id).map(n => n.group_id!))];
     const { data: groupInfo } = groupIds.length > 0
@@ -681,6 +688,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         actor_name: actor?.name,
         actor_image: actor?.image ?? null,
         writeup_title: writeup?.title,
+        post_content: n.post_id ? postMap.get(n.post_id) ?? '' : undefined,
         course_name: courseName,
         meetup_name: meetup?.name,
         meetup_date: meetup?.meetup_date,
@@ -1189,9 +1197,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         prev.map(p => p.id === postId ? { ...p, reply_count: p.reply_count + 1 } : p),
       );
 
+      // Insert activity
+      const post = posts.find(p => p.id === postId);
+      await supabase.from('activities').insert({
+        type: 'post_reply',
+        user_id: userId,
+        post_id: postId,
+        target_user_id: post?.user_id ?? null,
+      });
+
+      // Insert notification (no self-notification)
+      if (post && post.user_id !== userId) {
+        await supabase.from('notifications').insert({
+          user_id: post.user_id,
+          type: 'post_reply',
+          actor_id: userId,
+          post_id: postId,
+        });
+      }
+
+      // Refresh activities
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+
       return { ...reply, author_name: user?.name ?? 'Member' };
     },
-    [session, user],
+    [session, user, posts],
   );
 
   const getWriteupReplies = useCallback(
@@ -1237,9 +1268,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         prev.map(w => w.id === writeupId ? { ...w, reply_count: w.reply_count + 1 } : w),
       );
 
+      // Insert activity
+      const writeup = writeups.find(w => w.id === writeupId);
+      await supabase.from('activities').insert({
+        type: 'writeup_reply',
+        user_id: userId,
+        writeup_id: writeupId,
+        target_user_id: writeup?.user_id ?? null,
+      });
+
+      // Insert notification (no self-notification)
+      if (writeup && writeup.user_id !== userId) {
+        await supabase.from('notifications').insert({
+          user_id: writeup.user_id,
+          type: 'writeup_reply',
+          actor_id: userId,
+          writeup_id: writeupId,
+        });
+      }
+
+      // Refresh activities
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+
       return { ...reply, author_name: user?.name ?? 'Member' };
     },
-    [session, user],
+    [session, user, writeups],
   );
 
   const deletePost = useCallback(

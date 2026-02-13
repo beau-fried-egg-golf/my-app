@@ -190,7 +190,7 @@ export interface WriteupReply {
 
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created' | 'meetup_created' | 'meetup_signup';
+  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created' | 'meetup_created' | 'meetup_signup' | 'post_reply' | 'writeup_reply';
   user_id: string;
   writeup_id: string | null;
   post_id?: string | null;
@@ -325,7 +325,7 @@ export interface MeetupMessage {
   sender_image?: string | null;
 }
 
-export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d';
+export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply';
 
 export interface Notification {
   id: string;
@@ -333,6 +333,7 @@ export interface Notification {
   type: NotificationType;
   actor_id: string | null;
   writeup_id: string | null;
+  post_id: string | null;
   meetup_id: string | null;
   group_id: string | null;
   is_read: boolean;
@@ -341,6 +342,7 @@ export interface Notification {
   actor_name?: string;
   actor_image?: string | null;
   writeup_title?: string;
+  post_content?: string;
   course_name?: string;
   meetup_name?: string;
   meetup_date?: string;

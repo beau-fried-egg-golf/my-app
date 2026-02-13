@@ -220,21 +220,26 @@ export default function PostDetailScreen() {
         }
       />
       <View style={styles.replyInputBar}>
-        <TextInput
-          style={styles.replyInput}
-          value={replyText}
-          onChangeText={setReplyText}
-          placeholder="Write a reply..."
-          placeholderTextColor={Colors.gray}
-          multiline
-        />
-        <Pressable
-          style={[styles.sendButton, (!replyText.trim() || sendingReply) && styles.sendButtonDisabled]}
-          onPress={handleSendReply}
-          disabled={!replyText.trim() || sendingReply}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </Pressable>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.replyInput}
+            value={replyText}
+            onChangeText={setReplyText}
+            placeholder="Write a reply..."
+            placeholderTextColor={Colors.gray}
+            multiline
+            maxLength={2000}
+          />
+          {!!replyText.trim() && (
+            <Pressable
+              style={styles.sendBtn}
+              onPress={handleSendReply}
+              disabled={sendingReply}
+            >
+              <Ionicons name="arrow-up" size={18} color={Colors.white} />
+            </Pressable>
+          )}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
@@ -272,9 +277,8 @@ const styles = StyleSheet.create({
   replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
-  replyInputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
-  replyInput: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, color: Colors.black, maxHeight: 100, fontFamily: Fonts!.sans },
-  sendButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
-  sendButtonDisabled: { opacity: 0.4 },
-  sendButtonText: { color: Colors.white, fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  replyInputBar: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
+  inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
+  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 15, outlineColor: 'transparent', fontFamily: Fonts!.sans, color: Colors.black },
+  sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },
 });

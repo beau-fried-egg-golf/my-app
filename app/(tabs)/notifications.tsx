@@ -58,6 +58,21 @@ function getNotificationText(n: Notification): { parts: { text: string; bold: bo
           { text: ' is tomorrow', bold: false },
         ],
       };
+    case 'post_reply':
+      return {
+        parts: [
+          { text: n.actor_name ?? 'Someone', bold: true },
+          { text: ' replied to your post', bold: false },
+        ],
+      };
+    case 'writeup_reply':
+      return {
+        parts: [
+          { text: n.actor_name ?? 'Someone', bold: true },
+          { text: ' replied to your review on ', bold: false },
+          { text: n.course_name ?? 'a course', bold: true },
+        ],
+      };
     default:
       return { parts: [{ text: 'New notification', bold: false }] };
   }
@@ -73,6 +88,10 @@ function getNavTarget(n: Notification): string | null {
       return n.meetup_id ? `/meetup/${n.meetup_id}` : null;
     case 'group_join':
       return n.group_id ? `/group/${n.group_id}` : null;
+    case 'post_reply':
+      return n.post_id ? `/post/${n.post_id}` : null;
+    case 'writeup_reply':
+      return n.writeup_id ? `/writeup/${n.writeup_id}` : null;
     default:
       return null;
   }
