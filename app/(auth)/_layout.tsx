@@ -7,8 +7,12 @@ export default function AuthLayout() {
   const { session, isLoading } = useStore();
 
   if (isLoading) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
-      <Image source={require('../../assets/images/FEGC App Icon.png')} style={{ width: 120, height: 120 }} />
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000' }}>
+      <Image
+        source={require('../../assets/images/new welcome screen.png')}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode="contain"
+      />
     </View>
   );
 
