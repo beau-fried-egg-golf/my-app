@@ -1,0 +1,15 @@
+{
+  "rewrites": [
+    { "source": "/admin/:path*", "destination": "/admin/index.html" },
+
+    { "source": "/course/:id", "destination": "/course/[id].html" },
+    { "source": "/post/:id", "destination": "/post/[id].html" },
+    { "source": "/writeup/:id", "destination": "/writeup/[id].html" },
+    { "source": "/member/:id", "destination": "/member/[id].html" },
+    { "source": "/conversation/:id", "destination": "/conversation/[id].html" },
+    { "source": "/group/:id", "destination": "/group/[id].html" },
+    { "source": "/group-chat/:id", "destination": "/group-chat/[id].html" },
+    { "source": "/meetup/:id", "destination": "/meetup/[id].html" },
+    { "source": "/meetup-chat/:id", "destination": "/meetup-chat/[id].html" }
+  ]
+}
