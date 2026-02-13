@@ -334,7 +334,7 @@ export async function fetchFlaggedContent(): Promise<ContentFlag[]> {
   const grouped = new Map<string, { flags: typeof flags; content_type: string; content_id: string }>();
   for (const f of flags) {
     const key = `${f.content_type}:${f.content_id}`;
-    const entry = grouped.get(key) ?? { flags: [], content_type: f.content_type, content_id: f.content_id };
+    const entry = grouped.get(key) ?? { flags: [] as typeof flags, content_type: f.content_type, content_id: f.content_id };
     entry.flags.push(f);
     grouped.set(key, entry);
   }
