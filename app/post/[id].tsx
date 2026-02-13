@@ -239,6 +239,12 @@ export default function PostDetailScreen() {
             placeholderTextColor={Colors.gray}
             multiline
             maxLength={2000}
+            onKeyPress={(e: any) => {
+              if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                handleSendReply();
+              }
+            }}
           />
           {!!replyText.trim() && (
             <Pressable
