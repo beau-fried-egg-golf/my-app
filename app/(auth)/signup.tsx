@@ -19,11 +19,13 @@ export default function SignupScreen() {
   const { signUp } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canSubmit = email.trim().length > 0 && password.length >= 6 && name.trim().length > 0;
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = email.trim().length > 0 && password.length >= 6 && name.trim().length > 0 && passwordsMatch;
 
   async function handleSignup() {
     if (!canSubmit || loading) return;
@@ -33,6 +35,8 @@ export default function SignupScreen() {
       const { error: authError } = await signUp(email.trim(), password, name.trim());
       if (authError) {
         setError(authError.message);
+      } else {
+        router.replace('/onboarding');
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -93,8 +97,23 @@ export default function SignupScreen() {
               placeholder="At least 6 characters"
               placeholderTextColor={Colors.gray}
               secureTextEntry
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Confirm Password *</Text>
+            <TextInput
+              style={styles.input}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Re-enter your password"
+              placeholderTextColor={Colors.gray}
+              secureTextEntry
               onSubmitEditing={handleSignup}
             />
+            {confirmPassword.length > 0 && !passwordsMatch ? (
+              <Text style={styles.errorInline}>Passwords do not match</Text>
+            ) : null}
           </View>
         </View>
 
@@ -147,6 +166,12 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     fontSize: 14,
     fontFamily: Fonts!.sans,
+  },
+  errorInline: {
+    color: '#d32f2f',
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    marginTop: 4,
   },
   form: {
     gap: 20,

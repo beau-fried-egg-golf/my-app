@@ -3,6 +3,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,24 +14,27 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
-export default function LoginScreen() {
+export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { signIn } = useStore();
-  const [email, setEmail] = useState('');
+  const { updatePassword } = useStore();
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const canSubmit = email.trim().length > 0 && password.length >= 6;
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit = password.length >= 6 && passwordsMatch;
 
-  async function handleLogin() {
+  async function handleUpdate() {
     if (!canSubmit || loading) return;
     setError('');
     setLoading(true);
     try {
-      const { error: authError } = await signIn(email.trim(), password);
+      const { error: authError } = await updatePassword(password);
       if (authError) {
         setError(authError.message);
+      } else {
+        router.replace('/(tabs)');
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -44,10 +48,10 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <LetterSpacedHeader text="Welcome Back" size={28} />
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <LetterSpacedHeader text="Set New Password" size={28} />
+          <Text style={styles.subtitle}>Enter your new password below</Text>
         </View>
 
         {error ? (
@@ -58,37 +62,33 @@ export default function LoginScreen() {
 
         <View style={styles.form}>
           <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>New Password</Text>
             <TextInput
               style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="At least 6 characters"
               placeholderTextColor={Colors.gray}
-              autoCapitalize="none"
-              keyboardType="email-address"
+              secureTextEntry
               autoFocus
             />
           </View>
 
           <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
+            <Text style={styles.label}>Confirm Password</Text>
             <TextInput
               style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Your password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              placeholder="Re-enter your password"
               placeholderTextColor={Colors.gray}
               secureTextEntry
-              onSubmitEditing={handleLogin}
+              onSubmitEditing={handleUpdate}
             />
+            {confirmPassword.length > 0 && !passwordsMatch ? (
+              <Text style={styles.errorInline}>Passwords do not match</Text>
+            ) : null}
           </View>
-
-          <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
-            <Text style={styles.forgotText}>
-              <Text style={styles.forgotBold}>Forgot password?</Text>
-            </Text>
-          </Pressable>
         </View>
 
         <Pressable
@@ -97,17 +97,13 @@ export default function LoginScreen() {
             (!canSubmit || loading) && styles.buttonDisabled,
             pressed && canSubmit && !loading && styles.buttonPressed,
           ]}
-          onPress={handleLogin}
+          onPress={handleUpdate}
         >
-          <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
-        </Pressable>
-
-        <Pressable style={styles.linkButton} onPress={() => router.push('/(auth)/signup')}>
-          <Text style={styles.linkText}>
-            Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
+          <Text style={styles.buttonText}>
+            {loading ? 'Updating...' : 'Update Password'}
           </Text>
         </Pressable>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -116,10 +112,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
-    justifyContent: 'center',
   },
   content: {
     padding: 24,
+    paddingTop: 80,
   },
   header: {
     marginBottom: 32,
@@ -140,6 +136,12 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     fontSize: 14,
     fontFamily: Fonts!.sans,
+  },
+  errorInline: {
+    color: '#d32f2f',
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    marginTop: 4,
   },
   form: {
     gap: 20,
@@ -181,31 +183,6 @@ const styles = StyleSheet.create({
   buttonText: {
     color: Colors.white,
     fontSize: 16,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-  },
-  linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
-    cursor: 'pointer' as any,
-  },
-  linkText: {
-    fontSize: 15,
-    color: Colors.gray,
-    fontFamily: Fonts!.sans,
-  },
-  linkBold: {
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  forgotText: {
-    fontSize: 14,
-    color: Colors.gray,
-    fontFamily: Fonts!.sans,
-    marginTop: 8,
-  },
-  forgotBold: {
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
   },

@@ -15,6 +15,10 @@ interface StoreContextType {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
+  needsPasswordReset: boolean;
+  clearPasswordReset: () => void;
   saveUser: (user: User) => Promise<void>;
   addWriteup: (data: { courseId: string; title: string; content: string; photos: { url: string; caption: string }[] }) => Promise<Writeup>;
   updateWriteup: (writeupId: string, data: { title: string; content: string; photos: { id?: string; url: string; caption: string }[] }) => Promise<void>;
@@ -117,6 +121,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const meetupsRef = useRef<Meetup[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
+  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -217,8 +222,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === 'PASSWORD_RECOVERY') {
+        setNeedsPasswordReset(true);
+      }
       if (s) {
         loadProfile(s.user.id);
         loadData();
@@ -743,6 +751,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+  }, []);
+
+  const resetPassword = useCallback(async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'myapp://reset-password',
+    });
+    return { error };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (!error) setNeedsPasswordReset(false);
+    return { error };
+  }, []);
+
+  const clearPasswordReset = useCallback(() => {
+    setNeedsPasswordReset(false);
   }, []);
 
   const saveUser = useCallback(async (u: User) => {
@@ -2310,6 +2335,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         signIn,
         signUp,
         signOut,
+        resetPassword,
+        updatePassword,
+        needsPasswordReset,
+        clearPasswordReset,
         saveUser,
         addWriteup,
         updateWriteup,

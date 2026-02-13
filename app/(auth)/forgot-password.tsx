@@ -9,28 +9,31 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { signIn } = useStore();
+  const { resetPassword } = useStore();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [sent, setSent] = useState(false);
 
-  const canSubmit = email.trim().length > 0 && password.length >= 6;
+  const canSubmit = email.trim().length > 0;
 
-  async function handleLogin() {
+  async function handleReset() {
     if (!canSubmit || loading) return;
     setError('');
     setLoading(true);
     try {
-      const { error: authError } = await signIn(email.trim(), password);
+      const { error: authError } = await resetPassword(email.trim());
       if (authError) {
         setError(authError.message);
+      } else {
+        setSent(true);
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -45,9 +48,15 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <View style={styles.content}>
+        <Pressable onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="chevron-back" size={28} color={Colors.black} />
+        </Pressable>
+
         <View style={styles.header}>
-          <LetterSpacedHeader text="Welcome Back" size={28} />
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <LetterSpacedHeader text="Reset Password" size={28} />
+          <Text style={styles.subtitle}>
+            Enter your email and we'll send a reset link
+          </Text>
         </View>
 
         {error ? (
@@ -56,57 +65,50 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={Colors.gray}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoFocus
-            />
-          </View>
-
-          <View style={styles.field}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Your password"
-              placeholderTextColor={Colors.gray}
-              secureTextEntry
-              onSubmitEditing={handleLogin}
-            />
-          </View>
-
-          <Pressable onPress={() => router.push('/(auth)/forgot-password')}>
-            <Text style={styles.forgotText}>
-              <Text style={styles.forgotBold}>Forgot password?</Text>
+        {sent ? (
+          <View style={styles.successBox}>
+            <Text style={styles.successText}>
+              Check your email for a reset link
             </Text>
-          </Pressable>
-        </View>
+            <Pressable style={styles.linkButton} onPress={() => router.back()}>
+              <Text style={styles.linkText}>
+                <Text style={styles.linkBold}>Back to Sign In</Text>
+              </Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <View style={styles.form}>
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={Colors.gray}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  autoFocus
+                  onSubmitEditing={handleReset}
+                />
+              </View>
+            </View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            (!canSubmit || loading) && styles.buttonDisabled,
-            pressed && canSubmit && !loading && styles.buttonPressed,
-          ]}
-          onPress={handleLogin}
-        >
-          <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
-        </Pressable>
-
-        <Pressable style={styles.linkButton} onPress={() => router.push('/(auth)/signup')}>
-          <Text style={styles.linkText}>
-            Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
-          </Text>
-        </Pressable>
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                (!canSubmit || loading) && styles.buttonDisabled,
+                pressed && canSubmit && !loading && styles.buttonPressed,
+              ]}
+              onPress={handleReset}
+            >
+              <Text style={styles.buttonText}>
+                {loading ? 'Sending...' : 'Send Reset Link'}
+              </Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -120,6 +122,10 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
+  },
+  backButton: {
+    marginBottom: 24,
+    alignSelf: 'flex-start',
   },
   header: {
     marginBottom: 32,
@@ -140,6 +146,19 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
     fontSize: 14,
     fontFamily: Fonts!.sans,
+  },
+  successBox: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+    gap: 16,
+  },
+  successText: {
+    color: '#2e7d32',
+    fontSize: 16,
+    fontFamily: Fonts!.sans,
+    textAlign: 'center',
   },
   form: {
     gap: 20,
@@ -185,8 +204,7 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
   },
   linkButton: {
-    marginTop: 20,
-    alignItems: 'center',
+    marginTop: 4,
     cursor: 'pointer' as any,
   },
   linkText: {
@@ -198,15 +216,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     color: Colors.black,
-  },
-  forgotText: {
-    fontSize: 14,
-    color: Colors.gray,
-    fontFamily: Fonts!.sans,
-    marginTop: 8,
-  },
-  forgotBold: {
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
   },
 });

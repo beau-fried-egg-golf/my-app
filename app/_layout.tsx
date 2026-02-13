@@ -1,9 +1,10 @@
+import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Image, Pressable, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
-import { StoreProvider } from '@/data/store';
+import { StoreProvider, useStore } from '@/data/store';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
@@ -14,6 +15,19 @@ function BackArrow() {
       <Ionicons name="chevron-back" size={28} color={Colors.black} />
     </Pressable>
   );
+}
+
+function PasswordResetNavigator() {
+  const { needsPasswordReset } = useStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (needsPasswordReset) {
+      router.replace('/reset-password');
+    }
+  }, [needsPasswordReset]);
+
+  return null;
 }
 
 export default function RootLayout() {
@@ -34,6 +48,7 @@ export default function RootLayout() {
 
   return (
     <StoreProvider>
+      <PasswordResetNavigator />
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
@@ -85,6 +100,10 @@ export default function RootLayout() {
         <Stack.Screen
           name="onboarding"
           options={{ headerShown: false, presentation: 'fullScreenModal' }}
+        />
+        <Stack.Screen
+          name="reset-password"
+          options={{ headerShown: false }}
         />
       </Stack>
     </StoreProvider>

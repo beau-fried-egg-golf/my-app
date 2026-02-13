@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/messages', label: 'Messages' },
   { to: '/meetups', label: 'Meetups' },
   { to: '/flags', label: 'Flagged' },
+  { to: '/email-templates', label: 'Emails' },
 ];
 
 export default function Layout() {

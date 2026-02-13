@@ -16,19 +16,15 @@ import { useStore } from '@/data/store';
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, saveUser } = useStore();
-  const [name, setName] = useState(user?.name ?? '');
   const [location, setLocation] = useState(user?.location ?? '');
   const [handicap, setHandicap] = useState('');
   const [homeCourse, setHomeCourse] = useState('');
   const [favoriteBall, setFavoriteBall] = useState('');
 
-  const canSubmit = name.trim().length > 0;
-
   async function handleCreate() {
-    if (!canSubmit || !user) return;
+    if (!user) return;
     await saveUser({
       ...user,
-      name: name.trim(),
       location: location.trim(),
       handicap: handicap ? parseFloat(handicap) : null,
       homeCourse: homeCourse.trim(),
@@ -44,23 +40,11 @@ export default function OnboardingScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome</Text>
-          <Text style={styles.subtitle}>Complete your profile to get started</Text>
+          <Text style={styles.title}>Complete Your Profile</Text>
+          <Text style={styles.subtitle}>Just a few more details to set up your account</Text>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={Colors.gray}
-              autoFocus
-            />
-          </View>
-
           <View style={styles.field}>
             <Text style={styles.label}>Location</Text>
             <TextInput
@@ -108,9 +92,8 @@ export default function OnboardingScreen() {
         </View>
 
         <Pressable
-          style={[styles.button, !canSubmit && styles.buttonDisabled]}
+          style={styles.button}
           onPress={handleCreate}
-          disabled={!canSubmit}
         >
           <Text style={styles.buttonText}>Save Profile</Text>
         </Pressable>

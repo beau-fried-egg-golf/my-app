@@ -19,6 +19,7 @@ import MeetupList from './MeetupList';
 import MeetupForm from './MeetupForm';
 import FlagQueue from './FlagQueue';
 import FEPostForm from './FEPostForm';
+import EmailTemplates from './EmailTemplates';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -64,6 +65,7 @@ export default function App() {
         <Route path="meetups/new" element={<MeetupForm />} />
         <Route path="meetups/:id/edit" element={<MeetupForm />} />
         <Route path="flags" element={<FlagQueue />} />
+        <Route path="email-templates" element={<EmailTemplates />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

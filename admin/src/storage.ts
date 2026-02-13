@@ -454,3 +454,91 @@ export async function createFEPost(data: {
 
   if (activityError) throw activityError;
 }
+
+// ---- Email Templates (Supabase Management API) ----
+
+export interface EmailTemplate {
+  subject: string;
+  content: string;
+}
+
+export interface EmailTemplates {
+  confirm: EmailTemplate;
+  recovery: EmailTemplate;
+  magic_link: EmailTemplate;
+}
+
+const SUPABASE_PROJECT_REF = import.meta.env.VITE_SUPABASE_URL
+  ? new URL(import.meta.env.VITE_SUPABASE_URL).hostname.split('.')[0]
+  : '';
+const MANAGEMENT_API_KEY = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY ?? '';
+
+async function managementApiFetch(path: string, options?: RequestInit) {
+  const res = await fetch(`https://api.supabase.com${path}`, {
+    ...options,
+    headers: {
+      'Authorization': `Bearer ${MANAGEMENT_API_KEY}`,
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Management API error: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+export async function getEmailTemplates(): Promise<EmailTemplates> {
+  const config = await managementApiFetch(
+    `/v1/projects/${SUPABASE_PROJECT_REF}/config/auth`
+  );
+
+  return {
+    confirm: {
+      subject: config.MAILER_SUBJECTS_CONFIRMATION ?? '',
+      content: config.MAILER_TEMPLATES_CONFIRMATION_CONTENT ?? '',
+    },
+    recovery: {
+      subject: config.MAILER_SUBJECTS_RECOVERY ?? '',
+      content: config.MAILER_TEMPLATES_RECOVERY_CONTENT ?? '',
+    },
+    magic_link: {
+      subject: config.MAILER_SUBJECTS_MAGIC_LINK ?? '',
+      content: config.MAILER_TEMPLATES_MAGIC_LINK_CONTENT ?? '',
+    },
+  };
+}
+
+export async function updateEmailTemplate(
+  type: 'confirm' | 'recovery' | 'magic_link',
+  subject: string,
+  content: string
+): Promise<void> {
+  const keyMap: Record<string, { subject: string; content: string }> = {
+    confirm: {
+      subject: 'MAILER_SUBJECTS_CONFIRMATION',
+      content: 'MAILER_TEMPLATES_CONFIRMATION_CONTENT',
+    },
+    recovery: {
+      subject: 'MAILER_SUBJECTS_RECOVERY',
+      content: 'MAILER_TEMPLATES_RECOVERY_CONTENT',
+    },
+    magic_link: {
+      subject: 'MAILER_SUBJECTS_MAGIC_LINK',
+      content: 'MAILER_TEMPLATES_MAGIC_LINK_CONTENT',
+    },
+  };
+
+  const keys = keyMap[type];
+  await managementApiFetch(
+    `/v1/projects/${SUPABASE_PROJECT_REF}/config/auth`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        [keys.subject]: subject,
+        [keys.content]: content,
+      }),
+    }
+  );
+}
