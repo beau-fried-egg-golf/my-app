@@ -71,6 +71,7 @@ export interface Post {
   user_id: string;
   content: string;
   created_at: string;
+  hidden: boolean;
   photos: PostPhoto[];
   reaction_count: number;
   reply_count: number;
@@ -137,4 +138,15 @@ export interface Activity {
   course_id: string | null;
   target_user_id: string | null;
   created_at: string;
+}
+
+export interface ContentFlag {
+  id: string;
+  user_id: string;
+  content_type: 'post' | 'writeup';
+  content_id: string;
+  created_at: string;
+  flag_count?: number;
+  content_preview?: string;
+  author_name?: string;
 }

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message, Meetup } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message, Meetup, ContentFlag } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -290,4 +290,98 @@ export async function saveMeetup(meetup: Meetup): Promise<void> {
 
 export async function deleteMeetup(id: string): Promise<void> {
   await supabase.from('meetups').delete().eq('id', id);
+}
+
+// ---- Content Flags ----
+
+export async function fetchFlaggedContent(): Promise<ContentFlag[]> {
+  const { data: flags } = await supabase
+    .from('content_flags')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!flags || flags.length === 0) return [];
+
+  // Group by content_type + content_id and count
+  const grouped = new Map<string, { flags: typeof flags; content_type: string; content_id: string }>();
+  for (const f of flags) {
+    const key = `${f.content_type}:${f.content_id}`;
+    const entry = grouped.get(key) ?? { flags: [], content_type: f.content_type, content_id: f.content_id };
+    entry.flags.push(f);
+    grouped.set(key, entry);
+  }
+
+  // Fetch content previews
+  const postIds = [...grouped.values()].filter(g => g.content_type === 'post').map(g => g.content_id);
+  const writeupIds = [...grouped.values()].filter(g => g.content_type === 'writeup').map(g => g.content_id);
+
+  const [postsRes, writeupsRes] = await Promise.all([
+    postIds.length > 0
+      ? supabase.from('posts').select('id, content, user_id, hidden').in('id', postIds)
+      : { data: [] },
+    writeupIds.length > 0
+      ? supabase.from('writeups').select('id, title, user_id, hidden').in('id', writeupIds)
+      : { data: [] },
+  ]);
+
+  const postMap = new Map((postsRes.data ?? []).map(p => [p.id, p]));
+  const writeupMap = new Map((writeupsRes.data ?? []).map(w => [w.id, w]));
+
+  // Fetch author names
+  const allUserIds = [
+    ...(postsRes.data ?? []).map(p => p.user_id),
+    ...(writeupsRes.data ?? []).map(w => w.user_id),
+  ];
+  const uniqueUserIds = [...new Set(allUserIds)];
+  const { data: profiles } = uniqueUserIds.length > 0
+    ? await supabase.from('profiles').select('id, name').in('id', uniqueUserIds)
+    : { data: [] };
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  const result: ContentFlag[] = [];
+  for (const [, entry] of grouped) {
+    const firstFlag = entry.flags[0];
+    let content_preview = '';
+    let author_name = '';
+    let is_hidden = false;
+
+    if (entry.content_type === 'post') {
+      const post = postMap.get(entry.content_id);
+      content_preview = post?.content?.slice(0, 100) ?? '[deleted]';
+      author_name = post ? (profileMap.get(post.user_id) ?? 'Member') : 'Unknown';
+      is_hidden = post?.hidden ?? false;
+    } else {
+      const writeup = writeupMap.get(entry.content_id);
+      content_preview = writeup?.title ?? '[deleted]';
+      author_name = writeup ? (profileMap.get(writeup.user_id) ?? 'Member') : 'Unknown';
+      is_hidden = writeup?.hidden ?? false;
+    }
+
+    result.push({
+      id: firstFlag.id,
+      user_id: firstFlag.user_id,
+      content_type: entry.content_type as 'post' | 'writeup',
+      content_id: entry.content_id,
+      created_at: firstFlag.created_at,
+      flag_count: entry.flags.length,
+      content_preview,
+      author_name,
+    });
+  }
+
+  return result.sort((a, b) => (b.flag_count ?? 0) - (a.flag_count ?? 0));
+}
+
+export async function republishContent(contentType: 'post' | 'writeup', contentId: string): Promise<void> {
+  const table = contentType === 'post' ? 'posts' : 'writeups';
+  await supabase.from(table).update({ hidden: false }).eq('id', contentId);
+  await supabase.from('content_flags').delete().eq('content_type', contentType).eq('content_id', contentId);
+}
+
+export async function keepContentHidden(contentType: 'post' | 'writeup', contentId: string): Promise<void> {
+  await supabase.from('content_flags').delete().eq('content_type', contentType).eq('content_id', contentId);
+}
+
+export async function togglePostHidden(postId: string, currentHidden: boolean): Promise<void> {
+  await supabase.from('posts').update({ hidden: !currentHidden }).eq('id', postId);
 }

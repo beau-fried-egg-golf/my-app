@@ -21,6 +21,15 @@ import { uploadPhoto } from '@/utils/photo';
 import WordHighlight from '@/components/WordHighlight';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
+const REACTION_EMOJI: Record<string, string> = {
+  like: '\uD83D\uDC4D',
+  love: '\u2764\uFE0F',
+  fire: '\uD83D\uDD25',
+  laugh: '\uD83D\uDE02',
+};
+
+const REACTION_KEYS = ['like', 'love', 'fire', 'laugh'];
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     month: 'long',
@@ -43,10 +52,11 @@ export default function WriteupDetailScreen() {
     courses,
     user,
     getUserName,
-    toggleUpvote,
+    toggleWriteupReaction,
     togglePhotoUpvote,
     updateWriteup,
     deleteWriteup,
+    flagContent,
   } = useStore();
 
   const writeup = writeups.find((w) => w.id === id);
@@ -59,7 +69,6 @@ export default function WriteupDetailScreen() {
   if (!writeup) return null;
 
   const course = courses.find((c) => c.id === writeup.course_id);
-  const hasUpvoted = writeup.user_has_upvoted ?? false;
   const isOwner = user?.id === writeup.user_id;
   const authorName = writeup.author_name ?? getUserName(writeup.user_id);
   const authorParts = authorName.split(' ').filter(Boolean);
@@ -107,6 +116,19 @@ export default function WriteupDetailScreen() {
         onPress: async () => {
           await deleteWriteup(writeup!.id);
           router.back();
+        },
+      },
+    ]);
+  }
+
+  function handleFlag() {
+    Alert.alert('Flag Review', 'Are you sure you want to flag this review as inappropriate?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Flag',
+        style: 'destructive',
+        onPress: async () => {
+          await flagContent('writeup', writeup!.id);
         },
       },
     ]);
@@ -229,16 +251,32 @@ export default function WriteupDetailScreen() {
         </View>
       )}
 
+      <View style={styles.reactionsBar}>
+        {REACTION_KEYS.map(key => {
+          const active = writeup.user_reactions.includes(key);
+          const count = writeup.reactions[key] ?? 0;
+          return (
+            <Pressable
+              key={key}
+              style={[styles.reactionButton, active && styles.reactionButtonActive]}
+              onPress={() => toggleWriteupReaction(writeup.id, key)}
+            >
+              <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
+              {count > 0 && (
+                <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>{count}</Text>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+
       <View style={styles.actions}>
-        <Pressable
-          style={[styles.upvoteButton, hasUpvoted && styles.upvoteButtonActive]}
-          onPress={() => toggleUpvote(writeup.id)}
-        >
-          <Ionicons name={hasUpvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={15} color={hasUpvoted ? Colors.white : Colors.black} />
-          <Text style={[styles.upvoteText, hasUpvoted && styles.upvoteTextActive]}>
-            {writeup.upvote_count ?? 0}
-          </Text>
-        </Pressable>
+        {!isOwner && (
+          <Pressable style={styles.flagButton} onPress={handleFlag}>
+            <Ionicons name="flag-outline" size={14} color={Colors.gray} />
+            <Text style={styles.flagText}>Flag</Text>
+          </Pressable>
+        )}
 
         {isOwner && (
           <View style={styles.ownerActions}>
@@ -275,11 +313,15 @@ const styles = StyleSheet.create({
   photoUpvoteActive: { backgroundColor: Colors.black, borderColor: Colors.black },
   photoUpvoteText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoUpvoteTextActive: { color: Colors.white },
-  actions: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  upvoteButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 },
-  upvoteButtonActive: { backgroundColor: Colors.black },
-  upvoteText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  upvoteTextActive: { color: Colors.white },
+  reactionsBar: { flexDirection: 'row', gap: 8, marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray },
+  reactionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  reactionButtonActive: { backgroundColor: Colors.black, borderColor: Colors.black },
+  reactionEmoji: { fontSize: 16 },
+  reactionCount: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  reactionCountActive: { color: Colors.white },
+  actions: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  flagButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
+  flagText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
   ownerActions: { flexDirection: 'row', gap: 12 },
   ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
   ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },

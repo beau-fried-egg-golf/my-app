@@ -19,7 +19,7 @@ interface StoreContextType {
   addWriteup: (data: { courseId: string; title: string; content: string; photos: { url: string; caption: string }[] }) => Promise<Writeup>;
   updateWriteup: (writeupId: string, data: { title: string; content: string; photos: { id?: string; url: string; caption: string }[] }) => Promise<void>;
   deleteWriteup: (writeupId: string) => Promise<void>;
-  toggleUpvote: (writeupId: string) => Promise<void>;
+  toggleWriteupReaction: (writeupId: string, reaction: string) => Promise<void>;
   togglePhotoUpvote: (photoId: string) => Promise<void>;
   getWriteupsForCourse: (courseId: string) => Writeup[];
   getCourseName: (courseId: string) => string;
@@ -32,6 +32,7 @@ interface StoreContextType {
   getPostReplies: (postId: string) => Promise<PostReply[]>;
   addPostReply: (postId: string, content: string) => Promise<PostReply>;
   deletePost: (postId: string) => Promise<void>;
+  flagContent: (contentType: 'post' | 'writeup', contentId: string) => Promise<void>;
   refreshData: () => Promise<void>;
   // Follows
   follows: Follow[];
@@ -61,6 +62,8 @@ interface StoreContextType {
   conversationListItems: ConversationListItem[];
   loadGroups: () => Promise<void>;
   createGroup: (data: { name: string; description: string; home_course_id: string | null; location_name: string; image: string | null }) => Promise<Group>;
+  updateGroup: (groupId: string, data: { name: string; description: string; home_course_id: string | null; location_name: string; image: string | null }) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<void>;
   leaveGroup: (groupId: string) => Promise<void>;
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>;
@@ -70,7 +73,9 @@ interface StoreContextType {
   // Meetups
   meetups: Meetup[];
   loadMeetups: () => Promise<void>;
-  createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }) => Promise<Meetup>;
+  createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; host_id?: string | null }) => Promise<Meetup>;
+  updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => Promise<void>;
+  deleteMeetup: (meetupId: string) => Promise<void>;
   joinMeetup: (meetupId: string) => Promise<void>;
   leaveMeetup: (meetupId: string) => Promise<void>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
@@ -328,6 +333,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const { data: rawWriteups } = await supabase
       .from('writeups')
       .select('*')
+      .eq('hidden', false)
       .order('created_at', { ascending: false });
 
     if (!rawWriteups || rawWriteups.length === 0) return [];
@@ -339,10 +345,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .select('*')
       .in('writeup_id', writeupIds);
 
-    // Load upvote counts for writeups
-    const { data: writeupUpvotes } = await supabase
-      .from('writeup_upvotes')
-      .select('writeup_id, user_id')
+    // Load reactions for writeups
+    const { data: writeupReactions } = await supabase
+      .from('writeup_reactions')
+      .select('writeup_id, user_id, reaction')
       .in('writeup_id', writeupIds);
 
     // Load photo upvote counts
@@ -384,13 +390,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       photosByWriteup.set(photo.writeup_id, list);
     }
 
+    // Aggregate reactions per writeup
+    const reactionsByWriteup = new Map<string, { counts: Record<string, number>; userReactions: string[] }>();
+    for (const r of writeupReactions ?? []) {
+      const entry = reactionsByWriteup.get(r.writeup_id) ?? { counts: {}, userReactions: [] };
+      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+      if (r.user_id === currentUserId) entry.userReactions.push(r.reaction);
+      reactionsByWriteup.set(r.writeup_id, entry);
+    }
+
     return rawWriteups.map(w => {
-      const upvotes = (writeupUpvotes ?? []).filter(u => u.writeup_id === w.id);
+      const rData = reactionsByWriteup.get(w.id);
+      const counts = rData?.counts ?? {};
+      const reactionCount = Object.values(counts).reduce((sum, n) => sum + n, 0);
       return {
         ...w,
         photos: photosByWriteup.get(w.id) ?? [],
-        upvote_count: upvotes.length,
-        user_has_upvoted: currentUserId ? upvotes.some(u => u.user_id === currentUserId) : false,
+        reactions: counts,
+        user_reactions: rData?.userReactions ?? [],
+        reaction_count: reactionCount,
         author_name: profileMap.get(w.user_id) ?? 'Member',
       };
     });
@@ -479,6 +497,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const { data: rawPosts } = await supabase
       .from('posts')
       .select('*')
+      .eq('hidden', false)
       .order('created_at', { ascending: false });
 
     if (!rawPosts || rawPosts.length === 0) return [];
@@ -774,8 +793,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const writeup: Writeup = {
         ...writeupData,
         photos,
-        upvote_count: 0,
-        user_has_upvoted: false,
+        reactions: {},
+        user_reactions: [],
+        reaction_count: 0,
         author_name: user?.name ?? 'Member',
       };
 
@@ -847,46 +867,49 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const toggleUpvote = useCallback(
-    async (writeupId: string) => {
+  const toggleWriteupReaction = useCallback(
+    async (writeupId: string, reaction: string) => {
       if (!session || !user) return;
       const userId = session.user.id;
 
       const writeup = writeups.find(w => w.id === writeupId);
       if (!writeup) return;
 
-      if (writeup.user_has_upvoted) {
-        // Remove upvote
-        await supabase
-          .from('writeup_upvotes')
-          .delete()
-          .eq('user_id', userId)
-          .eq('writeup_id', writeupId);
+      const hasReaction = writeup.user_reactions.includes(reaction);
 
-        // Remove upvote activity
-        await supabase
-          .from('activities')
-          .delete()
-          .eq('type', 'upvote')
-          .eq('user_id', userId)
-          .eq('writeup_id', writeupId);
+      // Optimistic update
+      setWriteups(prev =>
+        prev.map(w => {
+          if (w.id !== writeupId) return w;
+          const newReactions = { ...w.reactions };
+          const newUserReactions = [...w.user_reactions];
+          if (hasReaction) {
+            newReactions[reaction] = Math.max(0, (newReactions[reaction] ?? 0) - 1);
+            if (newReactions[reaction] === 0) delete newReactions[reaction];
+            const idx = newUserReactions.indexOf(reaction);
+            if (idx >= 0) newUserReactions.splice(idx, 1);
+          } else {
+            newReactions[reaction] = (newReactions[reaction] ?? 0) + 1;
+            newUserReactions.push(reaction);
+          }
+          const reactionCount = Object.values(newReactions).reduce((sum, n) => sum + n, 0);
+          return { ...w, reactions: newReactions, user_reactions: newUserReactions, reaction_count: reactionCount };
+        }),
+      );
 
-        // Remove upvote notification
-        if (writeup.user_id !== userId) {
-          await supabase
-            .from('notifications')
-            .delete()
-            .eq('type', 'upvote')
-            .eq('actor_id', userId)
-            .eq('writeup_id', writeupId);
-        }
+      if (hasReaction) {
+        await supabase
+          .from('writeup_reactions')
+          .delete()
+          .eq('writeup_id', writeupId)
+          .eq('user_id', userId)
+          .eq('reaction', reaction);
       } else {
-        // Add upvote
         await supabase
-          .from('writeup_upvotes')
-          .insert({ user_id: userId, writeup_id: writeupId });
+          .from('writeup_reactions')
+          .insert({ writeup_id: writeupId, user_id: userId, reaction });
 
-        // Add activity
+        // Add activity (keep 'upvote' type for compatibility)
         await supabase.from('activities').insert({
           type: 'upvote',
           user_id: userId,
@@ -895,7 +918,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           target_user_id: writeup.user_id,
         });
 
-        // Add upvote notification (no self-notification)
+        // Add notification (no self-notification)
         if (writeup.user_id !== userId) {
           await supabase.from('notifications').insert({
             user_id: writeup.user_id,
@@ -905,22 +928,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           });
         }
       }
-
-      // Optimistic update
-      setWriteups(prev =>
-        prev.map(w => {
-          if (w.id !== writeupId) return w;
-          return {
-            ...w,
-            user_has_upvoted: !w.user_has_upvoted,
-            upvote_count: (w.upvote_count ?? 0) + (w.user_has_upvoted ? -1 : 1),
-          };
-        }),
-      );
-
-      // Refresh activities
-      const newActivities = await loadActivities();
-      setActivities(newActivities);
     },
     [session, user, writeups],
   );
@@ -1181,6 +1188,37 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setActivities(newActivities);
     },
     [],
+  );
+
+  const flagContent = useCallback(
+    async (contentType: 'post' | 'writeup', contentId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      await supabase
+        .from('content_flags')
+        .insert({ user_id: userId, content_type: contentType, content_id: contentId });
+
+      // Count flags for this content
+      const { count } = await supabase
+        .from('content_flags')
+        .select('*', { count: 'exact', head: true })
+        .eq('content_type', contentType)
+        .eq('content_id', contentId);
+
+      if ((count ?? 0) >= 3) {
+        const table = contentType === 'post' ? 'posts' : 'writeups';
+        await supabase.from(table).update({ hidden: true }).eq('id', contentId);
+
+        // Remove from local state optimistically
+        if (contentType === 'post') {
+          setPosts(prev => prev.filter(p => p.id !== contentId));
+        } else {
+          setWriteups(prev => prev.filter(w => w.id !== contentId));
+        }
+      }
+    },
+    [session],
   );
 
   // ---- Follow methods ----
@@ -1517,6 +1555,53 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session, user, courses],
   );
 
+  const updateGroup = useCallback(
+    async (groupId: string, data: { name: string; description: string; home_course_id: string | null; location_name: string; image: string | null }) => {
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('groups')
+        .update({
+          name: data.name,
+          description: data.description,
+          home_course_id: data.home_course_id,
+          location_name: data.location_name,
+          image: data.image,
+        })
+        .eq('id', groupId);
+
+      if (error) throw error;
+
+      setGroups(prev => prev.map(g =>
+        g.id === groupId
+          ? {
+              ...g,
+              ...data,
+              home_course_name: data.home_course_id ? (courses.find(c => c.id === data.home_course_id)?.short_name ?? '') : undefined,
+            }
+          : g
+      ));
+
+      // Refresh activities so the feed reflects updated name
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session, courses],
+  );
+
+  const deleteGroup = useCallback(
+    async (groupId: string) => {
+      if (!session) return;
+      await supabase.from('groups').delete().eq('id', groupId);
+      setGroups(prev => prev.filter(g => g.id !== groupId));
+
+      // Refresh activities to remove references to deleted group
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
   const joinGroup = useCallback(
     async (groupId: string) => {
       if (!session) return;
@@ -1702,11 +1787,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const lastMsgs = lastMsgsRes.data ?? [];
 
     // Host names
-    const hostIds = [...new Set(rawMeetups.map(m => m.host_id))];
-    const { data: hostProfiles } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .in('id', hostIds);
+    const hostIds = [...new Set(rawMeetups.map(m => m.host_id).filter(Boolean))];
+    const { data: hostProfiles } = hostIds.length > 0
+      ? await supabase.from('profiles').select('id, name').in('id', hostIds)
+      : { data: [] };
     const hostMap = new Map((hostProfiles ?? []).map(p => [p.id, p.name]));
 
     // Member counts, membership, last read
@@ -1738,7 +1822,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         : false;
       return {
         ...m,
-        host_name: hostMap.get(m.host_id) ?? 'Member',
+        host_name: m.host_id ? (hostMap.get(m.host_id) ?? 'Member') : undefined,
         member_count: memberCountMap.get(m.id) ?? 0,
         is_member: isMember,
         _last_message: lastMsg?.content,
@@ -1756,16 +1840,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   const createMeetup = useCallback(
-    async (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null }): Promise<Meetup> => {
+    async (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; host_id?: string | null }): Promise<Meetup> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
+      const hostId = data.host_id === undefined ? userId : data.host_id;
 
       const { data: meetupData, error } = await supabase
         .from('meetups')
         .insert({
           name: data.name,
           description: data.description,
-          host_id: userId,
+          host_id: hostId,
           course_id: data.course_id,
           location_name: data.location_name,
           meetup_date: data.meetup_date,
@@ -1773,24 +1858,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           total_slots: data.total_slots,
           host_takes_slot: data.host_takes_slot,
           image: data.image,
+          is_fe_coordinated: data.is_fe_coordinated ?? false,
+          stripe_payment_url: data.stripe_payment_url ?? null,
         })
         .select()
         .single();
 
       if (error || !meetupData) throw error ?? new Error('Failed to create meetup');
 
-      // Add host as member if host_takes_slot
-      if (data.host_takes_slot) {
+      // Add host as member if host_takes_slot and there is a host
+      if (data.host_takes_slot && hostId) {
         await supabase
           .from('meetup_members')
-          .insert({ meetup_id: meetupData.id, user_id: userId });
+          .insert({ meetup_id: meetupData.id, user_id: hostId });
       }
 
       const meetup: Meetup = {
         ...meetupData,
-        host_name: user?.name ?? 'Member',
-        member_count: data.host_takes_slot ? 1 : 0,
-        is_member: data.host_takes_slot,
+        host_name: hostId ? (user?.name ?? 'Member') : undefined,
+        member_count: data.host_takes_slot && hostId ? 1 : 0,
+        is_member: data.host_takes_slot && hostId === userId,
       };
 
       setMeetups(prev => [meetup, ...prev]);
@@ -1809,6 +1896,55 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return meetup;
     },
     [session, user],
+  );
+
+  const updateMeetup = useCallback(
+    async (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => {
+      if (!session) return;
+
+      const { error } = await supabase
+        .from('meetups')
+        .update({
+          name: data.name,
+          description: data.description,
+          course_id: data.course_id,
+          location_name: data.location_name,
+          meetup_date: data.meetup_date,
+          cost: data.cost,
+          total_slots: data.total_slots,
+          host_takes_slot: data.host_takes_slot,
+          image: data.image,
+          is_fe_coordinated: data.is_fe_coordinated ?? false,
+          stripe_payment_url: data.stripe_payment_url ?? null,
+        })
+        .eq('id', meetupId);
+
+      if (error) throw error;
+
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId
+          ? { ...m, ...data, is_fe_coordinated: data.is_fe_coordinated ?? false, stripe_payment_url: data.stripe_payment_url ?? null }
+          : m
+      ));
+
+      // Refresh activities so the feed reflects updated name/course
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
+  const deleteMeetup = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      await supabase.from('meetups').delete().eq('id', meetupId);
+      setMeetups(prev => prev.filter(m => m.id !== meetupId));
+
+      // Refresh activities to remove references to deleted meetup
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
   );
 
   const joinMeetup = useCallback(
@@ -1842,8 +1978,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         course_id: meetup?.course_id || null,
       });
 
-      // Notify meetup host (no self-notification)
-      if (meetup && meetup.host_id !== userId) {
+      // Notify meetup host (no self-notification, skip if no host)
+      if (meetup && meetup.host_id && meetup.host_id !== userId) {
         await supabase.from('notifications').insert({
           user_id: meetup.host_id,
           type: 'meetup_signup',
@@ -2061,7 +2197,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addWriteup,
         updateWriteup,
         deleteWriteup,
-        toggleUpvote,
+        toggleWriteupReaction,
         togglePhotoUpvote,
         getWriteupsForCourse,
         getCourseName,
@@ -2074,6 +2210,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getPostReplies,
         addPostReply,
         deletePost,
+        flagContent,
         refreshData,
         follows,
         followingIds,
@@ -2100,6 +2237,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         conversationListItems,
         loadGroups,
         createGroup,
+        updateGroup,
+        deleteGroup,
         joinGroup,
         leaveGroup,
         getGroupMembers,
@@ -2109,6 +2248,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         meetups,
         loadMeetups,
         createMeetup,
+        updateMeetup,
+        deleteMeetup,
         joinMeetup,
         leaveMeetup,
         getMeetupMembers,

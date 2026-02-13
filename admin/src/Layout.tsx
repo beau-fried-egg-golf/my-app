@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/users', label: 'Users' },
   { to: '/messages', label: 'Messages' },
   { to: '/meetups', label: 'Meetups' },
+  { to: '/flags', label: 'Flagged' },
 ];
 
 export default function Layout() {

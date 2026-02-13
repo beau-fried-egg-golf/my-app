@@ -68,8 +68,8 @@ function WriteupCard({
         <Text style={styles.writeupDot}> · </Text>
         <Text style={styles.writeupTime}>{formatTime(writeup.created_at)}</Text>
         <Text style={styles.writeupDot}> · </Text>
-        <Ionicons name="thumbs-up-outline" size={12} color={Colors.gray} />
-        <Text style={styles.writeupUpvotes}>{writeup.upvote_count ?? 0}</Text>
+        <Ionicons name="heart-outline" size={12} color={Colors.gray} />
+        <Text style={styles.writeupUpvotes}>{writeup.reaction_count ?? 0}</Text>
       </View>
     </Pressable>
   );
@@ -101,7 +101,7 @@ export default function CourseDetailScreen() {
 
   const mostUpvoted = useMemo(() => {
     if (courseWriteups.length === 0) return null;
-    return [...courseWriteups].sort((a, b) => (b.upvote_count ?? 0) - (a.upvote_count ?? 0))[0];
+    return [...courseWriteups].sort((a, b) => (b.reaction_count ?? 0) - (a.reaction_count ?? 0))[0];
   }, [courseWriteups]);
 
   const allPhotos: GalleryPhoto[] = useMemo(
@@ -243,7 +243,7 @@ export default function CourseDetailScreen() {
 
       {activeTab === 'writeups' && (
         <>
-          {mostUpvoted && (mostUpvoted.upvote_count ?? 0) > 0 && (
+          {mostUpvoted && (mostUpvoted.reaction_count ?? 0) > 0 && (
             <View style={styles.section}>
               <WriteupCard
                 writeup={mostUpvoted}

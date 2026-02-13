@@ -16,6 +16,7 @@ import UserDetail from './UserDetail';
 import MessageList from './MessageList';
 import MeetupList from './MeetupList';
 import MeetupForm from './MeetupForm';
+import FlagQueue from './FlagQueue';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -58,6 +59,7 @@ export default function App() {
         <Route path="meetups" element={<MeetupList />} />
         <Route path="meetups/new" element={<MeetupForm />} />
         <Route path="meetups/:id/edit" element={<MeetupForm />} />
+        <Route path="flags" element={<FlagQueue />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

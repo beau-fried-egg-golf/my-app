@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
@@ -48,7 +49,7 @@ function formatTime(iso: string): string {
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost } = useStore();
+  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent } = useStore();
 
   const [replies, setReplies] = useState<PostReply[]>([]);
   const [replyText, setReplyText] = useState('');
@@ -97,6 +98,23 @@ export default function PostDetailScreen() {
             await deletePost(post!.id);
             router.back();
           },
+        },
+      ]);
+    }
+  }
+
+  function handleFlag() {
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Are you sure you want to flag this post as inappropriate?')) return;
+      flagContent('post', post!.id);
+    } else {
+      const { Alert } = require('react-native');
+      Alert.alert('Flag Post', 'Are you sure you want to flag this post as inappropriate?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Flag',
+          style: 'destructive',
+          onPress: () => flagContent('post', post!.id),
         },
       ]);
     }
@@ -151,13 +169,22 @@ export default function PostDetailScreen() {
         })}
       </View>
 
-      {isOwner && (
-        <View style={styles.ownerActions}>
-          <Pressable style={styles.ownerButton} onPress={handleDelete}>
-            <Text style={styles.ownerButtonText}>Delete</Text>
+      <View style={styles.postActions}>
+        {!isOwner && (
+          <Pressable style={styles.flagButton} onPress={handleFlag}>
+            <Ionicons name="flag-outline" size={14} color={Colors.gray} />
+            <Text style={styles.flagText}>Flag</Text>
           </Pressable>
-        </View>
-      )}
+        )}
+
+        {isOwner && (
+          <View style={styles.ownerActions}>
+            <Pressable style={styles.ownerButton} onPress={handleDelete}>
+              <Text style={styles.ownerButtonText}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
 
       <View style={styles.repliesHeader}>
         <Text style={styles.repliesTitle}>Replies ({replies.length})</Text>
@@ -232,7 +259,10 @@ const styles = StyleSheet.create({
   reactionEmoji: { fontSize: 16 },
   reactionCount: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   reactionCountActive: { color: Colors.white },
-  ownerActions: { flexDirection: 'row', gap: 12, marginTop: 16 },
+  postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
+  flagButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
+  flagText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
+  ownerActions: { flexDirection: 'row', gap: 12 },
   ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
   ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
   repliesHeader: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginBottom: 12 },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCourses, getWriteups, getActivities, getProfiles, getPosts, getConversations, getMeetups } from './storage';
-import type { Course, Writeup, Activity, Profile, Post, Conversation, Meetup } from './types';
+import { getCourses, getWriteups, getActivities, getProfiles, getPosts, getConversations, getMeetups, fetchFlaggedContent } from './storage';
+import type { Course, Writeup, Activity, Profile, Post, Conversation, Meetup, ContentFlag } from './types';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [meetups, setMeetups] = useState<Meetup[]>([]);
+  const [flaggedContent, setFlaggedContent] = useState<ContentFlag[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -32,7 +33,8 @@ export default function Dashboard() {
       getPosts(),
       getConversations(),
       getMeetups(),
-    ]).then(([c, w, a, p, po, co, me]) => {
+      fetchFlaggedContent(),
+    ]).then(([c, w, a, p, po, co, me, fl]) => {
       setCourses(c);
       setWriteups(w);
       setActivities(a);
@@ -40,6 +42,7 @@ export default function Dashboard() {
       setPosts(po);
       setConversations(co);
       setMeetups(me);
+      setFlaggedContent(fl);
     });
   }, []);
 
@@ -99,6 +102,13 @@ export default function Dashboard() {
           <div className="stat-value">{meetups.length}</div>
           <div className="stat-detail">
             {meetups.filter(m => m.is_fe_coordinated).length} FE coordinated
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Flagged</div>
+          <div className="stat-value">{flaggedContent.length}</div>
+          <div className="stat-detail">
+            <Link to="/flags" className="link">View queue</Link>
           </div>
         </div>
       </div>

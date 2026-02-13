@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getPosts, getPostReplies, deletePost, deletePostReply } from './storage';
+import { getPosts, getPostReplies, deletePost, deletePostReply, togglePostHidden } from './storage';
 import type { Post, PostReply } from './types';
 
 function formatDate(iso: string): string {
@@ -35,6 +35,12 @@ export default function PostDetail() {
       getPostReplies(id).then(setReplies);
     }
   }, [id]);
+
+  async function handleToggleHidden() {
+    if (!post) return;
+    await togglePostHidden(post.id, post.hidden);
+    setPost({ ...post, hidden: !post.hidden });
+  }
 
   async function handleDeletePost() {
     if (!post || !window.confirm('Delete this post permanently?')) return;
@@ -76,14 +82,24 @@ export default function PostDetail() {
               {' '}&middot; {formatDate(post.created_at)}
             </div>
           </div>
-          <button
-            className="btn btn-sm btn-danger"
-            onClick={handleDeletePost}
-            disabled={deleting}
-            style={{ marginLeft: 'auto' }}
-          >
-            {deleting ? 'Deleting...' : 'Delete Post'}
-          </button>
+          <div className="btn-group" style={{ marginLeft: 'auto' }}>
+            <button className="btn btn-sm" onClick={handleToggleHidden}>
+              {post.hidden ? 'Unhide' : 'Hide'}
+            </button>
+            <button
+              className="btn btn-sm btn-danger"
+              onClick={handleDeletePost}
+              disabled={deleting}
+            >
+              {deleting ? 'Deleting...' : 'Delete Post'}
+            </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 12 }}>
+          <span className={`badge ${post.hidden ? 'badge-hidden' : 'badge-visible'}`}>
+            {post.hidden ? 'Hidden' : 'Visible'}
+          </span>
         </div>
 
         <div style={{ margin: '16px 0', fontSize: 15, lineHeight: 1.6 }}>

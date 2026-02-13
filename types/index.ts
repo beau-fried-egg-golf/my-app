@@ -134,8 +134,9 @@ export interface Writeup {
   created_at: string;
   hidden: boolean;
   photos: Photo[];
-  upvote_count?: number;
-  user_has_upvoted?: boolean;
+  reactions: Record<string, number>;
+  user_reactions: string[];
+  reaction_count?: number;
   author_name?: string;
 }
 
@@ -160,6 +161,7 @@ export interface Post {
   user_id: string;
   content: string;
   created_at: string;
+  hidden: boolean;
   photos: PostPhoto[];
   reactions: Record<string, number>;
   user_reactions: string[];
@@ -272,7 +274,7 @@ export interface Meetup {
   id: string;
   name: string;
   description: string;
-  host_id: string;
+  host_id: string | null;
   course_id: string | null;
   location_name: string;
   meetup_date: string;
