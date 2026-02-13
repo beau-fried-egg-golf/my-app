@@ -137,6 +137,7 @@ export interface Writeup {
   reactions: Record<string, number>;
   user_reactions: string[];
   reaction_count?: number;
+  reply_count: number;
   author_name?: string;
 }
 
@@ -172,6 +173,15 @@ export interface Post {
 export interface PostReply {
   id: string;
   post_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string;
+}
+
+export interface WriteupReply {
+  id: string;
+  writeup_id: string;
   user_id: string;
   content: string;
   created_at: string;

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, Notification, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, Notification, profileToUser } from '@/types';
 
 interface StoreContextType {
   session: Session | null;
@@ -31,6 +31,8 @@ interface StoreContextType {
   togglePostReaction: (postId: string, reaction: string) => Promise<void>;
   getPostReplies: (postId: string) => Promise<PostReply[]>;
   addPostReply: (postId: string, content: string) => Promise<PostReply>;
+  getWriteupReplies: (writeupId: string) => Promise<WriteupReply[]>;
+  addWriteupReply: (writeupId: string, content: string) => Promise<WriteupReply>;
   deletePost: (postId: string) => Promise<void>;
   flagContent: (contentType: 'post' | 'writeup', contentId: string) => Promise<void>;
   refreshData: () => Promise<void>;
@@ -360,6 +362,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           .in('photo_id', photoIds)
       : { data: [] };
 
+    // Load reply counts
+    const { data: writeupRepliesData } = await supabase
+      .from('writeup_replies')
+      .select('writeup_id')
+      .in('writeup_id', writeupIds);
+
+    const replyCountByWriteup = new Map<string, number>();
+    for (const r of writeupRepliesData ?? []) {
+      replyCountByWriteup.set(r.writeup_id, (replyCountByWriteup.get(r.writeup_id) ?? 0) + 1);
+    }
+
     // Load profile names for all authors
     const authorIds = [...new Set(rawWriteups.map(w => w.user_id))];
     const { data: profiles } = await supabase
@@ -409,6 +422,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         reactions: counts,
         user_reactions: rData?.userReactions ?? [],
         reaction_count: reactionCount,
+        reply_count: replyCountByWriteup.get(w.id) ?? 0,
         author_name: profileMap.get(w.user_id) ?? 'Member',
       };
     });
@@ -796,6 +810,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         reactions: {},
         user_reactions: [],
         reaction_count: 0,
+        reply_count: 0,
         author_name: user?.name ?? 'Member',
       };
 
@@ -1172,6 +1187,54 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Update reply count optimistically
       setPosts(prev =>
         prev.map(p => p.id === postId ? { ...p, reply_count: p.reply_count + 1 } : p),
+      );
+
+      return { ...reply, author_name: user?.name ?? 'Member' };
+    },
+    [session, user],
+  );
+
+  const getWriteupReplies = useCallback(
+    async (writeupId: string): Promise<WriteupReply[]> => {
+      const { data: replies } = await supabase
+        .from('writeup_replies')
+        .select('*')
+        .eq('writeup_id', writeupId)
+        .order('created_at', { ascending: true });
+
+      if (!replies || replies.length === 0) return [];
+
+      const authorIds = [...new Set(replies.map(r => r.user_id))];
+      const { data: authorProfiles } = await supabase
+        .from('profiles')
+        .select('id, name')
+        .in('id', authorIds);
+      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+      return replies.map(r => ({
+        ...r,
+        author_name: authorMap.get(r.user_id) ?? 'Member',
+      }));
+    },
+    [],
+  );
+
+  const addWriteupReply = useCallback(
+    async (writeupId: string, content: string): Promise<WriteupReply> => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      const { data: reply, error } = await supabase
+        .from('writeup_replies')
+        .insert({ writeup_id: writeupId, user_id: userId, content })
+        .select()
+        .single();
+
+      if (error || !reply) throw error ?? new Error('Failed to add reply');
+
+      // Update reply count optimistically
+      setWriteups(prev =>
+        prev.map(w => w.id === writeupId ? { ...w, reply_count: w.reply_count + 1 } : w),
       );
 
       return { ...reply, author_name: user?.name ?? 'Member' };
@@ -2209,6 +2272,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         togglePostReaction,
         getPostReplies,
         addPostReply,
+        getWriteupReplies,
+        addWriteupReply,
         deletePost,
         flagContent,
         refreshData,

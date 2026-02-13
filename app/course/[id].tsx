@@ -385,7 +385,7 @@ export default function CourseDetailScreen() {
                       style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
                       onPress={() => togglePhotoUpvote(photo.id)}
                     >
-                      <Ionicons name={photo.user_has_upvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={13} color={Colors.white} />
+                      <Text style={{ fontSize: 16 }}>{'\uD83D\uDC4D'}</Text>
                       <Text style={styles.modalUpvoteText}>{photo.upvote_count ?? 0}</Text>
                     </Pressable>
                     {photo.caption ? (

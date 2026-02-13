@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, Conversation, Message, Meetup, ContentFlag } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -170,6 +170,34 @@ export async function getPostReplies(postId: string): Promise<PostReply[]> {
 
 export async function deletePostReply(id: string): Promise<void> {
   await supabase.from('post_replies').delete().eq('id', id);
+}
+
+// ---- Writeup Replies ----
+
+export async function getWriteupReplies(writeupId: string): Promise<WriteupReply[]> {
+  const { data: replies } = await supabase
+    .from('writeup_replies')
+    .select('*')
+    .eq('writeup_id', writeupId)
+    .order('created_at', { ascending: true });
+
+  if (!replies || replies.length === 0) return [];
+
+  const authorIds = [...new Set(replies.map(r => r.user_id))];
+  const { data: authorProfiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', authorIds);
+  const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+
+  return replies.map(r => ({
+    ...r,
+    author_name: authorMap.get(r.user_id) ?? 'Member',
+  }));
+}
+
+export async function deleteWriteupReply(id: string): Promise<void> {
+  await supabase.from('writeup_replies').delete().eq('id', id);
 }
 
 // ---- Conversations / Messages ----

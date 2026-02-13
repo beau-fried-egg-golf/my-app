@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
+  FlatList,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -16,7 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Photo } from '@/types';
+import { Photo, WriteupReply } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import WordHighlight from '@/components/WordHighlight';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
@@ -38,6 +39,17 @@ function formatDate(iso: string): string {
   });
 }
 
+function formatTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+
 interface EditPhoto {
   id?: string;
   url: string;
@@ -57,6 +69,8 @@ export default function WriteupDetailScreen() {
     updateWriteup,
     deleteWriteup,
     flagContent,
+    getWriteupReplies,
+    addWriteupReply,
   } = useStore();
 
   const writeup = writeups.find((w) => w.id === id);
@@ -65,6 +79,16 @@ export default function WriteupDetailScreen() {
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [editPhotos, setEditPhotos] = useState<EditPhoto[]>([]);
+
+  const [replies, setReplies] = useState<WriteupReply[]>([]);
+  const [replyText, setReplyText] = useState('');
+  const [sendingReply, setSendingReply] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      getWriteupReplies(id).then(setReplies);
+    }
+  }, [id]);
 
   if (!writeup) return null;
 
@@ -132,6 +156,20 @@ export default function WriteupDetailScreen() {
         },
       },
     ]);
+  }
+
+  async function handleSendReply() {
+    if (!replyText.trim() || sendingReply) return;
+    setSendingReply(true);
+    try {
+      const reply = await addWriteupReply(writeup!.id, replyText.trim());
+      setReplies(prev => [...prev, reply]);
+      setReplyText('');
+    } catch (e) {
+      console.error('Failed to add reply', e);
+    } finally {
+      setSendingReply(false);
+    }
   }
 
   if (editing) {
@@ -203,8 +241,8 @@ export default function WriteupDetailScreen() {
 
   const visiblePhotos = writeup.photos.filter((p) => !p.hidden);
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+  const headerContent = (
+    <>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
           <Text style={styles.backArrowText}>{'<'}</Text>
@@ -239,7 +277,7 @@ export default function WriteupDetailScreen() {
                     style={[styles.photoUpvote, photoUpvoted && styles.photoUpvoteActive]}
                     onPress={() => togglePhotoUpvote(photo.id)}
                   >
-                    <Ionicons name={photoUpvoted ? 'thumbs-up' : 'thumbs-up-outline'} size={12} color={photoUpvoted ? Colors.white : Colors.black} />
+                    <Text style={styles.reactionEmoji}>{'\uD83D\uDC4D'}</Text>
                     <Text style={[styles.photoUpvoteText, photoUpvoted && styles.photoUpvoteTextActive]}>
                       {photo.upvote_count ?? 0}
                     </Text>
@@ -289,13 +327,64 @@ export default function WriteupDetailScreen() {
           </View>
         )}
       </View>
-    </ScrollView>
+
+      <View style={styles.repliesHeader}>
+        <Text style={styles.repliesTitle}>Replies ({replies.length})</Text>
+      </View>
+    </>
+  );
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={0}
+    >
+      <FlatList
+        data={replies}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={headerContent}
+        contentContainerStyle={styles.content}
+        renderItem={({ item }) => {
+          const replyAuthorParts = (item.author_name ?? 'Member').split(' ').filter(Boolean);
+          return (
+            <View style={styles.replyItem}>
+              <View style={styles.replyAuthorRow}>
+                <WordHighlight words={replyAuthorParts} size={11} />
+                <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
+              </View>
+              <Text style={styles.replyContent}>{item.content}</Text>
+            </View>
+          );
+        }}
+        ListEmptyComponent={
+          <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
+        }
+      />
+      <View style={styles.replyInputBar}>
+        <TextInput
+          style={styles.replyInput}
+          value={replyText}
+          onChangeText={setReplyText}
+          placeholder="Write a reply..."
+          placeholderTextColor={Colors.gray}
+          multiline
+        />
+        <Pressable
+          style={[styles.sendButton, (!replyText.trim() || sendingReply) && styles.sendButtonDisabled]}
+          onPress={handleSendReply}
+          disabled={!replyText.trim() || sendingReply}
+        >
+          <Text style={styles.sendButtonText}>Send</Text>
+        </Pressable>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  content: { padding: 16, paddingBottom: 40 },
+  content: { padding: 16, paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
   backArrow: { paddingRight: 12, paddingTop: 4 },
   backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
@@ -325,6 +414,18 @@ const styles = StyleSheet.create({
   ownerActions: { flexDirection: 'row', gap: 12 },
   ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
   ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  repliesHeader: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginBottom: 12 },
+  repliesTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  replyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
+  replyAuthorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
+  replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
+  noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
+  replyInputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 16, paddingVertical: 12, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
+  replyInput: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, fontSize: 15, color: Colors.black, maxHeight: 100, fontFamily: Fonts!.sans },
+  sendButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 },
+  sendButtonDisabled: { opacity: 0.4 },
+  sendButtonText: { color: Colors.white, fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   cancelText: { fontSize: 16, color: Colors.gray, fontFamily: Fonts!.sans },
   saveText: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },

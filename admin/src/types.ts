@@ -87,6 +87,15 @@ export interface PostReply {
   author_name?: string;
 }
 
+export interface WriteupReply {
+  id: string;
+  writeup_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  author_name?: string;
+}
+
 export interface Conversation {
   id: string;
   user1_id: string;

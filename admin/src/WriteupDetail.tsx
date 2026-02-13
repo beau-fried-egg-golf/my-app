@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { getCourses, getWriteups, updateWriteup, deleteWriteup, updatePhoto, getProfiles } from './storage';
-import type { Course, Writeup, Profile } from './types';
+import { getCourses, getWriteups, updateWriteup, deleteWriteup, updatePhoto, getProfiles, getWriteupReplies, deleteWriteupReply } from './storage';
+import type { Course, Writeup, Profile, WriteupReply } from './types';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -11,12 +11,22 @@ function formatDate(iso: string): string {
   });
 }
 
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export default function WriteupDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [writeup, setWriteup] = useState<Writeup | null>(null);
   const [courses, setCourses] = useState<Course[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [replies, setReplies] = useState<WriteupReply[]>([]);
 
   useEffect(() => {
     Promise.all([getWriteups(), getCourses(), getProfiles()]).then(([ws, c, p]) => {
@@ -24,6 +34,9 @@ export default function WriteupDetail() {
       setCourses(c);
       setProfiles(p);
     });
+    if (id) {
+      getWriteupReplies(id).then(setReplies);
+    }
   }, [id]);
 
   if (!writeup) {
@@ -52,6 +65,12 @@ export default function WriteupDetail() {
     if (!window.confirm('Delete this review permanently?')) return;
     await deleteWriteup(id!);
     navigate('/writeups');
+  }
+
+  async function handleDeleteReply(replyId: string) {
+    if (!window.confirm('Delete this reply permanently?')) return;
+    await deleteWriteupReply(replyId);
+    setReplies(replies.filter(r => r.id !== replyId));
   }
 
   const photos = writeup.photos ?? [];
@@ -116,6 +135,48 @@ export default function WriteupDetail() {
               ))}
             </div>
           </>
+        )}
+
+        <h3 className="section-title" style={{ marginTop: 24 }}>
+          Replies ({replies.length})
+        </h3>
+
+        {replies.length === 0 ? (
+          <div className="empty-state">No replies on this review</div>
+        ) : (
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Author</th>
+                  <th>Content</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {replies.map(r => (
+                  <tr key={r.id}>
+                    <td>
+                      <Link to={`/users/${r.user_id}`} className="link">
+                        {r.author_name ?? r.user_id.slice(0, 8)}
+                      </Link>
+                    </td>
+                    <td>{r.content}</td>
+                    <td>{formatTime(r.created_at)}</td>
+                    <td>
+                      <button
+                        className="btn btn-sm btn-danger"
+                        onClick={() => handleDeleteReply(r.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
