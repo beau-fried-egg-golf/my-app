@@ -17,6 +17,9 @@ export interface Course {
   short_name: string;
   address: string;
   city: string;
+  state: string;
+  postal_code: string;
+  country: string;
   is_private: boolean;
   holes: number;
   par: number;

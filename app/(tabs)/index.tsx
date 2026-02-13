@@ -134,6 +134,12 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
             <Text style={styles.activityText}> signed up for </Text>
             <Text style={styles.activityTextBold}>{meetupName}</Text>
           </View>
+          {item.course_name ? (
+            <View style={styles.activityRow}>
+              <Text style={styles.activityText}>at </Text>
+              <WordHighlight words={(item.course_name).split(' ')} size={12} />
+            </View>
+          ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </Pressable>

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import MapboxGL from '@rnmapbox/maps';
 import { MAPBOX_ACCESS_TOKEN, STYLE_STREET, STYLE_SATELLITE, SATELLITE_ZOOM_THRESHOLD } from '@/constants/mapbox';
-import { CourseMapProps, DEFAULT_CENTER, DEFAULT_ZOOM, USER_ZOOM, hasFEContent } from './course-map-types';
+import { CourseMapProps, DEFAULT_CENTER, DEFAULT_ZOOM, USER_ZOOM } from './course-map-types';
 
 MapboxGL.setAccessToken(MAPBOX_ACCESS_TOKEN);
 
@@ -43,6 +44,33 @@ export default function CourseMap({
     onCourseSelect(null);
   }, [onCourseSelect]);
 
+  const handleCenterOnUser = useCallback(() => {
+    if (userLocation && cameraRef.current) {
+      cameraRef.current.setCamera({
+        centerCoordinate: [userLocation.lon, userLocation.lat],
+        zoomLevel: USER_ZOOM,
+        animationDuration: 1000,
+        animationMode: 'flyTo',
+      });
+    }
+  }, [userLocation]);
+
+  const handleZoomIn = useCallback(() => {
+    setZoom((z) => {
+      const next = Math.min(z + 1, 20);
+      cameraRef.current?.setCamera({ zoomLevel: next, animationDuration: 300 });
+      return next;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((z) => {
+      const next = Math.max(z - 1, 0);
+      cameraRef.current?.setCamera({ zoomLevel: next, animationDuration: 300 });
+      return next;
+    });
+  }, []);
+
   return (
     <View style={styles.container}>
       <MapboxGL.MapView
@@ -50,6 +78,8 @@ export default function CourseMap({
         styleURL={styleURL}
         onPress={handleMapPress}
         onRegionDidChange={handleRegionChange}
+        attributionPosition={{ top: 8, right: 8 }}
+        logoPosition={{ top: 8, left: 8 }}
       >
         <MapboxGL.Camera
           ref={cameraRef}
@@ -65,15 +95,23 @@ export default function CourseMap({
             coordinate={[course.longitude, course.latitude]}
             onSelected={() => onCourseSelect(course)}
           >
-            <View
-              style={[
-                styles.pin,
-                { backgroundColor: hasFEContent(course) ? '#FFEE54' : '#FE4D12' },
-              ]}
-            />
+            <View style={styles.pin} />
           </MapboxGL.PointAnnotation>
         ))}
       </MapboxGL.MapView>
+      <View style={styles.controlsColumn}>
+        <Pressable style={styles.controlButton} onPress={handleZoomIn}>
+          <Text style={styles.controlButtonText}>+</Text>
+        </Pressable>
+        <Pressable style={styles.controlButton} onPress={handleZoomOut}>
+          <Text style={styles.controlButtonText}>-</Text>
+        </Pressable>
+        {userLocation && (
+          <Pressable style={styles.controlButton} onPress={handleCenterOnUser}>
+            <MaterialIcons name="near-me" size={20} color="#000" />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -82,10 +120,38 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   pin: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     borderWidth: 2,
-    borderColor: '#000',
+    borderColor: '#fff',
+    backgroundColor: '#FE4D12',
+  },
+  controlsColumn: {
+    position: 'absolute',
+    bottom: 16,
+    right: 10,
+    gap: 6,
+  },
+  controlButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  controlButtonText: {
+    fontSize: 22,
+    fontWeight: 'bold' as const,
+    lineHeight: 24,
+    color: '#000',
   },
 });

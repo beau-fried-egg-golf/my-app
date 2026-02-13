@@ -1834,14 +1834,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Insert activity
+      const meetup = meetupsRef.current.find(m => m.id === meetupId);
       await supabase.from('activities').insert({
         type: 'meetup_signup',
         user_id: userId,
         meetup_id: meetupId,
+        course_id: meetup?.course_id || null,
       });
 
       // Notify meetup host (no self-notification)
-      const meetup = meetupsRef.current.find(m => m.id === meetupId);
       if (meetup && meetup.host_id !== userId) {
         await supabase.from('notifications').insert({
           user_id: meetup.host_id,

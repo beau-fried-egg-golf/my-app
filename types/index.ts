@@ -66,6 +66,9 @@ export interface Course {
   short_name: string;
   address: string;
   city: string;
+  state: string;
+  postal_code: string;
+  country: string;
   is_private: boolean;
   holes: number;
   par: number;
@@ -89,6 +92,9 @@ export function courseToUI(c: Course) {
     shortName: c.short_name,
     address: c.address,
     city: c.city,
+    state: c.state,
+    postalCode: c.postal_code,
+    country: c.country,
     isPrivate: c.is_private,
     holes: c.holes,
     par: c.par,

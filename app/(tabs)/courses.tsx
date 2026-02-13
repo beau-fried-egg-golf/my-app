@@ -57,7 +57,8 @@ export default function CoursesScreen() {
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('all');
   const [writeupFilter, setWriteupFilter] = useState<WriteupFilter>('all');
   const [feFilter, setFEFilter] = useState<FEFilter>('all');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('alpha');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('distance');
+  const [displayCount, setDisplayCount] = useState(15);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
@@ -142,6 +143,11 @@ export default function CoursesScreen() {
 
     return result;
   }, [courses, searchQuery, accessFilter, distanceFilter, writeupFilter, feFilter, sortOrder, userLocation, writeups]);
+
+  // Reset pagination when filters/sort/search change
+  useEffect(() => {
+    setDisplayCount(15);
+  }, [searchQuery, accessFilter, distanceFilter, writeupFilter, feFilter, sortOrder]);
 
   function renderCourse({ item }: { item: Course }) {
     const count = getWriteupCount(item.id);
@@ -355,7 +361,7 @@ export default function CoursesScreen() {
             )}
           </View>
           <FlatList
-            data={filteredCourses}
+            data={filteredCourses.slice(0, displayCount)}
             keyExtractor={(item) => item.id}
             renderItem={renderCourse}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -364,6 +370,16 @@ export default function CoursesScreen() {
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No courses match your filters</Text>
               </View>
+            }
+            ListFooterComponent={
+              displayCount < filteredCourses.length ? (
+                <Pressable
+                  style={styles.loadMoreButton}
+                  onPress={() => setDisplayCount(displayCount + 15)}
+                >
+                  <Text style={styles.loadMoreText}>LOAD MORE ({filteredCourses.length - displayCount} remaining)</Text>
+                </Pressable>
+              ) : null
             }
           />
         </>
@@ -432,6 +448,8 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: Colors.lightGray, marginHorizontal: 16 },
   empty: { padding: 32, alignItems: 'center' },
   emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
+  loadMoreButton: { alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginHorizontal: 16 },
+  loadMoreText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange, letterSpacing: 0.5 },
   mapContainer: { flex: 1, position: 'relative' },
   feBlurb: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
 });

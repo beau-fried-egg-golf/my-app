@@ -82,14 +82,19 @@ export default function CreateWriteupScreen() {
   const canSubmit = courseId && title.trim() && content.trim() && !submitting;
   const selectedCourse = courses.find((c) => c.id === courseId);
 
+  const MAX_PHOTOS = 10;
+
   async function pickPhotos() {
+    const remaining = MAX_PHOTOS - photos.length;
+    if (remaining <= 0) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
+      selectionLimit: remaining,
       quality: 0.7,
     });
     if (!result.canceled) {
-      const newPhotos = result.assets.map((a) => ({ uri: a.uri, caption: '' }));
+      const newPhotos = result.assets.slice(0, remaining).map((a) => ({ uri: a.uri, caption: '' }));
       setPhotos([...photos, ...newPhotos]);
     }
   }
@@ -219,9 +224,14 @@ export default function CreateWriteupScreen() {
         </View>
 
         <View style={styles.photosSection}>
-          <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-            <Text style={styles.addPhotoText}>ADD PHOTOS</Text>
-          </Pressable>
+          {photos.length < MAX_PHOTOS && (
+            <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
+              <Text style={styles.addPhotoText}>ADD PHOTOS ({photos.length}/{MAX_PHOTOS})</Text>
+            </Pressable>
+          )}
+          {photos.length >= MAX_PHOTOS && (
+            <Text style={styles.photoLimitText}>Photo limit reached ({MAX_PHOTOS}/{MAX_PHOTOS})</Text>
+          )}
           {photos.map((photo, i) => (
             <View key={i} style={styles.photoItem}>
               <View style={styles.photoRow}>
@@ -233,6 +243,7 @@ export default function CreateWriteupScreen() {
                   placeholder="Add a description..."
                   placeholderTextColor={Colors.gray}
                   multiline
+                  maxLength={200}
                 />
                 <Pressable style={styles.removePhoto} onPress={() => removePhoto(i)}>
                   <Text style={styles.removeText}>x</Text>
@@ -285,6 +296,7 @@ const styles = StyleSheet.create({
   captionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans },
   removePhoto: { alignSelf: 'flex-start' },
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },
   chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
   submitButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
   submitButtonDisabled: { opacity: 0.4 },

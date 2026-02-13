@@ -8,6 +8,9 @@ const EMPTY_COURSE: Omit<Course, 'id'> = {
   short_name: '',
   address: '',
   city: '',
+  state: '',
+  postal_code: '',
+  country: '',
   is_private: false,
   holes: 18,
   par: 72,
@@ -112,6 +115,21 @@ export default function CourseForm() {
             <input className="form-input" value={form.city} onChange={(e) => handleChange('city', e.target.value)} />
           </div>
           <div className="form-group">
+            <label className="form-label">State</label>
+            <input className="form-input" value={form.state} onChange={(e) => handleChange('state', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Postal Code</label>
+            <input className="form-input" value={form.postal_code} onChange={(e) => handleChange('postal_code', e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Country</label>
+            <input className="form-input" value={form.country} onChange={(e) => handleChange('country', e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
             <label className="form-label">Access</label>
             <label className="form-checkbox-label" style={{ marginTop: 8 }}>
               <input type="checkbox" checked={form.is_private} onChange={(e) => handleChange('is_private', e.target.checked)} />
@@ -146,11 +164,11 @@ export default function CourseForm() {
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Latitude</label>
-            <input className="form-input" type="number" step="0.0001" value={form.latitude} onChange={(e) => handleChange('latitude', parseFloat(e.target.value) || 0)} />
+            <input className="form-input" type="number" step="0.000001" value={form.latitude} onChange={(e) => handleChange('latitude', parseFloat(e.target.value) || 0)} />
           </div>
           <div className="form-group">
             <label className="form-label">Longitude</label>
-            <input className="form-input" type="number" step="0.0001" value={form.longitude} onChange={(e) => handleChange('longitude', parseFloat(e.target.value) || 0)} />
+            <input className="form-input" type="number" step="0.000001" value={form.longitude} onChange={(e) => handleChange('longitude', parseFloat(e.target.value) || 0)} />
           </div>
         </div>
 

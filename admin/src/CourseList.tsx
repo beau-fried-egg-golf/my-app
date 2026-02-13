@@ -62,7 +62,7 @@ export default function CourseList() {
             {courses.map((c) => (
               <tr key={c.id}>
                 <td><strong>{c.name}</strong></td>
-                <td>{c.city}</td>
+                <td>{c.city}{c.state ? `, ${c.state}` : ''}</td>
                 <td>
                   <span className={`badge ${c.is_private ? 'badge-private' : 'badge-public'}`}>
                     {c.is_private ? 'Private' : 'Public'}

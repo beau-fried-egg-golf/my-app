@@ -162,7 +162,7 @@ export default function CourseDetailScreen() {
         <View style={styles.courseDetailsRow}>
           <View style={styles.courseDetails}>
             <Text style={styles.courseAddress}>
-              {course.address}, {course.city}
+              {[course.address, course.city, [course.state, course.postal_code].filter(Boolean).join(' '), course.country].filter(Boolean).join(', ')}
             </Text>
             <View style={styles.courseTagsRow}>
               <WordHighlight
