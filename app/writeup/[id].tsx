@@ -256,7 +256,9 @@ export default function WriteupDetailScreen() {
       <Text style={styles.title}>{writeup.title}</Text>
 
       <View style={styles.authorRow}>
-        <WordHighlight words={authorParts} size={12} />
+        <Pressable onPress={() => router.push(`/member/${writeup.user_id}`)}>
+          <WordHighlight words={authorParts} size={12} />
+        </Pressable>
         <Text style={styles.date}> · {formatDate(writeup.created_at)}</Text>
       </View>
 
@@ -354,7 +356,9 @@ export default function WriteupDetailScreen() {
           return (
             <View style={styles.replyItem}>
               <View style={styles.replyAuthorRow}>
-                <WordHighlight words={replyAuthorParts} size={11} />
+                <Pressable onPress={() => router.push(`/member/${item.user_id}`)}>
+                  <WordHighlight words={replyAuthorParts} size={11} />
+                </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
               </View>
               <Text style={styles.replyContent}>{item.content}</Text>

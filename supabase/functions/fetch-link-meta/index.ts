@@ -6,6 +6,18 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#39;/g, "'");
+}
+
 function extractMeta(html: string): {
   title: string;
   description: string;
@@ -22,13 +34,14 @@ function extractMeta(html: string): {
       "i",
     );
     const m = html.match(re);
-    return m?.[1] ?? m?.[2] ?? undefined;
+    const raw = m?.[1] ?? m?.[2] ?? undefined;
+    return raw ? decodeHtmlEntities(raw) : undefined;
   }
 
   const title =
     getMetaContent("og:title", html) ??
     getMetaContent("twitter:title", html) ??
-    html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() ??
+    decodeHtmlEntities(html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() ?? "") ??
     "";
 
   const description =

@@ -131,7 +131,9 @@ export default function PostDetailScreen() {
       </View>
 
       <View style={styles.authorRow}>
-        <WordHighlight words={authorParts} size={12} />
+        <Pressable onPress={() => router.push(`/member/${post.user_id}`)}>
+          <WordHighlight words={authorParts} size={12} />
+        </Pressable>
         <Text style={styles.date}> · {formatDate(post.created_at)}</Text>
       </View>
 
@@ -222,7 +224,9 @@ export default function PostDetailScreen() {
           return (
             <View style={styles.replyItem}>
               <View style={styles.replyAuthorRow}>
-                <WordHighlight words={replyAuthorParts} size={11} />
+                <Pressable onPress={() => router.push(`/member/${item.user_id}`)}>
+                  <WordHighlight words={replyAuthorParts} size={11} />
+                </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
               </View>
               <Text style={styles.replyContent}>{item.content}</Text>

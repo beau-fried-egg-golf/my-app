@@ -1244,12 +1244,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       // Insert activity
       const post = posts.find(p => p.id === postId);
-      await supabase.from('activities').insert({
+      const { error: actErr } = await supabase.from('activities').insert({
         type: 'post_reply',
         user_id: userId,
         post_id: postId,
         target_user_id: post?.user_id ?? null,
       });
+      if (actErr) console.error('Failed to insert post_reply activity:', actErr);
 
       // Insert notification (no self-notification)
       if (post && post.user_id !== userId) {
@@ -1315,12 +1316,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       // Insert activity
       const writeup = writeups.find(w => w.id === writeupId);
-      await supabase.from('activities').insert({
+      const { error: actErr } = await supabase.from('activities').insert({
         type: 'writeup_reply',
         user_id: userId,
         writeup_id: writeupId,
         target_user_id: writeup?.user_id ?? null,
       });
+      if (actErr) console.error('Failed to insert writeup_reply activity:', actErr);
 
       // Insert notification (no self-notification)
       if (writeup && writeup.user_id !== userId) {
