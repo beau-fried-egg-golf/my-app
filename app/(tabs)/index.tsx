@@ -8,6 +8,17 @@ import { Activity, Profile, Writeup, Post } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 import LinkPreview from '@/components/LinkPreview';
 
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
   love: '\u2764\uFE0F',
@@ -85,7 +96,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
     const postDisplayName = post
       ? post.link_title
-        ? post.link_title
+        ? decodeEntities(post.link_title)
         : post.content
           ? post.content.length > 50 ? post.content.slice(0, 50) + '...' : post.content
           : 'a post'
