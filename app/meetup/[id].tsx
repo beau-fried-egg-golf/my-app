@@ -119,27 +119,31 @@ export default function MeetupDetailScreen() {
             {!isHost && currentPaymentStatus === 'paid' && currentUserMember && (
               <Pressable
                 style={styles.actionBtnOutline}
-                onPress={() => {
-                  Alert.alert(
-                    'Withdraw & Refund',
-                    'Are you sure you want to withdraw? Your payment will be refunded.',
-                    [
-                      { text: 'Cancel', style: 'cancel' },
-                      {
-                        text: 'Withdraw & Refund',
-                        style: 'destructive',
-                        onPress: async () => {
-                          const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
-                          if (success) {
-                            const m = await getMeetupMembers(meetup.id);
-                            setMembers(m);
-                          } else {
-                            Alert.alert('Error', 'Failed to process refund. Please try again.');
-                          }
-                        },
-                      },
-                    ],
-                  );
+                onPress={async () => {
+                  const confirmed = Platform.OS === 'web'
+                    ? window.confirm('Are you sure you want to withdraw? Your payment will be refunded.')
+                    : await new Promise<boolean>(resolve =>
+                        Alert.alert(
+                          'Withdraw & Refund',
+                          'Are you sure you want to withdraw? Your payment will be refunded.',
+                          [
+                            { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+                            { text: 'Withdraw & Refund', style: 'destructive', onPress: () => resolve(true) },
+                          ],
+                        ),
+                      );
+                  if (!confirmed) return;
+                  const prevMembers = members;
+                  setMembers(prev => prev.filter(m => m.id !== currentUserMember.id));
+                  const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
+                  if (!success) {
+                    setMembers(prevMembers);
+                    if (Platform.OS === 'web') {
+                      window.alert('Failed to process refund. Please try again.');
+                    } else {
+                      Alert.alert('Error', 'Failed to process refund. Please try again.');
+                    }
+                  }
                 }}
               >
                 <Text style={styles.actionBtnOutlineText}>Withdraw & Refund</Text>
