@@ -306,6 +306,10 @@ export default function WriteupDetailScreen() {
             </Pressable>
           );
         })}
+        <View style={styles.commentBadge}>
+          <Ionicons name="chatbubble-outline" size={14} color={Colors.gray} />
+          <Text style={styles.commentBadgeText}>{writeup.reply_count} {writeup.reply_count === 1 ? 'comment' : 'comments'}</Text>
+        </View>
       </View>
 
       <View style={styles.actions}>
@@ -413,12 +417,14 @@ const styles = StyleSheet.create({
   photoUpvoteActive: { backgroundColor: Colors.black, borderColor: Colors.black },
   photoUpvoteText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoUpvoteTextActive: { color: Colors.white },
-  reactionsBar: { flexDirection: 'row', gap: 8, marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray },
+  reactionsBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, alignItems: 'center' },
   reactionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   reactionButtonActive: { backgroundColor: Colors.black, borderColor: Colors.black },
   reactionEmoji: { fontSize: 16 },
   reactionCount: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   reactionCountActive: { color: Colors.white },
+  commentBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
+  commentBadgeText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
   actions: { marginTop: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   flagButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   flagText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },

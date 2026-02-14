@@ -60,9 +60,17 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
               image={post.link_image}
             />
           ) : null}
-          {reactionSummary ? (
-            <Text style={styles.reactionSummary}>{reactionSummary}</Text>
-          ) : null}
+          <View style={styles.socialRow}>
+            {reactionSummary ? (
+              <Text style={styles.reactionSummary}>{reactionSummary}</Text>
+            ) : null}
+            {post && post.reply_count > 0 ? (
+              <View style={styles.commentCount}>
+                <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
+                <Text style={styles.commentCountText}>{post.reply_count} {post.reply_count === 1 ? 'comment' : 'comments'}</Text>
+              </View>
+            ) : null}
+          </View>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
         {!isLinkPost && thumbnail && (
@@ -210,6 +218,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
 
   if (item.type === 'writeup') {
     const name = item.user_name ?? '';
+    const writeup = item.writeup_id ? writeups.find(w => w.id === item.writeup_id) : null;
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
@@ -223,6 +232,12 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
             <Text style={styles.activityText}> posted a review on{' '}</Text>
           </View>
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+          {writeup && writeup.reply_count > 0 ? (
+            <View style={styles.commentCount}>
+              <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
+              <Text style={styles.commentCountText}>{writeup.reply_count} {writeup.reply_count === 1 ? 'comment' : 'comments'}</Text>
+            </View>
+          ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
         {thumbnail && (
@@ -473,10 +488,25 @@ const styles = StyleSheet.create({
     marginTop: 4,
     fontFamily: Fonts!.sans,
   },
+  socialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 4,
+  },
   reactionSummary: {
     fontSize: 13,
     color: Colors.gray,
-    marginTop: 4,
+    fontFamily: Fonts!.sans,
+  },
+  commentCount: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  commentCountText: {
+    fontSize: 13,
+    color: Colors.gray,
     fontFamily: Fonts!.sans,
   },
   thumbnail: {

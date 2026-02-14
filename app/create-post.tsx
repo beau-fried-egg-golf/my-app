@@ -34,7 +34,9 @@ const URL_REGEX = /https?:\/\/\S+/;
 
 function extractUrl(text: string): string | null {
   const match = text.match(URL_REGEX);
-  return match ? match[0] : null;
+  if (!match) return null;
+  // Strip trailing punctuation that's unlikely part of the URL
+  return match[0].replace(/[.,;:!?)]+$/, '');
 }
 
 export default function CreatePostScreen() {
@@ -68,8 +70,9 @@ export default function CreatePostScreen() {
           image: data.image ?? '',
         };
       }
-    } catch {
-      // fall through
+      if (error) console.warn('fetch-link-meta edge function error:', error);
+    } catch (e) {
+      console.warn('fetch-link-meta call failed:', e);
     }
 
     // Fallback: noembed for YouTube etc.
@@ -83,8 +86,8 @@ export default function CreatePostScreen() {
           image: data.thumbnail_url ?? '',
         };
       }
-    } catch {
-      // fall through
+    } catch (e) {
+      console.warn('noembed fallback failed:', e);
     }
 
     return { title: '', description: '', image: '' };

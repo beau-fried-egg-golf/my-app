@@ -177,6 +177,10 @@ export default function PostDetailScreen() {
             </Pressable>
           );
         })}
+        <View style={styles.commentBadge}>
+          <Ionicons name="chatbubble-outline" size={14} color={Colors.gray} />
+          <Text style={styles.commentBadgeText}>{post.reply_count} {post.reply_count === 1 ? 'comment' : 'comments'}</Text>
+        </View>
       </View>
 
       <View style={styles.postActions}>
@@ -274,12 +278,14 @@ const styles = StyleSheet.create({
   photoContainer: { gap: 6 },
   photo: { width: '100%', height: 240, borderRadius: 8 },
   photoCaption: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, fontFamily: Fonts!.sans },
-  reactionsBar: { flexDirection: 'row', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray },
+  reactionsBar: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, alignItems: 'center' },
   reactionButton: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
   reactionButtonActive: { backgroundColor: Colors.black, borderColor: Colors.black },
   reactionEmoji: { fontSize: 16 },
   reactionCount: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   reactionCountActive: { color: Colors.white },
+  commentBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto' },
+  commentBadgeText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
   postActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
   flagButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   flagText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },

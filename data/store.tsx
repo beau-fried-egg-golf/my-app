@@ -259,6 +259,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loadGroupsData(userId);
       loadMeetupsData(userId);
       loadNotificationsData(userId);
+      loadActivities();
     };
 
     const interval = setInterval(poll, 15000);

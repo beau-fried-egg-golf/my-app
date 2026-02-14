@@ -70,6 +70,13 @@ function WriteupCard({
         <Text style={styles.writeupDot}> · </Text>
         <Ionicons name="heart-outline" size={12} color={Colors.gray} />
         <Text style={styles.writeupUpvotes}>{writeup.reaction_count ?? 0}</Text>
+        {writeup.reply_count > 0 ? (
+          <>
+            <Text style={styles.writeupDot}> · </Text>
+            <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
+            <Text style={styles.writeupUpvotes}>{writeup.reply_count}</Text>
+          </>
+        ) : null}
       </View>
     </Pressable>
   );
