@@ -40,7 +40,9 @@ export default function LinkPreview({ url, title, description, image }: LinkPrev
           source={{ uri: image }}
           style={[styles.image, { aspectRatio }]}
           onLoad={(e) => {
-            const { width, height } = e.nativeEvent.source;
+            const source = e.nativeEvent?.source ?? e.nativeEvent;
+            const width = source?.width;
+            const height = source?.height;
             if (width && height) setAspectRatio(width / height);
           }}
         />
