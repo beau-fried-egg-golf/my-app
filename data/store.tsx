@@ -1654,7 +1654,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       return data;
     },
-    [session],
+    [session, user],
   );
 
   const markConversationRead = useCallback(

@@ -58,7 +58,7 @@ serve(async (req: Request) => {
   }
 
   // Compute total unread count for badge
-  const [{ count: unreadNotifications }, { count: unreadDMs }] = await Promise.all([
+  const [{ count: unreadNotifications }, { data: convos }] = await Promise.all([
     supabase
       .from("notifications")
       .select("*", { count: "exact", head: true })
@@ -66,14 +66,14 @@ serve(async (req: Request) => {
       .eq("is_read", false),
     supabase
       .from("conversations")
-      .select("*", { count: "exact", head: true })
-      .or(`user1_id.eq.${recipient_id},user2_id.eq.${recipient_id}`)
-      .or(
-        `and(user1_id.eq.${recipient_id},user1_last_read_at.lt.last_message_at),` +
-        `and(user2_id.eq.${recipient_id},user2_last_read_at.lt.last_message_at)`
-      ),
+      .select("user1_id, user2_id, user1_last_read_at, user2_last_read_at, updated_at")
+      .or(`user1_id.eq.${recipient_id},user2_id.eq.${recipient_id}`),
   ]);
-  const badge = (unreadNotifications ?? 0) + (unreadDMs ?? 0);
+  const unreadDMs = (convos ?? []).filter(c => {
+    const lastReadAt = c.user1_id === recipient_id ? c.user1_last_read_at : c.user2_last_read_at;
+    return !lastReadAt || new Date(c.updated_at) > new Date(lastReadAt);
+  }).length;
+  const badge = (unreadNotifications ?? 0) + unreadDMs;
 
   // Send via Expo Push API
   const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
