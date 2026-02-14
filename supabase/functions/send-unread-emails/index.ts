@@ -24,15 +24,15 @@ serve(async (req: Request) => {
     );
   }
 
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
-  // Find candidates: email enabled AND (never emailed OR last email > 1 hour ago)
+  // Find candidates: email enabled AND (never emailed OR last email > 24 hours ago)
   const { data: candidates, error: candidatesError } = await supabase
     .from("profiles")
     .select("id, name, email_notifications_enabled, last_unread_email_at")
     .eq("email_notifications_enabled", true)
-    .or(`last_unread_email_at.is.null,last_unread_email_at.lt.${oneHourAgo}`);
+    .or(`last_unread_email_at.is.null,last_unread_email_at.lt.${oneDayAgo}`);
 
   if (candidatesError || !candidates || candidates.length === 0) {
     return new Response(
@@ -53,7 +53,7 @@ serve(async (req: Request) => {
 
     if (!convos || convos.length === 0) continue;
 
-    // Get last message for each conversation
+    // Get all messages across conversations
     const convoIds = convos.map((c: { id: string }) => c.id);
     const { data: messages } = await supabase
       .from("messages")
@@ -63,29 +63,25 @@ serve(async (req: Request) => {
 
     if (!messages || messages.length === 0) continue;
 
-    // Build map of last message per conversation
-    const lastMsgMap = new Map<string, { user_id: string; created_at: string }>();
-    for (const msg of messages) {
-      if (!lastMsgMap.has(msg.conversation_id)) {
-        lastMsgMap.set(msg.conversation_id, msg);
-      }
-    }
-
-    // Count unread conversations (same logic as store.tsx loadConversations)
-    let unreadCount = 0;
+    // Build a map of last_read_at per conversation for this user
+    const lastReadMap = new Map<string, string | null>();
     for (const convo of convos) {
-      const lastMsg = lastMsgMap.get(convo.id);
-      if (!lastMsg) continue;
-      // Only count if last message was sent by the OTHER user
-      if (lastMsg.user_id === candidate.id) continue;
-      // Only count if message is at least 5 minutes old (give push/in-app time)
-      if (lastMsg.created_at > fiveMinutesAgo) continue;
-
       const lastReadAt = convo.user1_id === candidate.id
         ? convo.user1_last_read_at
         : convo.user2_last_read_at;
+      lastReadMap.set(convo.id, lastReadAt);
+    }
 
-      if (!lastReadAt || new Date(lastMsg.created_at) > new Date(lastReadAt)) {
+    // Count individual unread messages across all conversations
+    let unreadCount = 0;
+    for (const msg of messages) {
+      // Only count messages sent by the OTHER user
+      if (msg.user_id === candidate.id) continue;
+      // Only count if message is at least 5 minutes old (give push/in-app time)
+      if (msg.created_at > fiveMinutesAgo) continue;
+
+      const lastReadAt = lastReadMap.get(msg.conversation_id);
+      if (!lastReadAt || new Date(msg.created_at) > new Date(lastReadAt)) {
         unreadCount++;
       }
     }

@@ -70,12 +70,12 @@ serve(async (req: Request) => {
         <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
           <tr>
             <td style="background-color:#1a1a1a;padding:32px 40px;text-align:center;">
-              <h1 style="color:#ffffff;font-size:28px;margin:0;letter-spacing:2px;">FRIED EGG</h1>
+              <h1 style="color:#ffffff;font-size:28px;margin:0;letter-spacing:2px;">FRIED EGG GOLF CLUB</h1>
             </td>
           </tr>
           <tr>
             <td style="padding:40px;">
-              <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Welcome, ${name}!</h2>
+              <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Welcome to Fried Egg Golf Club, ${name}!</h2>
               <p style="color:#555555;font-size:16px;line-height:1.6;margin:0 0 16px;">
                 Your profile is all set. Here's what you can do now:
               </p>
@@ -93,7 +93,7 @@ serve(async (req: Request) => {
           <tr>
             <td style="background-color:#f5f5f0;padding:24px 40px;text-align:center;">
               <p style="color:#999999;font-size:13px;margin:0;">
-                Fried Egg Golf &mdash; the social app for golfers
+                Fried Egg Golf Club &mdash; the social app for golfers
               </p>
             </td>
           </tr>
@@ -111,9 +111,9 @@ serve(async (req: Request) => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "Fried Egg <onboarding@resend.dev>",
+      from: "Fried Egg Golf Club <onboarding@resend.dev>",
       to: [email],
-      subject: "Welcome to Fried Egg!",
+      subject: "Welcome to Fried Egg Golf Club!",
       html,
     }),
   });
