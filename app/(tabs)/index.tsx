@@ -74,6 +74,14 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
 
   if (item.type === 'post_reply') {
     const name = item.user_name ?? '';
+    const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
+    const postDisplayName = post
+      ? post.link_title
+        ? post.link_title
+        : post.content
+          ? post.content.length > 50 ? post.content.slice(0, 50) + '...' : post.content
+          : 'a post'
+      : 'a post';
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
@@ -84,7 +92,8 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
-            <Text style={styles.activityText}> commented on a post</Text>
+            <Text style={styles.activityText}> commented on </Text>
+            <Text style={styles.activityTextBold}>{postDisplayName}</Text>
           </View>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
@@ -94,6 +103,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
 
   if (item.type === 'writeup_reply') {
     const name = item.user_name ?? '';
+    const writeupDisplayName = item.writeup_title ?? 'a review';
     return (
       <Pressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
@@ -104,7 +114,8 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
-            <Text style={styles.activityText}> commented on a review on </Text>
+            <Text style={styles.activityText}> commented on </Text>
+            <Text style={styles.activityTextBold}>{writeupDisplayName}</Text>
           </View>
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
