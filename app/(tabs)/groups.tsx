@@ -54,7 +54,7 @@ export default function GroupsScreen() {
   const { groups, courses, loadGroups, session } = useStore();
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [sortOrder, setSortOrder] = useState<GroupSortOrder>('default');
+  const [sortOrder, setSortOrder] = useState<GroupSortOrder>('distance');
 
   useEffect(() => {
     loadGroups();

@@ -190,7 +190,7 @@ export default function OnboardingScreen() {
             <Text style={styles.label}>Home Course</Text>
             <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
               <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
-                {selectedCourse ? selectedCourse.short_name : 'Home Course (optional)'}
+                {selectedCourse ? selectedCourse.short_name : 'Select Home Course'}
               </Text>
               <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
             </Pressable>
@@ -223,12 +223,6 @@ export default function OnboardingScreen() {
                   </View>
                 </View>
                 <ScrollView style={styles.courseList} nestedScrollEnabled>
-                  <Pressable
-                    style={[styles.courseOption, homeCourseId === null && styles.courseOptionSelected]}
-                    onPress={() => { setHomeCourseId(null); setShowPicker(false); setCourseSearch(''); }}
-                  >
-                    <Text style={[styles.courseOptionText, homeCourseId === null && styles.courseOptionTextSelected]}>None</Text>
-                  </Pressable>
                   {filteredCourses.map((c) => {
                     const dist = getCourseDistance(c);
                     return (
@@ -262,8 +256,9 @@ export default function OnboardingScreen() {
         </View>
 
         <Pressable
-          style={styles.button}
+          style={[styles.button, !homeCourseId && styles.buttonDisabled]}
           onPress={handleCreate}
+          disabled={!homeCourseId}
         >
           <Text style={styles.buttonText}>Save Profile</Text>
         </Pressable>

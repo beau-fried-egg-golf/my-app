@@ -63,7 +63,7 @@ export default function MeetupsScreen() {
   const { meetups, courses, loadMeetups } = useStore();
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
-  const [sortOrder, setSortOrder] = useState<MeetupSortOrder>('date');
+  const [sortOrder, setSortOrder] = useState<MeetupSortOrder>('distance');
 
   useEffect(() => {
     loadMeetups();

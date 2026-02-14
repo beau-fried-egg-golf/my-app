@@ -96,7 +96,7 @@ export default function EditProfileScreen() {
   }
 
   async function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim() || !homeCourseId) return;
     await saveUser({
       id: user!.id,
       memberSince: user!.memberSince,
@@ -210,7 +210,7 @@ export default function EditProfileScreen() {
             <Text style={styles.label}>Home Course</Text>
             <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
               <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
-                {selectedCourse ? selectedCourse.short_name : 'Home Course (optional)'}
+                {selectedCourse ? selectedCourse.short_name : 'Select Home Course'}
               </Text>
               <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
             </Pressable>
@@ -243,12 +243,6 @@ export default function EditProfileScreen() {
                   </View>
                 </View>
                 <ScrollView style={styles.courseList} nestedScrollEnabled>
-                  <Pressable
-                    style={[styles.courseOption, homeCourseId === null && styles.courseOptionSelected]}
-                    onPress={() => { setHomeCourseId(null); setShowPicker(false); setCourseSearch(''); }}
-                  >
-                    <Text style={[styles.courseOptionText, homeCourseId === null && styles.courseOptionTextSelected]}>None</Text>
-                  </Pressable>
                   {filteredCourses.map((c) => {
                     const dist = getCourseDistance(c);
                     return (
