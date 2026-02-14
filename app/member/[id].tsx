@@ -1,17 +1,33 @@
+import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
+import { supabase } from '@/data/supabase';
 import PassportStamp from '@/components/PassportStamp';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profiles, writeups, coursesPlayed, courses, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy } = useStore();
+  const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy } = useStore();
   const router = useRouter();
   const isOwnProfile = session?.user?.id === id;
 
   const profile = profiles.find((p) => p.id === id);
+
+  const [memberGroupIds, setMemberGroupIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (!id) return;
+    supabase
+      .from('group_members')
+      .select('group_id')
+      .eq('user_id', id)
+      .then(({ data }) => {
+        if (data) setMemberGroupIds(data.map((r: any) => r.group_id));
+      });
+  }, [id]);
+
+  const memberGroups = groups.filter(g => memberGroupIds.includes(g.id));
 
   if (!profile) {
     return (
@@ -116,6 +132,34 @@ export default function MemberProfileScreen() {
         </View>
       </View>
 
+      {memberGroups.length > 0 && (
+        <View style={styles.groupsSection}>
+          <Text style={styles.sectionTitle}>Groups</Text>
+          {memberGroups.map(g => (
+            <Pressable
+              key={g.id}
+              style={styles.groupRow}
+              onPress={() => router.push(`/group/${g.id}`)}
+            >
+              {g.image ? (
+                <Image source={{ uri: g.image }} style={styles.groupImage} />
+              ) : (
+                <View style={styles.groupImagePlaceholder}>
+                  <Ionicons name="people" size={16} color={Colors.gray} />
+                </View>
+              )}
+              <View style={styles.groupInfo}>
+                <Text style={styles.groupName}>{g.name}</Text>
+                {g.member_count ? (
+                  <Text style={styles.groupMemberCount}>{g.member_count} {g.member_count === 1 ? 'member' : 'members'}</Text>
+                ) : null}
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.gray} />
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {passportCourses.length > 0 && (
         <View style={styles.passportSection}>
           <Text style={styles.passportTitle}>Course Passport</Text>
@@ -177,6 +221,14 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between' },
   detailLabel: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   detailValue: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  groupsSection: { marginTop: 24 },
+  sectionTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
+  groupRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
+  groupImage: { width: 40, height: 40, borderRadius: 6 },
+  groupImagePlaceholder: { width: 40, height: 40, borderRadius: 6, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
+  groupInfo: { flex: 1, marginLeft: 12 },
+  groupName: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  groupMemberCount: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 1 },
   passportSection: { marginTop: 24 },
   passportTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
   stampGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },

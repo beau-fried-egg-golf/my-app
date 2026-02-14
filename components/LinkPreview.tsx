@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 
@@ -22,6 +23,7 @@ function getDomain(url: string): string {
 
 export default function LinkPreview({ url, title, description, image }: LinkPreviewProps) {
   const domain = getDomain(url);
+  const [aspectRatio, setAspectRatio] = useState(1.91); // default OG image ratio (1200x630)
 
   function handlePress() {
     if (Platform.OS === 'web') {
@@ -34,7 +36,14 @@ export default function LinkPreview({ url, title, description, image }: LinkPrev
   return (
     <Pressable style={styles.card} onPress={handlePress}>
       {image ? (
-        <Image source={{ uri: image }} style={styles.image} />
+        <Image
+          source={{ uri: image }}
+          style={[styles.image, { aspectRatio }]}
+          onLoad={(e) => {
+            const { width, height } = e.nativeEvent.source;
+            if (width && height) setAspectRatio(width / height);
+          }}
+        />
       ) : null}
       <View style={styles.body}>
         {title ? (
@@ -61,7 +70,6 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 160,
   },
   body: {
     padding: 12,
