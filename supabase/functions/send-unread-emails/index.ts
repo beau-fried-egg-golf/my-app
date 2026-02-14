@@ -95,8 +95,8 @@ serve(async (req: Request) => {
     const name = candidate.name ?? "there";
     const email = authUser.user.email;
     const subject = unreadCount === 1
-      ? "You have 1 unread message on Fried Egg"
-      : `You have ${unreadCount} unread messages on Fried Egg`;
+      ? "You have 1 unread message in FEGC"
+      : `You have ${unreadCount} unread messages in FEGC`;
 
     const html = `
 <!DOCTYPE html>
@@ -112,7 +112,7 @@ serve(async (req: Request) => {
         <table width="560" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;">
           <tr>
             <td style="background-color:#1a1a1a;padding:24px 40px;text-align:center;">
-              <h1 style="color:#ffffff;font-size:24px;margin:0;letter-spacing:2px;">FRIED EGG</h1>
+              <h1 style="color:#ffffff;font-size:24px;margin:0;letter-spacing:2px;">FRIED EGG GOLF CLUB</h1>
             </td>
           </tr>
           <tr>
@@ -121,8 +121,15 @@ serve(async (req: Request) => {
                 Hey ${name},
               </p>
               <p style="color:#555555;font-size:16px;line-height:1.6;margin:0 0 24px;">
-                You have <strong>${unreadCount} unread message${unreadCount === 1 ? "" : "s"}</strong> waiting for you on Fried Egg. Open the app to catch up!
+                You have <strong>${unreadCount} unread message${unreadCount === 1 ? "" : "s"}</strong> waiting for you. Open the app to catch up!
               </p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+                <tr>
+                  <td style="background-color:#1a1a1a;border-radius:6px;text-align:center;">
+                    <a href="myapp://messages" style="display:inline-block;padding:12px 32px;color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;">Open App</a>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
@@ -146,7 +153,7 @@ serve(async (req: Request) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Fried Egg <onboarding@resend.dev>",
+        from: "Fried Egg Golf Club <onboarding@resend.dev>",
         to: [email],
         subject,
         html,
