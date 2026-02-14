@@ -13,6 +13,12 @@ function formatMeetupDate(iso: string): string {
     + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
 
+const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
+  pending: { bg: '#FFF3CD', text: '#856404' },
+  paid: { bg: '#D4EDDA', text: '#155724' },
+  waived: { bg: '#D1ECF1', text: '#0C5460' },
+};
+
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { meetups, session, joinMeetup, leaveMeetup, getMeetupMembers, loadMeetups, deleteMeetup } = useStore();
@@ -27,6 +33,10 @@ export default function MeetupDetailScreen() {
   const canManage = isHost || (meetup?.is_fe_coordinated && !meetup?.host_id);
   const slotsRemaining = meetup ? meetup.total_slots - (meetup.member_count ?? 0) : 0;
   const isFull = slotsRemaining <= 0;
+
+  const isFeMeetupWithPayment = meetup?.is_fe_coordinated && meetup?.stripe_payment_url;
+  const currentUserMember = members.find(m => m.user_id === currentUserId);
+  const currentPaymentStatus = currentUserMember?.payment_status;
 
   useEffect(() => {
     if (!id) return;
@@ -50,16 +60,125 @@ export default function MeetupDetailScreen() {
     );
   }
 
+  const openStripeWithMemberId = (memberId: string) => {
+    const url = `${meetup.stripe_payment_url}?client_reference_id=${memberId}`;
+    Linking.openURL(url);
+  };
+
   const handleJoin = async () => {
-    await joinMeetup(meetup.id);
+    const memberId = await joinMeetup(meetup.id);
     const m = await getMeetupMembers(meetup.id);
     setMembers(m);
+    if (memberId && isFeMeetupWithPayment) {
+      openStripeWithMemberId(memberId);
+    }
   };
 
   const handleLeave = async () => {
     await leaveMeetup(meetup.id);
     const m = await getMeetupMembers(meetup.id);
     setMembers(m);
+  };
+
+  const renderActionButtons = () => {
+    if (isFeMeetupWithPayment) {
+      // FE-coordinated meetup with Stripe payment
+      if (!isMember) {
+        // Not yet joined — single "Reserve & Pay" button
+        if (isFull) {
+          return (
+            <View style={[styles.stripeBtn, { opacity: 0.4 }]}>
+              <Text style={styles.stripeBtnText}>Meetup Full</Text>
+            </View>
+          );
+        }
+        return (
+          <Pressable style={styles.stripeBtn} onPress={handleJoin}>
+            <Text style={styles.stripeBtnText}>Reserve & Pay</Text>
+          </Pressable>
+        );
+      }
+
+      // Already joined
+      if (currentPaymentStatus === 'paid' || currentPaymentStatus === 'waived') {
+        // Paid or waived — show badge
+        const badgeColor = PAYMENT_BADGE_COLORS[currentPaymentStatus];
+        return (
+          <>
+            <Pressable
+              style={styles.actionBtnPrimary}
+              onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
+            >
+              <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
+            </Pressable>
+            <View style={[styles.paidBadge, { backgroundColor: badgeColor.bg }]}>
+              <Text style={[styles.paidBadgeText, { color: badgeColor.text }]}>
+                {currentPaymentStatus === 'paid' ? 'Paid' : 'Waived'}
+              </Text>
+            </View>
+            {!isHost && (
+              <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
+                <Text style={styles.actionBtnOutlineText}>Leave</Text>
+              </Pressable>
+            )}
+          </>
+        );
+      }
+
+      // Payment pending — show "Pay Now" button
+      return (
+        <>
+          <Pressable
+            style={styles.actionBtnPrimary}
+            onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
+          >
+            <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
+          </Pressable>
+          <Pressable
+            style={styles.stripeBtn}
+            onPress={() => currentUserMember && openStripeWithMemberId(currentUserMember.id)}
+          >
+            <Text style={styles.stripeBtnText}>Pay Now</Text>
+          </Pressable>
+          {!isHost && (
+            <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
+              <Text style={styles.actionBtnOutlineText}>Leave</Text>
+            </Pressable>
+          )}
+        </>
+      );
+    }
+
+    // Non-FE meetup: existing flow
+    if (isMember) {
+      return (
+        <>
+          <Pressable
+            style={styles.actionBtnPrimary}
+            onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
+          >
+            <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
+          </Pressable>
+          {!isHost && (
+            <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
+              <Text style={styles.actionBtnOutlineText}>Leave</Text>
+            </Pressable>
+          )}
+        </>
+      );
+    }
+    if (isFull) {
+      return (
+        <View style={[styles.actionBtnPrimary, { opacity: 0.4 }]}>
+          <Text style={styles.actionBtnPrimaryText}>Meetup Full</Text>
+        </View>
+      );
+    }
+    return (
+      <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
+        <Text style={styles.actionBtnPrimaryText}>Join Meetup</Text>
+      </Pressable>
+    );
   };
 
   return (
@@ -117,42 +236,8 @@ export default function MeetupDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          {isMember ? (
-            <>
-              <Pressable
-                style={styles.actionBtnPrimary}
-                onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
-              >
-                <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
-              </Pressable>
-              {!isHost && (
-                <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
-                  <Text style={styles.actionBtnOutlineText}>Leave</Text>
-                </Pressable>
-              )}
-            </>
-          ) : isFull ? (
-            <View style={[styles.actionBtnPrimary, { opacity: 0.4 }]}>
-              <Text style={styles.actionBtnPrimaryText}>Meetup Full</Text>
-            </View>
-          ) : (
-            <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
-              <Text style={styles.actionBtnPrimaryText}>Join Meetup</Text>
-            </Pressable>
-          )}
+          {renderActionButtons()}
         </View>
-
-        {/* Stripe Payment Link */}
-        {meetup.stripe_payment_url ? (
-          <View style={styles.actionRow}>
-            <Pressable
-              style={styles.stripeBtn}
-              onPress={() => Linking.openURL(meetup.stripe_payment_url!)}
-            >
-              <Text style={styles.stripeBtnText}>Reserve & Pay</Text>
-            </Pressable>
-          </View>
-        ) : null}
 
         {/* Details */}
         {meetup.host_id ? (
@@ -233,6 +318,13 @@ export default function MeetupDetailScreen() {
               {m.user_id === meetup.host_id && (
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleBadgeText}>Host</Text>
+                </View>
+              )}
+              {isFeMeetupWithPayment && m.payment_status && PAYMENT_BADGE_COLORS[m.payment_status] && (
+                <View style={[styles.paymentBadge, { backgroundColor: PAYMENT_BADGE_COLORS[m.payment_status].bg }]}>
+                  <Text style={[styles.paymentBadgeText, { color: PAYMENT_BADGE_COLORS[m.payment_status].text }]}>
+                    {m.payment_status === 'paid' ? 'Paid' : m.payment_status === 'waived' ? 'Waived' : 'Pending'}
+                  </Text>
                 </View>
               )}
             </Pressable>
@@ -387,6 +479,16 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
   },
+  paidBadge: {
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  paidBadgeText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+  },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -470,5 +572,16 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     color: Colors.white,
+  },
+  paymentBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 6,
+  },
+  paymentBadgeText: {
+    fontSize: 11,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
   },
 });

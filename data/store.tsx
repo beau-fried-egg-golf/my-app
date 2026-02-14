@@ -82,7 +82,7 @@ interface StoreContextType {
   createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; host_id?: string | null }) => Promise<Meetup>;
   updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => Promise<void>;
   deleteMeetup: (meetupId: string) => Promise<void>;
-  joinMeetup: (meetupId: string) => Promise<void>;
+  joinMeetup: (meetupId: string) => Promise<string | undefined>;
   leaveMeetup: (meetupId: string) => Promise<void>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
@@ -2112,8 +2112,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const joinMeetup = useCallback(
-    async (meetupId: string) => {
-      if (!session) return;
+    async (meetupId: string): Promise<string | undefined> => {
+      if (!session) return undefined;
       const userId = session.user.id;
 
       // Optimistic update
@@ -2121,17 +2121,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         m.id === meetupId ? { ...m, is_member: true, member_count: (m.member_count ?? 0) + 1 } : m
       ));
 
-      const { error } = await supabase
+      const { data: row, error } = await supabase
         .from('meetup_members')
-        .insert({ meetup_id: meetupId, user_id: userId });
+        .insert({ meetup_id: meetupId, user_id: userId })
+        .select('id')
+        .single();
 
       if (error) {
         // Revert on error
         setMeetups(prev => prev.map(m =>
           m.id === meetupId ? { ...m, is_member: false, member_count: (m.member_count ?? 1) - 1 } : m
         ));
-        return;
+        return undefined;
       }
+
+      const memberId = row?.id as string | undefined;
 
       // Insert activity
       const meetup = meetupsRef.current.find(m => m.id === meetupId);
@@ -2154,6 +2158,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       const newActivities = await loadActivities();
       setActivities(newActivities);
+
+      return memberId;
     },
     [session],
   );
