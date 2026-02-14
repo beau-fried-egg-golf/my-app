@@ -24,7 +24,30 @@ function detectPlatform(url: string): string {
 }
 
 async function fetchLinkMeta(url: string): Promise<{ title: string; description: string; image: string }> {
-  // Try noembed (works for YouTube, Twitter, Instagram, Vimeo, etc.)
+  // 1. Try edge function (handles Twitter/X, Instagram, and any site with OG tags)
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/fetch-link-meta`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ url }),
+      },
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.title || data.image) {
+        return { title: data.title ?? '', description: data.description ?? '', image: data.image ?? '' };
+      }
+    }
+  } catch {
+    // fall through
+  }
+
+  // 2. Fall back to noembed (rich YouTube metadata: author name, provider)
   try {
     const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
     const data = await res.json();
@@ -38,7 +61,8 @@ async function fetchLinkMeta(url: string): Promise<{ title: string; description:
   } catch {
     // fall through
   }
-  // Fallback for YouTube specifically
+
+  // 3. Fallback for YouTube specifically
   const ytId = extractYouTubeId(url);
   if (ytId) {
     return {

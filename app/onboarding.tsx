@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,8 +11,11 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
+import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 
@@ -29,13 +33,13 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 export default function OnboardingScreen() {
   const router = useRouter();
   const { user, saveUser, courses } = useStore();
+  const [image, setImage] = useState<string | null>(null);
   const [streetAddress, setStreetAddress] = useState('');
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [zip, setZip] = useState('');
   const [handicap, setHandicap] = useState('');
   const [homeCourseId, setHomeCourseId] = useState<string | null>(null);
-  const [favoriteBall, setFavoriteBall] = useState('');
   const [showPicker, setShowPicker] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
@@ -72,17 +76,30 @@ export default function OnboardingScreen() {
 
   const selectedCourse = homeCourseId ? courses.find(c => c.id === homeCourseId) : null;
 
+  async function pickImage() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0] && user) {
+      const url = await uploadPhoto(result.assets[0].uri, user.id);
+      setImage(url);
+    }
+  }
+
   async function handleCreate() {
     if (!user) return;
     await saveUser({
       ...user,
+      image,
       streetAddress: streetAddress.trim(),
       city: city.trim(),
       state: state.trim(),
       zip: zip.trim(),
       handicap: handicap ? parseFloat(handicap) : null,
       homeCourseId,
-      favoriteBall: favoriteBall.trim(),
     });
     router.replace('/');
   }
@@ -97,6 +114,17 @@ export default function OnboardingScreen() {
           <Text style={styles.title}>Complete Your Profile</Text>
           <Text style={styles.subtitle}>Just a few more details to set up your account</Text>
         </View>
+
+        <Pressable style={styles.avatarSection} onPress={pickImage}>
+          {image ? (
+            <Image source={{ uri: image }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={40} color={Colors.gray} />
+            </View>
+          )}
+          <Text style={styles.changePhotoText}>Add Photo</Text>
+        </Pressable>
 
         <View style={styles.form}>
           <View style={styles.field}>
@@ -231,16 +259,6 @@ export default function OnboardingScreen() {
             )}
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Favorite Ball</Text>
-            <TextInput
-              style={styles.input}
-              value={favoriteBall}
-              onChangeText={setFavoriteBall}
-              placeholder="e.g. Pro V1"
-              placeholderTextColor={Colors.gray}
-            />
-          </View>
         </View>
 
         <Pressable
@@ -275,6 +293,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.gray,
     marginTop: 4,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 4,
+  },
+  avatarPlaceholder: {
+    width: 88,
+    height: 88,
+    borderRadius: 4,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changePhotoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.black,
+    marginTop: 8,
   },
   form: {
     gap: 20,
