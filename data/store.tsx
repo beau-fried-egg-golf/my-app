@@ -99,7 +99,8 @@ interface StoreContextType {
   pushNotificationsEnabled: boolean;
   pushNearbyEnabled: boolean;
   pushNearbyRadiusMiles: number;
-  updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number }) => Promise<void>;
+  emailNotificationsEnabled: boolean;
+  updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean }) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -133,6 +134,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
   const [pushNearbyEnabled, setPushNearbyEnabled] = useState(true);
   const [pushNearbyRadiusMiles, setPushNearbyRadiusMiles] = useState(50);
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -255,6 +257,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setPushNotificationsEnabled(true);
         setPushNearbyEnabled(true);
         setPushNearbyRadiusMiles(50);
+        setEmailNotificationsEnabled(true);
         setGroups([]);
         setMeetups([]);
         setNotifications([]);
@@ -337,6 +340,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             setPushNotificationsEnabled(ownProfile.push_notifications_enabled ?? true);
             setPushNearbyEnabled(ownProfile.push_nearby_enabled ?? true);
             setPushNearbyRadiusMiles(ownProfile.push_nearby_radius_miles ?? 50);
+            setEmailNotificationsEnabled(ownProfile.email_notifications_enabled ?? true);
           }
         }
       }
@@ -2440,12 +2444,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }
 
   const updatePushPreferences = useCallback(
-    async (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number }) => {
+    async (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean }) => {
       if (!session) return;
       if (prefs.push_dm_enabled !== undefined) setPushDmEnabled(prefs.push_dm_enabled);
       if (prefs.push_notifications_enabled !== undefined) setPushNotificationsEnabled(prefs.push_notifications_enabled);
       if (prefs.push_nearby_enabled !== undefined) setPushNearbyEnabled(prefs.push_nearby_enabled);
       if (prefs.push_nearby_radius_miles !== undefined) setPushNearbyRadiusMiles(prefs.push_nearby_radius_miles);
+      if (prefs.email_notifications_enabled !== undefined) setEmailNotificationsEnabled(prefs.email_notifications_enabled);
       await supabase.from('profiles').update(prefs).eq('id', session.user.id);
     },
     [session],
@@ -2575,6 +2580,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         pushNotificationsEnabled,
         pushNearbyEnabled,
         pushNearbyRadiusMiles,
+        emailNotificationsEnabled,
         updatePushPreferences,
       }}
     >

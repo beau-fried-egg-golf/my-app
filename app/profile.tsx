@@ -7,7 +7,7 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import PassportStamp from '@/components/PassportStamp';
 
 export default function ProfileScreen() {
-  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, updatePushPreferences } = useStore();
+  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, updatePushPreferences } = useStore();
   const router = useRouter();
 
   if (!user) return null;
@@ -162,6 +162,15 @@ export default function ProfileScreen() {
               </View>
             </View>
           )}
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Email: Unread Messages</Text>
+            <Pressable
+              style={[styles.toggleTrack, emailNotificationsEnabled && styles.toggleTrackOn]}
+              onPress={() => updatePushPreferences({ email_notifications_enabled: !emailNotificationsEnabled })}
+            >
+              <View style={[styles.toggleThumb, emailNotificationsEnabled && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
         </View>
       </View>
 

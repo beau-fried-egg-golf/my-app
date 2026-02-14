@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '@/constants/theme';
 import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
+import { supabase } from '@/data/supabase';
 import { Course } from '@/types';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -101,6 +102,7 @@ export default function OnboardingScreen() {
       handicap: handicap ? parseFloat(handicap) : null,
       homeCourseId,
     });
+    supabase.functions.invoke('send-welcome-email', { body: { user_id: user.id } }).catch(() => {});
     router.replace('/');
   }
 
@@ -218,7 +220,7 @@ export default function OnboardingScreen() {
                       style={[styles.pickerSortBtn, courseSortOrder === 'distance' && styles.pickerSortBtnActive]}
                       onPress={() => setCourseSortOrder('distance')}
                     >
-                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEAR</Text>
+                      <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEARBY</Text>
                     </Pressable>
                   </View>
                 </View>

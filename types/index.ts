@@ -17,6 +17,7 @@ export interface Profile {
   push_notifications_enabled?: boolean;
   push_nearby_enabled?: boolean;
   push_nearby_radius_miles?: number;
+  email_notifications_enabled?: boolean;
 }
 
 export interface Follow {
