@@ -1,7 +1,24 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, Notification, profileToUser } from '@/types';
+
+async function updateBadgeCount(
+  notifications: Notification[],
+  conversations: Conversation[],
+  groups: Group[],
+  meetups: Meetup[],
+) {
+  if (Platform.OS === 'web') return;
+  const count =
+    notifications.filter(n => !n.is_read).length +
+    conversations.filter(c => c.unread).length +
+    groups.filter(g => g._has_unread).length +
+    meetups.filter(m => m._has_unread).length;
+  const Notifications = await import('expo-notifications');
+  Notifications.setBadgeCountAsync(count);
+}
 
 interface StoreContextType {
   session: Session | null;
@@ -748,7 +765,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const markNotificationRead = useCallback(
     async (id: string) => {
       // Optimistic update
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      const updated = notificationsRef.current.map(n => n.id === id ? { ...n, is_read: true } : n);
+      setNotifications(updated);
+      updateBadgeCount(updated, conversationsRef.current, groupsRef.current, meetupsRef.current);
       await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     },
     [],
@@ -761,7 +780,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (unreadIds.length === 0) return;
 
       // Optimistic update
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      const updated = notificationsRef.current.map(n => ({ ...n, is_read: true }));
+      setNotifications(updated);
+      updateBadgeCount(updated, conversationsRef.current, groupsRef.current, meetupsRef.current);
       await supabase.from('notifications').update({ is_read: true }).eq('user_id', session.user.id).eq('is_read', false);
     },
     [session],
@@ -1647,9 +1668,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const field = convo.user1_id === userId ? 'user1_last_read_at' : 'user2_last_read_at';
 
       // Optimistic update
-      setConversations(prev => prev.map(c =>
+      const updatedConvos = conversationsRef.current.map(c =>
         c.id === conversationId ? { ...c, unread: false, [field]: now } : c
-      ));
+      );
+      setConversations(updatedConvos);
+      updateBadgeCount(notificationsRef.current, updatedConvos, groupsRef.current, meetupsRef.current);
 
       await supabase
         .from('conversations')
@@ -1992,9 +2015,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const now = new Date().toISOString();
 
       // Optimistic update
-      setGroups(prev => prev.map(g =>
+      const updatedGroups = groupsRef.current.map(g =>
         g.id === groupId ? { ...g, _has_unread: false, _member_last_read_at: now } : g
-      ));
+      );
+      setGroups(updatedGroups);
+      updateBadgeCount(notificationsRef.current, conversationsRef.current, updatedGroups, meetupsRef.current);
 
       await supabase
         .from('group_members')
@@ -2398,9 +2423,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const now = new Date().toISOString();
 
       // Optimistic update
-      setMeetups(prev => prev.map(m =>
+      const updatedMeetups = meetupsRef.current.map(m =>
         m.id === meetupId ? { ...m, _has_unread: false, _member_last_read_at: now } : m
-      ));
+      );
+      setMeetups(updatedMeetups);
+      updateBadgeCount(notificationsRef.current, conversationsRef.current, groupsRef.current, updatedMeetups);
 
       await supabase
         .from('meetup_members')

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/data/supabase';
 import type { EventSubscription } from 'expo-modules-core';
@@ -20,6 +20,8 @@ export function usePushNotifications(userId: string | undefined) {
   useEffect(() => {
     if (!userId || Platform.OS === 'web') return;
 
+    let appStateSubscription: ReturnType<typeof AppState.addEventListener> | null = null;
+
     (async () => {
       const Notifications = await getNotifications();
 
@@ -29,12 +31,22 @@ export function usePushNotifications(userId: string | undefined) {
           shouldShowBanner: true,
           shouldShowList: true,
           shouldPlaySound: true,
-          shouldSetBadge: false,
+          shouldSetBadge: true,
         }),
       });
 
       // Register for push notifications
       await registerForPushNotifications(userId);
+
+      // Clear any stale badge on initial launch
+      Notifications.setBadgeCountAsync(0);
+
+      // Clear badge whenever the app comes to foreground
+      appStateSubscription = AppState.addEventListener('change', (nextState) => {
+        if (nextState === 'active') {
+          Notifications.setBadgeCountAsync(0);
+        }
+      });
 
       // Set up Android notification channel
       if (Platform.OS === 'android') {
@@ -66,6 +78,7 @@ export function usePushNotifications(userId: string | undefined) {
 
     return () => {
       responseListener.current?.remove();
+      appStateSubscription?.remove();
     };
   }, [userId]);
 }

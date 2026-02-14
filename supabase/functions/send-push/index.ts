@@ -57,6 +57,24 @@ serve(async (req: Request) => {
     );
   }
 
+  // Compute total unread count for badge
+  const [{ count: unreadNotifications }, { count: unreadDMs }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", recipient_id)
+      .eq("is_read", false),
+    supabase
+      .from("conversations")
+      .select("*", { count: "exact", head: true })
+      .or(`user1_id.eq.${recipient_id},user2_id.eq.${recipient_id}`)
+      .or(
+        `and(user1_id.eq.${recipient_id},user1_last_read_at.lt.last_message_at),` +
+        `and(user2_id.eq.${recipient_id},user2_last_read_at.lt.last_message_at)`
+      ),
+  ]);
+  const badge = (unreadNotifications ?? 0) + (unreadDMs ?? 0);
+
   // Send via Expo Push API
   const pushRes = await fetch("https://exp.host/--/api/v2/push/send", {
     method: "POST",
@@ -71,6 +89,7 @@ serve(async (req: Request) => {
       body,
       data: data ?? {},
       sound: "default",
+      badge,
     }),
   });
 
