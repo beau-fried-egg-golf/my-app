@@ -9,6 +9,17 @@ interface LinkPreviewProps {
   image?: string | null;
 }
 
+function decodeEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
 function getDomain(url: string): string {
   try {
     const host = new URL(url).hostname.replace('www.', '');
@@ -49,10 +60,10 @@ export default function LinkPreview({ url, title, description, image }: LinkPrev
       ) : null}
       <View style={styles.body}>
         {title ? (
-          <Text style={styles.title} numberOfLines={2}>{title}</Text>
+          <Text style={styles.title} numberOfLines={2}>{decodeEntities(title)}</Text>
         ) : null}
         {description ? (
-          <Text style={styles.description} numberOfLines={2}>{description}</Text>
+          <Text style={styles.description} numberOfLines={2}>{decodeEntities(description)}</Text>
         ) : null}
         {domain ? (
           <Text style={styles.domain}>{domain}</Text>
