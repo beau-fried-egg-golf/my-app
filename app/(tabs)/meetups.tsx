@@ -134,7 +134,7 @@ export default function MeetupsScreen() {
                 style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('distance')}
               >
-                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEAR</Text>
+                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
               </Pressable>
             </View>
 

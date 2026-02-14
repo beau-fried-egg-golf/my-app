@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,7 @@ export default function MembersScreen() {
   const router = useRouter();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [sortOrder, setSortOrder] = useState<MemberSortOrder>('distance');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -62,15 +63,22 @@ export default function MembersScreen() {
   }
 
   const sortedProfiles = useMemo(() => {
+    let result = [...profiles];
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(q));
+    }
     if (sortOrder === 'distance' && userLocation) {
-      return [...profiles].sort((a, b) => {
+      result.sort((a, b) => {
         const da = getMemberDistance(a) ?? Infinity;
         const db = getMemberDistance(b) ?? Infinity;
         return da - db;
       });
+    } else {
+      result.sort((a, b) => a.name.localeCompare(b.name));
     }
-    return [...profiles].sort((a, b) => a.name.localeCompare(b.name));
-  }, [profiles, sortOrder, userLocation, courses]);
+    return result;
+  }, [profiles, sortOrder, userLocation, courses, search]);
 
   if (!session) return null;
 
@@ -106,12 +114,22 @@ export default function MembersScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.sortToggle}>
+      <View style={styles.toolbar}>
+        <TextInput
+          style={styles.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search members..."
+          placeholderTextColor={Colors.gray}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        <View style={styles.sortToggle}>
         <Pressable
           style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
           onPress={() => setSortOrder('distance')}
         >
-          <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEAR</Text>
+          <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
         </Pressable>
         <Pressable
           style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
@@ -119,6 +137,7 @@ export default function MembersScreen() {
         >
           <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
         </Pressable>
+        </View>
       </View>
       <FlatList
         data={sortedProfiles}
@@ -139,12 +158,27 @@ export default function MembersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   list: { paddingVertical: 8 },
-  sortToggle: {
+  toolbar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 4,
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingTop: 8,
+  },
+  searchInput: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+  },
+  sortToggle: {
+    flexDirection: 'row',
+    gap: 4,
   },
   sortBtn: {
     paddingHorizontal: 6,

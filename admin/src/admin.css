@@ -6,7 +6,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f5f5f5;
+  background: #fff;
   color: #1a1a1a;
 }
 
@@ -17,8 +17,8 @@ body {
 
 .sidebar {
   width: 220px;
-  background: #1a1a1a;
-  color: #fff;
+  background: #F3F1E7;
+  color: #1a1a1a;
   position: fixed;
   top: 0;
   left: 0;
@@ -28,8 +28,17 @@ body {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   padding: 20px 16px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #e0ded4;
+}
+
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
 }
 
 .sidebar-header h2 {
@@ -41,12 +50,13 @@ body {
   display: flex;
   flex-direction: column;
   padding: 8px 0;
+  flex: 1;
 }
 
 .nav-link {
   display: block;
   padding: 10px 16px;
-  color: #aaa;
+  color: #666;
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
@@ -54,13 +64,13 @@ body {
 }
 
 .nav-link:hover {
-  background: #2a2a2a;
-  color: #fff;
+  background: #eae8de;
+  color: #1a1a1a;
 }
 
 .nav-link.active {
-  background: #333;
-  color: #fff;
+  background: #e0ded4;
+  color: #1a1a1a;
   font-weight: 600;
 }
 
@@ -68,7 +78,41 @@ body {
   margin-left: 220px;
   flex: 1;
   padding: 24px 32px;
+  padding-top: 0;
   min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 16px 0;
+  margin-bottom: 8px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-icon-btn:hover {
+  background: #F3F1E7;
+  color: #1a1a1a;
 }
 
 /* Page headers */
@@ -156,7 +200,7 @@ tr:last-child td {
 }
 
 tr:hover {
-  background: #fafafa;
+  background: #faf9f5;
 }
 
 /* Buttons */
@@ -177,7 +221,7 @@ tr:hover {
 }
 
 .btn:hover {
-  background: #f5f5f5;
+  background: #faf9f5;
 }
 
 .btn-primary {
@@ -537,12 +581,12 @@ tr:hover {
 
 .dropzone:hover {
   border-color: #9ca3af;
-  background: #fafafa;
+  background: #faf9f5;
 }
 
 .dropzone-active {
   border-color: #1a1a1a;
-  background: #f5f5f5;
+  background: #F3F1E7;
 }
 
 /* Import status badges */

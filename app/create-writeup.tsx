@@ -167,7 +167,7 @@ export default function CreateWriteupScreen() {
                   style={[styles.pickerSortBtn, courseSortOrder === 'distance' && styles.pickerSortBtnActive]}
                   onPress={() => setCourseSortOrder('distance')}
                 >
-                  <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEAR</Text>
+                  <Text style={[styles.pickerSortBtnText, courseSortOrder === 'distance' && styles.pickerSortBtnTextActive]}>NEARBY</Text>
                 </Pressable>
               </View>
             </View>
