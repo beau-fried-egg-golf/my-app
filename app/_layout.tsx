@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 function BackArrow() {
   const router = useRouter();
@@ -15,6 +16,12 @@ function BackArrow() {
       <Ionicons name="chevron-back" size={28} color={Colors.black} />
     </Pressable>
   );
+}
+
+function PushNotificationRegistrar() {
+  const { session } = useStore();
+  usePushNotifications(session?.user?.id);
+  return null;
 }
 
 function PasswordResetNavigator() {
@@ -52,6 +59,7 @@ export default function RootLayout() {
 
   return (
     <StoreProvider>
+      <PushNotificationRegistrar />
       <PasswordResetNavigator />
       <StatusBar style="dark" />
       <Stack

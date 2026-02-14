@@ -94,6 +94,12 @@ interface StoreContextType {
   hasUnreadNotifications: boolean;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  // Push preferences
+  pushDmEnabled: boolean;
+  pushNotificationsEnabled: boolean;
+  pushNearbyEnabled: boolean;
+  pushNearbyRadiusMiles: number;
+  updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number }) => Promise<void>;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -123,6 +129,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
+  const [pushDmEnabled, setPushDmEnabled] = useState(true);
+  const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
+  const [pushNearbyEnabled, setPushNearbyEnabled] = useState(true);
+  const [pushNearbyRadiusMiles, setPushNearbyRadiusMiles] = useState(50);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -241,6 +251,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setBlockedUserIds(new Set());
         setBlockedByIds(new Set());
         setDmsDisabled(false);
+        setPushDmEnabled(true);
+        setPushNotificationsEnabled(true);
+        setPushNearbyEnabled(true);
+        setPushNearbyRadiusMiles(50);
         setGroups([]);
         setMeetups([]);
         setNotifications([]);
@@ -317,7 +331,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Set dmsDisabled from own profile
         if (currentUserId) {
           const ownProfile = profilesRes.data.find((p: Profile) => p.id === currentUserId);
-          if (ownProfile) setDmsDisabled(!!ownProfile.dms_disabled);
+          if (ownProfile) {
+            setDmsDisabled(!!ownProfile.dms_disabled);
+            setPushDmEnabled(ownProfile.push_dm_enabled ?? true);
+            setPushNotificationsEnabled(ownProfile.push_notifications_enabled ?? true);
+            setPushNearbyEnabled(ownProfile.push_nearby_enabled ?? true);
+            setPushNearbyRadiusMiles(ownProfile.push_nearby_radius_miles ?? 50);
+          }
         }
       }
       if (playedRes.data) setCoursesPlayed(playedRes.data);
@@ -627,6 +647,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     if (toInsert.length > 0) {
       await supabase.from('notifications').insert(toInsert);
+      // Send push for each reminder
+      for (const reminder of toInsert) {
+        const meetup = meetupData.find(m => m.id === reminder.meetup_id);
+        const daysLabel = reminder.type === 'meetup_reminder_1d' ? 'tomorrow' : 'in 7 days';
+        sendPush({
+          recipient_id: userId,
+          title: 'Meetup Reminder',
+          body: `${meetup?.name ?? 'A meetup'} is ${daysLabel}!`,
+          data: { meetup_id: reminder.meetup_id },
+          push_type: 'notification',
+        });
+      }
     }
   }
 
@@ -979,6 +1011,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             actor_id: userId,
             writeup_id: writeupId,
           });
+          sendPush({
+            recipient_id: writeup.user_id,
+            title: 'New Reaction',
+            body: `${user?.name ?? 'Someone'} reacted to your review`,
+            data: { writeup_id: writeupId },
+            push_type: 'notification',
+          });
         }
       }
     },
@@ -1261,6 +1300,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           actor_id: userId,
           post_id: postId,
         });
+        sendPush({
+          recipient_id: post.user_id,
+          title: 'New Reply',
+          body: `${user?.name ?? 'Someone'} replied to your post`,
+          data: { post_id: postId },
+          push_type: 'notification',
+        });
       }
 
       // Refresh activities
@@ -1332,6 +1378,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           type: 'writeup_reply',
           actor_id: userId,
           writeup_id: writeupId,
+        });
+        sendPush({
+          recipient_id: writeup.user_id,
+          title: 'New Reply',
+          body: `${user?.name ?? 'Someone'} replied to your review`,
+          data: { writeup_id: writeupId },
+          push_type: 'notification',
         });
       }
 
@@ -1561,6 +1614,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setConversations(prev => prev.map(c =>
         c.id === conversationId ? { ...c, unread: false, [readField]: now, updated_at: now } : c
       ));
+
+      // Send push notification to the other user
+      if (convo) {
+        const recipientId = convo.user1_id === userId ? convo.user2_id : convo.user1_id;
+        sendPush({
+          recipient_id: recipientId,
+          title: 'New Message',
+          body: `${user?.name ?? 'Someone'}: ${content.length > 80 ? content.slice(0, 80) + '...' : content}`,
+          data: { conversation_id: conversationId },
+          push_type: 'dm',
+        });
+      }
 
       return data;
     },
@@ -1797,6 +1862,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           type: 'group_join',
           actor_id: userId,
           group_id: groupId,
+        });
+        sendPush({
+          recipient_id: group.creator_id,
+          title: 'New Member',
+          body: `${user?.name ?? 'Someone'} joined ${group.name}`,
+          data: { group_id: groupId },
+          push_type: 'notification',
         });
       }
     },
@@ -2055,6 +2127,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         course_id: data.course_id || null,
       });
 
+      // Notify nearby users if meetup has a course
+      if (data.course_id) {
+        supabase.functions.invoke('notify-nearby-meetup', {
+          body: {
+            meetup_id: meetupData.id,
+            course_id: data.course_id,
+            meetup_name: data.name,
+            creator_id: userId,
+          },
+        }).catch(() => {});
+      }
+
       const newActivities = await loadActivities();
       setActivities(newActivities);
 
@@ -2154,6 +2238,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           type: 'meetup_signup',
           actor_id: userId,
           meetup_id: meetupId,
+        });
+        sendPush({
+          recipient_id: meetup.host_id,
+          title: 'New Signup',
+          body: `${user?.name ?? 'Someone'} signed up for ${meetup.name}`,
+          data: { meetup_id: meetupId },
+          push_type: 'notification',
         });
       }
 
@@ -2343,6 +2434,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  // ---- Push notification helpers ----
+  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' }) {
+    supabase.functions.invoke('send-push', { body: params }).catch(() => {});
+  }
+
+  const updatePushPreferences = useCallback(
+    async (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number }) => {
+      if (!session) return;
+      if (prefs.push_dm_enabled !== undefined) setPushDmEnabled(prefs.push_dm_enabled);
+      if (prefs.push_notifications_enabled !== undefined) setPushNotificationsEnabled(prefs.push_notifications_enabled);
+      if (prefs.push_nearby_enabled !== undefined) setPushNearbyEnabled(prefs.push_nearby_enabled);
+      if (prefs.push_nearby_radius_miles !== undefined) setPushNearbyRadiusMiles(prefs.push_nearby_radius_miles);
+      await supabase.from('profiles').update(prefs).eq('id', session.user.id);
+    },
+    [session],
+  );
+
   const isBlocked = useCallback(
     (userId: string) => blockedUserIds.has(userId),
     [blockedUserIds],
@@ -2463,6 +2571,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         hasUnreadNotifications,
         markNotificationRead,
         markAllNotificationsRead,
+        pushDmEnabled,
+        pushNotificationsEnabled,
+        pushNearbyEnabled,
+        pushNearbyRadiusMiles,
+        updatePushPreferences,
       }}
     >
       {children}

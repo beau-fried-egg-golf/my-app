@@ -12,6 +12,11 @@ export interface Profile {
   member_since: string;
   suspended?: boolean;
   dms_disabled?: boolean;
+  expo_push_token?: string | null;
+  push_dm_enabled?: boolean;
+  push_notifications_enabled?: boolean;
+  push_nearby_enabled?: boolean;
+  push_nearby_radius_miles?: number;
 }
 
 export interface Follow {

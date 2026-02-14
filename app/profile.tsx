@@ -7,7 +7,7 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import PassportStamp from '@/components/PassportStamp';
 
 export default function ProfileScreen() {
-  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms } = useStore();
+  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, updatePushPreferences } = useStore();
   const router = useRouter();
 
   if (!user) return null;
@@ -111,6 +111,57 @@ export default function ProfileScreen() {
           >
             <View style={[styles.toggleThumb, !dmsDisabled && styles.toggleThumbOn]} />
           </Pressable>
+        </View>
+      </View>
+
+      <View style={styles.notificationsSection}>
+        <Text style={styles.notificationsTitle}>Notifications</Text>
+        <View style={styles.details}>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Push: Direct Messages</Text>
+            <Pressable
+              style={[styles.toggleTrack, pushDmEnabled && styles.toggleTrackOn]}
+              onPress={() => updatePushPreferences({ push_dm_enabled: !pushDmEnabled })}
+            >
+              <View style={[styles.toggleThumb, pushDmEnabled && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Push: Activity</Text>
+            <Pressable
+              style={[styles.toggleTrack, pushNotificationsEnabled && styles.toggleTrackOn]}
+              onPress={() => updatePushPreferences({ push_notifications_enabled: !pushNotificationsEnabled })}
+            >
+              <View style={[styles.toggleThumb, pushNotificationsEnabled && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Push: Nearby Meetups</Text>
+            <Pressable
+              style={[styles.toggleTrack, pushNearbyEnabled && styles.toggleTrackOn]}
+              onPress={() => updatePushPreferences({ push_nearby_enabled: !pushNearbyEnabled })}
+            >
+              <View style={[styles.toggleThumb, pushNearbyEnabled && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
+          {pushNearbyEnabled && (
+            <View style={styles.detailRow}>
+              <Text style={styles.detailLabel}>Nearby Radius</Text>
+              <View style={styles.radiusChips}>
+                {[25, 50, 100].map(miles => (
+                  <Pressable
+                    key={miles}
+                    style={[styles.radiusChip, pushNearbyRadiusMiles === miles && styles.radiusChipActive]}
+                    onPress={() => updatePushPreferences({ push_nearby_radius_miles: miles })}
+                  >
+                    <Text style={[styles.radiusChipText, pushNearbyRadiusMiles === miles && styles.radiusChipTextActive]}>
+                      {miles} mi
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       </View>
 
@@ -291,6 +342,38 @@ const styles = StyleSheet.create({
   },
   toggleThumbOn: {
     alignSelf: 'flex-end',
+  },
+  notificationsSection: {
+    marginBottom: 32,
+  },
+  notificationsTitle: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    marginBottom: 12,
+  },
+  radiusChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  radiusChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: Colors.lightGray,
+  },
+  radiusChipActive: {
+    backgroundColor: Colors.orange,
+  },
+  radiusChipText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.gray,
+  },
+  radiusChipTextActive: {
+    color: Colors.white,
   },
   passportSection: {
     marginBottom: 32,
