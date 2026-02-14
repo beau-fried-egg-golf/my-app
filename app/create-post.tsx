@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,10 +16,25 @@ import * as ImagePicker from 'expo-image-picker';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { uploadPhoto } from '@/utils/photo';
+import { supabase } from '@/data/supabase';
+import LinkPreview from '@/components/LinkPreview';
 
 interface PhotoDraft {
   uri: string;
   caption: string;
+}
+
+interface LinkMeta {
+  title: string;
+  description: string;
+  image: string;
+}
+
+const URL_REGEX = /https?:\/\/\S+/;
+
+function extractUrl(text: string): string | null {
+  const match = text.match(URL_REGEX);
+  return match ? match[0] : null;
 }
 
 export default function CreatePostScreen() {
@@ -28,11 +44,89 @@ export default function CreatePostScreen() {
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  const [linkUrl, setLinkUrl] = useState<string | null>(null);
+  const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
+  const [fetchingMeta, setFetchingMeta] = useState(false);
+  const [linkDismissed, setLinkDismissed] = useState(false);
+  const fetchAbortRef = useRef<AbortController | null>(null);
+
   if (!user) return null;
 
   const canSubmit = content.trim() && !submitting;
 
   const MAX_PHOTOS = 5;
+
+  async function fetchLinkMeta(url: string): Promise<LinkMeta> {
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-link-meta', {
+        body: { url },
+      });
+      if (!error && data && (data.title || data.image)) {
+        return {
+          title: data.title ?? '',
+          description: data.description ?? '',
+          image: data.image ?? '',
+        };
+      }
+    } catch {
+      // fall through
+    }
+
+    // Fallback: noembed for YouTube etc.
+    try {
+      const res = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+      const data = await res.json();
+      if (data.title && !data.error) {
+        return {
+          title: data.title,
+          description: data.author_name ? `by ${data.author_name} on ${data.provider_name ?? ''}`.trim() : '',
+          image: data.thumbnail_url ?? '',
+        };
+      }
+    } catch {
+      // fall through
+    }
+
+    return { title: '', description: '', image: '' };
+  }
+
+  function handleContentChange(text: string) {
+    setContent(text);
+
+    const detected = extractUrl(text);
+
+    if (detected !== linkUrl) {
+      setLinkDismissed(false);
+      setLinkMeta(null);
+
+      if (detected) {
+        setLinkUrl(detected);
+        setFetchingMeta(true);
+
+        // Cancel any in-flight fetch
+        fetchAbortRef.current?.abort();
+        const controller = new AbortController();
+        fetchAbortRef.current = controller;
+
+        fetchLinkMeta(detected).then((meta) => {
+          if (controller.signal.aborted) return;
+          setLinkMeta(meta);
+          setFetchingMeta(false);
+        }).catch(() => {
+          if (controller.signal.aborted) return;
+          setFetchingMeta(false);
+        });
+      } else {
+        setLinkUrl(null);
+        setFetchingMeta(false);
+      }
+    }
+  }
+
+  function dismissLink() {
+    setLinkDismissed(true);
+    setLinkMeta(null);
+  }
 
   async function pickPhotos() {
     const remaining = MAX_PHOTOS - photos.length;
@@ -68,9 +162,17 @@ export default function CreatePostScreen() {
         })),
       );
 
+      const includingLink = linkUrl && !linkDismissed;
+
       await addPost({
         content: content.trim(),
         photos: uploadedPhotos,
+        ...(includingLink && {
+          link_url: linkUrl,
+          link_title: linkMeta?.title || undefined,
+          link_description: linkMeta?.description || undefined,
+          link_image: linkMeta?.image || undefined,
+        }),
       });
       router.back();
     } catch (e) {
@@ -78,6 +180,8 @@ export default function CreatePostScreen() {
       setSubmitting(false);
     }
   }
+
+  const showLinkPreview = linkUrl && !linkDismissed;
 
   return (
     <KeyboardAvoidingView
@@ -89,7 +193,7 @@ export default function CreatePostScreen() {
           <TextInput
             style={styles.contentInput}
             value={content}
-            onChangeText={setContent}
+            onChangeText={handleContentChange}
             placeholder="What's on your mind?"
             placeholderTextColor={Colors.gray}
             multiline
@@ -97,6 +201,29 @@ export default function CreatePostScreen() {
             autoFocus
           />
         </View>
+
+        {showLinkPreview && (
+          <View style={styles.linkPreviewSection}>
+            {fetchingMeta ? (
+              <View style={styles.linkLoading}>
+                <ActivityIndicator size="small" color={Colors.gray} />
+                <Text style={styles.linkLoadingText}>Loading preview...</Text>
+              </View>
+            ) : (
+              <View>
+                <LinkPreview
+                  url={linkUrl}
+                  title={linkMeta?.title}
+                  description={linkMeta?.description}
+                  image={linkMeta?.image}
+                />
+                <Pressable style={styles.dismissButton} onPress={dismissLink}>
+                  <Text style={styles.dismissText}>x</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.photosSection}>
           {photos.length < MAX_PHOTOS && (
@@ -145,6 +272,11 @@ const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 40 },
   field: { marginBottom: 12 },
   contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 160, lineHeight: 24, fontFamily: Fonts!.sans },
+  linkPreviewSection: { marginBottom: 12 },
+  linkLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+  linkLoadingText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
+  dismissButton: { position: 'absolute', top: 16, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  dismissText: { color: Colors.white, fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, lineHeight: 16 },
   photosSection: { marginBottom: 24, gap: 12 },
   addPhotoButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
   addPhotoText: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },

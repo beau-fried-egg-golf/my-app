@@ -1080,13 +1080,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addPost = useCallback(
-    async (data: { content: string; photos: { url: string; caption: string }[] }): Promise<Post> => {
+    async (data: {
+      content: string;
+      photos: { url: string; caption: string }[];
+      link_url?: string;
+      link_title?: string;
+      link_description?: string;
+      link_image?: string;
+    }): Promise<Post> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data: postData, error: postError } = await supabase
         .from('posts')
-        .insert({ user_id: userId, content: data.content })
+        .insert({
+          user_id: userId,
+          content: data.content,
+          ...(data.link_url && {
+            link_url: data.link_url,
+            link_title: data.link_title ?? null,
+            link_description: data.link_description ?? null,
+            link_image: data.link_image ?? null,
+          }),
+        })
         .select()
         .single();
 
