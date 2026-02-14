@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -323,6 +323,102 @@ export async function saveMeetup(meetup: Meetup): Promise<void> {
 
 export async function deleteMeetup(id: string): Promise<void> {
   await supabase.from('meetups').delete().eq('id', id);
+}
+
+// ---- Admin Users ----
+
+export async function getAdminUsers(): Promise<AdminUser[]> {
+  const { data } = await supabase
+    .from('admin_users')
+    .select('*')
+    .order('created_at', { ascending: true });
+  return data ?? [];
+}
+
+export async function addAdminUser(email: string, name: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  // Find current admin user's id for invited_by
+  const { data: currentAdmin } = await supabase
+    .from('admin_users')
+    .select('id')
+    .eq('email', user?.email ?? '')
+    .single();
+
+  await supabase.from('admin_users').insert({
+    email: email.toLowerCase().trim(),
+    name: name.trim(),
+    invited_by: currentAdmin?.id ?? null,
+  });
+}
+
+export async function removeAdminUser(id: string): Promise<void> {
+  await supabase.from('admin_users').delete().eq('id', id);
+}
+
+// ---- Meetup Members ----
+
+export async function getMeetupMembers(meetupId: string): Promise<MeetupMember[]> {
+  const { data: members } = await supabase
+    .from('meetup_members')
+    .select('*')
+    .eq('meetup_id', meetupId)
+    .order('joined_at', { ascending: true });
+
+  if (!members || members.length === 0) return [];
+
+  const userIds = members.map(m => m.user_id);
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', userIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  return members.map(m => ({
+    ...m,
+    payment_status: m.payment_status ?? 'pending',
+    member_name: profileMap.get(m.user_id) ?? 'Member',
+  }));
+}
+
+export async function updateMeetupMemberPayment(memberId: string, status: string): Promise<void> {
+  await supabase
+    .from('meetup_members')
+    .update({ payment_status: status })
+    .eq('id', memberId);
+}
+
+// ---- Groups ----
+
+export async function getGroups(): Promise<Group[]> {
+  const { data: groups } = await supabase
+    .from('groups')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!groups || groups.length === 0) return [];
+
+  const creatorIds = [...new Set(groups.map(g => g.creator_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', creatorIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  const groupIds = groups.map(g => g.id);
+  const { data: members } = await supabase
+    .from('group_members')
+    .select('group_id')
+    .in('group_id', groupIds);
+  const countMap = new Map<string, number>();
+  for (const m of members ?? []) {
+    countMap.set(m.group_id, (countMap.get(m.group_id) ?? 0) + 1);
+  }
+
+  return groups.map(g => ({
+    ...g,
+    creator_name: profileMap.get(g.creator_id) ?? 'Member',
+    member_count: countMap.get(g.id) ?? 0,
+  }));
 }
 
 // ---- Content Flags ----

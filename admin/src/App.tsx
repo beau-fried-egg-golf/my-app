@@ -17,12 +17,16 @@ import UserDetail from './UserDetail';
 import MessageList from './MessageList';
 import MeetupList from './MeetupList';
 import MeetupForm from './MeetupForm';
+import MeetupDetail from './MeetupDetail';
 import FlagQueue from './FlagQueue';
 import FEPostForm from './FEPostForm';
 import EmailTemplates from './EmailTemplates';
+import TeamList from './TeamList';
+import GroupList from './GroupList';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -31,10 +35,25 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setAuthed(!!session);
+      if (!session) setAuthorized(null);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (authed) {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (!user?.email) { setAuthorized(false); return; }
+        supabase
+          .from('admin_users')
+          .select('id')
+          .eq('email', user.email)
+          .single()
+          .then(({ data }) => setAuthorized(!!data));
+      });
+    }
+  }, [authed]);
 
   if (authed === null) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Loading...</div>;
@@ -42,6 +61,22 @@ export default function App() {
 
   if (!authed) {
     return <Login onLogin={() => setAuthed(true)} />;
+  }
+
+  if (authorized === null) {
+    return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>Checking access...</div>;
+  }
+
+  if (!authorized) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', gap: 16 }}>
+        <h2>Unauthorized</h2>
+        <p style={{ color: '#888' }}>Your account does not have admin access.</p>
+        <button className="btn" onClick={() => { supabase.auth.signOut(); setAuthed(false); setAuthorized(null); }}>
+          Sign Out
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -63,9 +98,12 @@ export default function App() {
         <Route path="messages" element={<MessageList />} />
         <Route path="meetups" element={<MeetupList />} />
         <Route path="meetups/new" element={<MeetupForm />} />
+        <Route path="meetups/:id" element={<MeetupDetail />} />
         <Route path="meetups/:id/edit" element={<MeetupForm />} />
         <Route path="flags" element={<FlagQueue />} />
         <Route path="email-templates" element={<EmailTemplates />} />
+        <Route path="team" element={<TeamList />} />
+        <Route path="groups" element={<GroupList />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

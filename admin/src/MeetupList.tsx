@@ -84,7 +84,7 @@ export default function MeetupList() {
           <tbody>
             {filtered.map((m) => (
               <tr key={m.id}>
-                <td><strong>{m.name}</strong></td>
+                <td><Link to={`/meetups/${m.id}`} className="link"><strong>{m.name}</strong></Link></td>
                 <td>{m.host_name ?? 'Member'}</td>
                 <td>{formatDate(m.meetup_date)}</td>
                 <td>{m.location_name}</td>

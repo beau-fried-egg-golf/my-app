@@ -44,6 +44,19 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "905e251e-b3b9-433f-ae61-e97e03c3261b"
+      }
+    },
+    "owner": "beau-fried-egg-golf",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/905e251e-b3b9-433f-ae61-e97e03c3261b"
     }
   }
 }
