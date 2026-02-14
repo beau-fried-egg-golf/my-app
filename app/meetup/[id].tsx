@@ -21,7 +21,7 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, joinMeetup, leaveMeetup, getMeetupMembers, loadMeetups, deleteMeetup } = useStore();
+  const { meetups, session, joinMeetup, leaveMeetup, withdrawAndRefund, getMeetupMembers, loadMeetups, deleteMeetup } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -116,7 +116,36 @@ export default function MeetupDetailScreen() {
                 {currentPaymentStatus === 'paid' ? 'Paid' : 'Waived'}
               </Text>
             </View>
-            {!isHost && (
+            {!isHost && currentPaymentStatus === 'paid' && currentUserMember && (
+              <Pressable
+                style={styles.actionBtnOutline}
+                onPress={() => {
+                  Alert.alert(
+                    'Withdraw & Refund',
+                    'Are you sure you want to withdraw? Your payment will be refunded.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Withdraw & Refund',
+                        style: 'destructive',
+                        onPress: async () => {
+                          const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
+                          if (success) {
+                            const m = await getMeetupMembers(meetup.id);
+                            setMembers(m);
+                          } else {
+                            Alert.alert('Error', 'Failed to process refund. Please try again.');
+                          }
+                        },
+                      },
+                    ],
+                  );
+                }}
+              >
+                <Text style={styles.actionBtnOutlineText}>Withdraw & Refund</Text>
+              </Pressable>
+            )}
+            {!isHost && currentPaymentStatus === 'waived' && (
               <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
                 <Text style={styles.actionBtnOutlineText}>Leave</Text>
               </Pressable>

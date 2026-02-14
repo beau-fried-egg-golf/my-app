@@ -142,6 +142,38 @@ export interface Meetup {
   member_count?: number;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string | null;
+  invited_by: string | null;
+  created_at: string;
+}
+
+export interface MeetupMember {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  joined_at: string;
+  payment_status: string;
+  stripe_payment_intent_id?: string;
+  member_name?: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description: string;
+  creator_id: string;
+  home_course_id: string | null;
+  location_name: string | null;
+  image: string | null;
+  created_at: string;
+  updated_at: string;
+  creator_name?: string;
+  member_count?: number;
+}
+
 export interface Activity {
   id: string;
   type: 'writeup' | 'upvote' | 'played' | 'post';

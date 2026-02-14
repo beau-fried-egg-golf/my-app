@@ -325,6 +325,7 @@ export interface MeetupMember {
   last_read_at: string | null;
   joined_at: string;
   payment_status?: string;
+  stripe_payment_intent_id?: string;
   user_name?: string;
   user_image?: string | null;
 }

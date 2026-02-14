@@ -84,6 +84,7 @@ interface StoreContextType {
   deleteMeetup: (meetupId: string) => Promise<void>;
   joinMeetup: (meetupId: string) => Promise<string | undefined>;
   leaveMeetup: (meetupId: string) => Promise<void>;
+  withdrawAndRefund: (meetupId: string, memberId: string) => Promise<boolean>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
   sendMeetupMessage: (meetupId: string, content: string) => Promise<MeetupMessage>;
@@ -2185,6 +2186,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  const withdrawAndRefund = useCallback(
+    async (meetupId: string, memberId: string): Promise<boolean> => {
+      if (!session) return false;
+
+      // Optimistic update (same as leaveMeetup)
+      const prevMeetups = meetupsRef.current;
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
+      ));
+
+      const { error } = await supabase.functions.invoke('stripe-refund', {
+        body: { member_id: memberId },
+      });
+
+      if (error) {
+        // Revert optimistic update
+        setMeetups(prevMeetups);
+        return false;
+      }
+
+      return true;
+    },
+    [session],
+  );
+
   const getMeetupMembers = useCallback(
     async (meetupId: string): Promise<MeetupMember[]> => {
       const { data: members } = await supabase
@@ -2428,6 +2454,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         deleteMeetup,
         joinMeetup,
         leaveMeetup,
+        withdrawAndRefund,
         getMeetupMembers,
         getMeetupMessages,
         sendMeetupMessage,

@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
       await supabase
         .from("meetup_members")
-        .update({ payment_status: "paid" })
+        .update({ payment_status: "paid", stripe_payment_intent_id: session.payment_intent })
         .eq("id", memberId);
     }
   }
