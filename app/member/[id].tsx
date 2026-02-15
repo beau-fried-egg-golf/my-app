@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
 import PassportStamp from '@/components/PassportStamp';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +33,14 @@ export default function MemberProfileScreen() {
   if (!profile) {
     return (
       <View style={styles.container}>
+        <View style={styles.topBar}>
+          <Pressable onPress={() => router.back()} style={styles.backArrow}>
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
+          </Pressable>
+          <View style={styles.topBarCenter}>
+            <LetterSpacedHeader text="MEMBER" size={32} />
+          </View>
+        </View>
         <Text style={styles.emptyText}>Member not found</Text>
       </View>
     );
@@ -50,7 +59,16 @@ export default function MemberProfileScreen() {
   const coursesPlayedCount = passportCourses.length;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
+        </Pressable>
+        <View style={styles.topBarCenter}>
+          <LetterSpacedHeader text="MEMBER" size={32} />
+        </View>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.avatarSection}>
         {profile.image ? (
           <Image source={{ uri: profile.image }} style={styles.avatar} />
@@ -184,13 +202,39 @@ export default function MemberProfileScreen() {
           </View>
         </View>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  content: { padding: 24 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'web' ? 16 : 56,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+    backgroundColor: Colors.white,
+  },
+  backArrow: {
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  content: { padding: 24, paddingBottom: 40 },
   emptyText: { fontSize: 15, color: Colors.gray, textAlign: 'center', marginTop: 40, fontFamily: Fonts!.sans },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
   avatar: { width: 88, height: 88, borderRadius: 4 },
@@ -202,11 +246,11 @@ const styles = StyleSheet.create({
   location: { fontSize: 14, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   actionBtn: {
-    borderWidth: 1.5, borderColor: Colors.black, borderRadius: 20,
+    backgroundColor: Colors.black, borderRadius: 20,
     paddingHorizontal: 20, paddingVertical: 8,
   },
   actionBtnActive: { backgroundColor: Colors.black },
-  actionBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  actionBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   actionBtnTextActive: { color: Colors.white },
   stats: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',

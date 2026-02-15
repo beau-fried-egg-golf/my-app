@@ -10,13 +10,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -136,6 +138,23 @@ export default function CreateWriteupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <LetterSpacedHeader text="NEW REVIEW" size={32} />
+          ),
+          headerTitleAlign: 'center',
+          headerRight: () => (
+            <Pressable
+              style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+            >
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
           <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
@@ -253,13 +272,6 @@ export default function CreateWriteupScreen() {
           ))}
         </View>
 
-        <Pressable
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          <Text style={styles.submitButtonText}>{submitting ? 'Publishing...' : 'Publish'}</Text>
-        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -298,7 +310,5 @@ const styles = StyleSheet.create({
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },
   chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
-  submitButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
-  submitButtonDisabled: { opacity: 0.4 },
-  submitButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });

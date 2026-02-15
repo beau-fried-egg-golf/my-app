@@ -10,13 +10,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -31,7 +33,6 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 
 export default function CreateGroupScreen() {
   const router = useRouter();
-  const navigation = useNavigation();
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
   const { user, courses, groups, createGroup, updateGroup } = useStore();
   const [name, setName] = useState('');
@@ -59,17 +60,6 @@ export default function CreateGroupScreen() {
     setLocationName(existing.location_name ?? '');
     setExistingImageUrl(existing.image);
   }, [groupId]);
-
-  // Dynamic header title
-  useEffect(() => {
-    navigation.setOptions({
-      headerTitle: () => (
-        <Text style={{ fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, letterSpacing: 3 }}>
-          {isEditing ? 'EDIT GROUP' : 'NEW GROUP'}
-        </Text>
-      ),
-    });
-  }, [isEditing, navigation]);
 
   useEffect(() => {
     (async () => {
@@ -151,6 +141,23 @@ export default function CreateGroupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <LetterSpacedHeader text={isEditing ? 'EDIT GROUP' : 'NEW GROUP'} size={32} />
+          ),
+          headerTitleAlign: 'center',
+          headerRight: () => (
+            <Pressable
+              style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+            >
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.imageSection} onPress={pickImage}>
           {displayImage ? (
@@ -264,17 +271,6 @@ export default function CreateGroupScreen() {
           />
         </View>
 
-        <Pressable
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          <Text style={styles.submitButtonText}>
-            {submitting
-              ? (isEditing ? 'Saving...' : 'Creating...')
-              : (isEditing ? 'Save Changes' : 'Create Group')}
-          </Text>
-        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -400,7 +396,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
     color: Colors.black,
   },
-  submitButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingVertical: 16, alignItems: 'center', marginTop: 8 },
-  submitButtonDisabled: { opacity: 0.4 },
-  submitButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });

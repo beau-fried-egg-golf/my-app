@@ -1,19 +1,34 @@
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 function BackArrow() {
   const router = useRouter();
   return (
-    <Pressable onPress={() => router.back()} style={{ marginLeft: 16, paddingRight: 4 }}>
-      <Ionicons name="chevron-back" size={28} color={Colors.black} />
+    <Pressable
+      onPress={() => router.back()}
+      style={{
+        marginLeft: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+        elevation: 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Ionicons name="chevron-back" size={20} color={Colors.black} />
     </Pressable>
   );
 }
@@ -86,26 +101,26 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="create-writeup"
-          options={{ title: 'New Review', presentation: 'modal', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="NEW REVIEW" size={32} /> }}
+          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
         />
         <Stack.Screen
           name="create-post"
-          options={{ title: 'New Post', presentation: 'modal', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="NEW POST" size={32} /> }}
+          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
         />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="post/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="member/[id]" options={{ title: 'Member', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="MEMBER" size={32} /> }} />
+        <Stack.Screen name="member/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-group"
-          options={{ title: 'New Group', presentation: 'modal', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="NEW GROUP" size={32} /> }}
+          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
         />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="group-chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-meetup"
-          options={{ title: 'New Meetup', presentation: 'modal', headerLeft: () => <BackArrow />, headerTitle: () => <LetterSpacedHeader text="NEW MEETUP" size={32} /> }}
+          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
         />
         <Stack.Screen name="meetup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="meetup-chat/[id]" options={{ headerShown: false }} />

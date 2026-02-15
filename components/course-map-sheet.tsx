@@ -86,7 +86,7 @@ export default function CourseMapSheet({ course, writeupCount, distance, upcomin
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 80,
     left: 16,
     right: 16,
     backgroundColor: Colors.white,

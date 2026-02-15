@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { MeetupMember } from '@/types';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function formatMeetupDate(iso: string): string {
   const d = new Date(iso);
@@ -50,10 +51,13 @@ export default function MeetupDetailScreen() {
   if (!meetup) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={28} color={Colors.black} />
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
+          <View style={styles.topBarCenter}>
+            <LetterSpacedHeader text="MEETUP" size={32} />
+          </View>
         </View>
         <Text style={styles.emptyText}>Meetup not found</Text>
       </View>
@@ -216,35 +220,13 @@ export default function MeetupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={28} color={Colors.black} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{meetup.name}</Text>
-        {canManage && (
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => router.push(`/create-meetup?meetupId=${meetup.id}`)}>
-              <Text style={styles.headerActionText}>Edit</Text>
-            </Pressable>
-            <Text style={styles.headerActionDivider}>|</Text>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  if (confirm('Delete this meetup? This cannot be undone.')) {
-                    deleteMeetup(meetup.id).then(() => router.back());
-                  }
-                } else {
-                  Alert.alert('Delete Meetup', 'Delete this meetup? This cannot be undone.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => deleteMeetup(meetup.id).then(() => router.back()) },
-                  ]);
-                }
-              }}
-            >
-              <Text style={styles.headerActionTextMuted}>Delete</Text>
-            </Pressable>
-          </View>
-        )}
+        <View style={styles.topBarCenter}>
+          <LetterSpacedHeader text="MEETUP" size={32} />
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -266,6 +248,31 @@ export default function MeetupDetailScreen() {
           <Text style={styles.meetupDateHero}>{formatMeetupDate(meetup.meetup_date)}</Text>
           <Text style={styles.meetupLocation}>{meetup.location_name}</Text>
         </View>
+
+        {canManage && (
+          <View style={styles.manageRow}>
+            <Pressable style={styles.manageBtn} onPress={() => router.push(`/create-meetup?meetupId=${meetup.id}`)}>
+              <Text style={styles.manageBtnText}>Edit</Text>
+            </Pressable>
+            <Pressable
+              style={styles.manageBtn}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  if (confirm('Delete this meetup? This cannot be undone.')) {
+                    deleteMeetup(meetup.id).then(() => router.back());
+                  }
+                } else {
+                  Alert.alert('Delete Meetup', 'Delete this meetup? This cannot be undone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => deleteMeetup(meetup.id).then(() => router.back()) },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.manageBtnText}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
@@ -370,7 +377,7 @@ export default function MeetupDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -380,42 +387,24 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.lightGray,
     backgroundColor: Colors.white,
   },
-  backArrow: { paddingRight: 12 },
-  backArrowText: {
-    fontSize: 24,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-    flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
+  backArrow: {
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  headerActionText: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  headerActionTextMuted: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansMedium,
-    fontWeight: FontWeights.medium,
-    color: Colors.gray,
-  },
-  headerActionDivider: {
-    fontSize: 13,
-    color: Colors.lightGray,
-    fontFamily: Fonts!.sans,
-  },
+  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  manageRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 16 },
+  manageBtn: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
+  manageBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   content: { padding: 24, paddingBottom: 40 },
   emptyText: {
     fontSize: 15,

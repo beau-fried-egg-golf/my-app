@@ -56,6 +56,7 @@ interface StoreContextType {
   addWriteupReply: (writeupId: string, content: string) => Promise<WriteupReply>;
   deletePost: (postId: string) => Promise<void>;
   flagContent: (contentType: 'post' | 'writeup', contentId: string) => Promise<void>;
+  reportCourseInaccuracy: (courseId: string, reason: string) => Promise<void>;
   refreshData: () => Promise<void>;
   // Follows
   follows: Follow[];
@@ -1464,6 +1465,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  const reportCourseInaccuracy = useCallback(
+    async (courseId: string, reason: string) => {
+      if (!session) return;
+      await supabase
+        .from('content_flags')
+        .insert({ user_id: session.user.id, content_type: 'course', content_id: courseId, reason });
+    },
+    [session],
+  );
+
   // ---- Follow methods ----
   const toggleFollow = useCallback(
     async (targetUserId: string) => {
@@ -2553,6 +2564,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addWriteupReply,
         deletePost,
         flagContent,
+        reportCourseInaccuracy,
         refreshData,
         follows,
         followingIds,

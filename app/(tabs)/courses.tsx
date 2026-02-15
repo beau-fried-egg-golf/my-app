@@ -9,6 +9,7 @@ import { Course, Meetup } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
 import WordHighlight from '@/components/WordHighlight';
 import CourseMap from '@/components/course-map';
+import { SearchIcon } from '@/components/icons/CustomIcons';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -376,28 +377,12 @@ export default function CoursesScreen() {
 
       {viewMode === 'list' ? (
         <>
-          <View style={styles.searchBar}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search courses..."
-              placeholderTextColor={Colors.gray}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} style={styles.searchClear}>
-                <Text style={styles.clearText}>x</Text>
-              </Pressable>
-            )}
-          </View>
           <FlatList
             data={filteredCourses.slice(0, displayCount)}
             keyExtractor={(item) => item.id}
             renderItem={renderCourse}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[styles.list, { paddingBottom: 140 }]}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No courses match your filters</Text>
@@ -414,6 +399,23 @@ export default function CoursesScreen() {
               ) : null
             }
           />
+          <View style={styles.bottomSearchBar}>
+            <SearchIcon size={28} color={Colors.gray} />
+            <TextInput
+              style={styles.bottomSearchInput}
+              placeholder="Search courses..."
+              placeholderTextColor={Colors.gray}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                <Ionicons name="close-circle" size={18} color={Colors.gray} />
+              </Pressable>
+            )}
+          </View>
         </>
       ) : (
         <View style={styles.mapContainer}>
@@ -462,11 +464,8 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.black },
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
-  searchBar: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginTop: 10, marginBottom: 2, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, height: 38 },
-  chevronText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  clearText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
-  searchClear: { marginLeft: 4, padding: 2 },
+  bottomSearchBar: { position: 'absolute', bottom: 84, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 14, height: 44, borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
+  bottomSearchInput: { flex: 1, fontSize: 15, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

@@ -119,10 +119,6 @@ export default function MeetupsScreen() {
         renderItem={null}
         ListHeaderComponent={
           <>
-            <Pressable style={styles.createBtn} onPress={() => router.push('/create-meetup')}>
-              <Text style={styles.createBtnText}>CREATE MEETUP</Text>
-            </Pressable>
-
             <View style={styles.sortToggle}>
               <Pressable
                 style={[styles.sortBtn, sortOrder === 'date' && styles.sortBtnActive]}
@@ -179,28 +175,31 @@ export default function MeetupsScreen() {
         }
         contentContainerStyle={styles.list}
       />
+      <Pressable style={styles.fab} onPress={() => router.push('/create-meetup')}>
+        <Ionicons name="add" size={28} color={Colors.black} />
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  list: { paddingBottom: 40 },
-  createBtn: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    backgroundColor: Colors.orange,
-    borderRadius: 8,
-    paddingVertical: 14,
+  list: { paddingBottom: 160 },
+  fab: {
+    position: 'absolute',
+    bottom: 92,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-  },
-  createBtnText: {
-    color: Colors.white,
-    fontSize: 15,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    letterSpacing: 0.5,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   sortToggle: {
     flexDirection: 'row',

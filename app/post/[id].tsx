@@ -123,13 +123,6 @@ export default function PostDetailScreen() {
 
   const headerContent = (
     <>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={28} color={Colors.black} />
-        </Pressable>
-        <LetterSpacedHeader text="POST" size={32} />
-      </View>
-
       <View style={styles.authorRow}>
         <Pressable onPress={() => router.push(`/member/${post.user_id}`)}>
           <WordHighlight words={authorParts} size={12} />
@@ -214,6 +207,14 @@ export default function PostDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
+      <View style={styles.topBar}>
+        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
+        </Pressable>
+        <View style={styles.topBarCenter}>
+          <LetterSpacedHeader text="POST" size={32} />
+        </View>
+      </View>
       <FlatList
         data={replies}
         keyExtractor={item => item.id}
@@ -271,10 +272,32 @@ export default function PostDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'web' ? 16 : 56,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+    backgroundColor: Colors.white,
+  },
+  backArrow: {
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   content: { padding: 16, paddingBottom: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 },
-  backArrow: { paddingRight: 12, paddingTop: 4 },
-  backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
   date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
   body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
@@ -294,8 +317,8 @@ const styles = StyleSheet.create({
   flagButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 },
   flagText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
   ownerActions: { flexDirection: 'row', gap: 12 },
-  ownerButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderColor: Colors.border, borderRadius: 6 },
-  ownerButtonText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  ownerButton: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
+  ownerButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   repliesHeader: { marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginBottom: 12 },
   repliesTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },

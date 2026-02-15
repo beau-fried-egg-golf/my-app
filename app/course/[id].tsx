@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -19,6 +20,7 @@ import { Course, Meetup, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
 import EggRating from '@/components/EggRating';
+import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -89,10 +91,13 @@ interface GalleryPhoto extends Photo {
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed, meetups, loadMeetups } = useStore();
+  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed, meetups, loadMeetups, reportCourseInaccuracy } = useStore();
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
   const [activeTab, setActiveTab] = useState<'writeups' | 'photos' | 'meetups'>('writeups');
+  const [reportVisible, setReportVisible] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportSubmitted, setReportSubmitted] = useState(false);
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const course = courses.find((c) => c.id === id);
@@ -144,26 +149,34 @@ export default function CourseDetailScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.courseNameBlock}>
         <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/courses')} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={28} color={Colors.black} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
         <View style={styles.courseNameContent}>
           <LetterSpacedHeader text={course.short_name} size={32} />
         </View>
       </View>
 
-      {course.fe_hero_image && (
-        <View style={styles.feHeroWrap}>
-          {Platform.OS === 'web' ? (
-            <img
-              src={course.fe_hero_image}
-              style={{ width: '100%', maxHeight: SCREEN_HEIGHT * 0.5, objectFit: 'cover', borderRadius: 8, display: 'block' }}
-              alt={course.short_name}
-            />
-          ) : (
-            <Image source={{ uri: course.fe_hero_image }} style={styles.feHero} resizeMode="cover" />
-          )}
-        </View>
-      )}
+      {(() => {
+        const heroUrl = course.fe_hero_image
+          || (sortedPhotos.length > 0 ? sortedPhotos[0].url : null)
+          || (MAPBOX_ACCESS_TOKEN
+            ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${course.longitude},${course.latitude},14,0/800x400@2x?access_token=${MAPBOX_ACCESS_TOKEN}`
+            : null);
+        if (!heroUrl) return null;
+        return (
+          <View style={styles.feHeroWrap}>
+            {Platform.OS === 'web' ? (
+              <img
+                src={heroUrl}
+                style={{ width: '100%', maxHeight: SCREEN_HEIGHT * 0.5, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+                alt={course.short_name}
+              />
+            ) : (
+              <Image source={{ uri: heroUrl }} style={styles.feHero} resizeMode="cover" />
+            )}
+          </View>
+        );
+      })()}
 
       <View style={styles.courseHeader}>
         <View style={styles.courseDetailsRow}>
@@ -195,6 +208,12 @@ export default function CourseDetailScreen() {
             )
           )}
         </View>
+        {user && (
+          <Pressable style={styles.reportLink} onPress={() => setReportVisible(true)}>
+            <Ionicons name="flag-outline" size={13} color={Colors.gray} />
+            <Text style={styles.reportLinkText}>Report inaccuracy</Text>
+          </Pressable>
+        )}
         <Text style={styles.courseDescription}>{course.description}</Text>
       </View>
 
@@ -361,6 +380,61 @@ export default function CourseDetailScreen() {
         </>
       )}
 
+      <Modal visible={reportVisible} transparent animationType="fade">
+        <View style={styles.reportOverlay}>
+          <View style={styles.reportModal}>
+            <Text style={styles.reportTitle}>Report Inaccuracy</Text>
+            {reportSubmitted ? (
+              <>
+                <Text style={styles.reportConfirmation}>Thanks for the report! We'll review it shortly.</Text>
+                <Pressable
+                  style={styles.reportSubmitBtn}
+                  onPress={() => {
+                    setReportVisible(false);
+                    setReportSubmitted(false);
+                    setReportReason('');
+                  }}
+                >
+                  <Text style={styles.reportSubmitText}>Done</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <TextInput
+                  style={styles.reportInput}
+                  placeholder="Describe what's inaccurate..."
+                  placeholderTextColor={Colors.gray}
+                  multiline
+                  value={reportReason}
+                  onChangeText={setReportReason}
+                />
+                <View style={styles.reportActions}>
+                  <Pressable
+                    style={styles.reportCancelBtn}
+                    onPress={() => {
+                      setReportVisible(false);
+                      setReportReason('');
+                    }}
+                  >
+                    <Text style={styles.reportCancelText}>Cancel</Text>
+                  </Pressable>
+                  <Pressable
+                    style={[styles.reportSubmitBtn, !reportReason.trim() && { opacity: 0.4 }]}
+                    disabled={!reportReason.trim()}
+                    onPress={async () => {
+                      await reportCourseInaccuracy(course.id, reportReason.trim());
+                      setReportSubmitted(true);
+                    }}
+                  >
+                    <Text style={styles.reportSubmitText}>Submit</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={galleryVisible} transparent animationType="fade">
         <View style={styles.modalBg}>
           <Pressable style={styles.modalClose} onPress={() => setGalleryVisible(false)}>
@@ -414,7 +488,20 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { paddingBottom: 40 },
   courseNameBlock: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 16 },
-  backArrow: { paddingRight: 12, paddingTop: 4 },
+  backArrow: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
   backArrowText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   courseNameContent: { flex: 1 },
   courseHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
@@ -423,9 +510,9 @@ const styles = StyleSheet.create({
   courseTagsRow: { marginTop: 10 },
   courseDescription: { fontSize: 15, color: Colors.darkGray, lineHeight: 22, marginTop: 12, fontFamily: Fonts!.sans },
   courseDetailsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 12 },
-  playedButton: { borderWidth: 1, borderColor: Colors.black, borderRadius: 4, paddingHorizontal: 15, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
-  playedButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  playedButtonActive: { backgroundColor: Colors.black, borderRadius: 4, paddingHorizontal: 15, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
+  playedButton: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
+  playedButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  playedButtonActive: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8, marginLeft: 12, flexShrink: 0 },
   playedButtonActiveText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12 },
@@ -451,8 +538,8 @@ const styles = StyleSheet.create({
   writeupUpvotes: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
-  writeButton: { borderWidth: 1, borderColor: Colors.black, borderRadius: 6, paddingHorizontal: 16, paddingVertical: 10, marginTop: 8 },
-  writeButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  writeButton: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },
+  writeButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   addWriteupRow: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
   modalClose: { position: 'absolute', top: 60, right: 20, zIndex: 10, padding: 8 },
@@ -475,4 +562,16 @@ const styles = StyleSheet.create({
   meetupCardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   meetupCardName: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   meetupCardMeta: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 2 },
+  reportLink: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10 },
+  reportLinkText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
+  reportOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  reportModal: { backgroundColor: Colors.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 400 },
+  reportTitle: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 16 },
+  reportInput: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 12, fontSize: 15, fontFamily: Fonts!.sans, minHeight: 100, textAlignVertical: 'top' },
+  reportActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 },
+  reportCancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
+  reportCancelText: { fontSize: 15, fontFamily: Fonts!.sans, color: Colors.gray },
+  reportSubmitBtn: { backgroundColor: Colors.black, borderRadius: 6, paddingHorizontal: 20, paddingVertical: 10 },
+  reportSubmitText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  reportConfirmation: { fontSize: 15, fontFamily: Fonts!.sans, color: Colors.darkGray, lineHeight: 22, marginBottom: 16 },
 });

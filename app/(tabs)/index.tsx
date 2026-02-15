@@ -379,7 +379,7 @@ export default function FeedScreen() {
         style={styles.fab}
         onPress={() => setShowFabMenu(true)}
       >
-        <Text style={{ fontSize: 28, color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, lineHeight: 30 }}>+</Text>
+        <Ionicons name="add" size={28} color={Colors.black} />
       </Pressable>
 
       <Modal
@@ -389,7 +389,7 @@ export default function FeedScreen() {
         onRequestClose={() => setShowFabMenu(false)}
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setShowFabMenu(false)}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalSheet}>
             <Pressable
               style={styles.modalOption}
               onPress={() => {
@@ -397,8 +397,13 @@ export default function FeedScreen() {
                 router.push('/create-writeup');
               }}
             >
-              <Ionicons name="document-text-outline" size={22} color={Colors.black} />
-              <Text style={styles.modalOptionText}>Review</Text>
+              <View style={styles.modalIconBox}>
+                <Ionicons name="document-text-outline" size={22} color={Colors.black} />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Review</Text>
+                <Text style={styles.modalOptionDesc}>Write a course review</Text>
+              </View>
             </Pressable>
             <View style={styles.modalSeparator} />
             <Pressable
@@ -408,8 +413,13 @@ export default function FeedScreen() {
                 router.push('/create-post');
               }}
             >
-              <Ionicons name="chatbubble-outline" size={22} color={Colors.black} />
-              <Text style={styles.modalOptionText}>Post</Text>
+              <View style={styles.modalIconBox}>
+                <Ionicons name="chatbubble-outline" size={22} color={Colors.black} />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Post</Text>
+                <Text style={styles.modalOptionDesc}>Share an update with the club</Text>
+              </View>
             </Pressable>
           </View>
         </Pressable>
@@ -566,47 +576,62 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: 'absolute',
-    bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.black,
+    bottom: 92,
+    right: 20,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
   },
-  modalContent: {
+  modalSheet: {
     backgroundColor: Colors.white,
-    borderRadius: 12,
-    width: 240,
-    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 16,
   },
   modalOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    gap: 14,
+    paddingVertical: 16,
   },
-  modalOptionText: {
-    fontSize: 17,
-    fontFamily: Fonts!.sansMedium,
-    fontWeight: FontWeights.medium,
+  modalIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalOptionTitle: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
     color: Colors.black,
+  },
+  modalOptionDesc: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 2,
   },
   modalSeparator: {
     height: 1,
     backgroundColor: Colors.lightGray,
+    marginLeft: 58,
   },
 });

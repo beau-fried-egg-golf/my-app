@@ -188,10 +188,12 @@ export interface Activity {
 export interface ContentFlag {
   id: string;
   user_id: string;
-  content_type: 'post' | 'writeup';
+  content_type: 'post' | 'writeup' | 'course';
   content_id: string;
   created_at: string;
   flag_count?: number;
   content_preview?: string;
   author_name?: string;
+  reason?: string;
+  course_name?: string;
 }

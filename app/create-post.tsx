@@ -11,13 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { uploadPhoto } from '@/utils/photo';
 import { supabase } from '@/data/supabase';
 import LinkPreview from '@/components/LinkPreview';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 interface PhotoDraft {
   uri: string;
@@ -191,6 +193,23 @@ export default function CreatePostScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <LetterSpacedHeader text="NEW POST" size={32} />
+          ),
+          headerTitleAlign: 'center',
+          headerRight: () => (
+            <Pressable
+              style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+              onPress={handleSubmit}
+              disabled={!canSubmit}
+            >
+              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.field}>
           <TextInput
@@ -258,13 +277,6 @@ export default function CreatePostScreen() {
           ))}
         </View>
 
-        <Pressable
-          style={[styles.submitButton, !canSubmit && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          <Text style={styles.submitButtonText}>{submitting ? 'Posting...' : 'Post'}</Text>
-        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -290,7 +302,5 @@ const styles = StyleSheet.create({
   removePhoto: { alignSelf: 'flex-start' },
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },
-  submitButton: { backgroundColor: Colors.orange, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
-  submitButtonDisabled: { opacity: 0.4 },
-  submitButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
+  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });

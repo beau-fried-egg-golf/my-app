@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { GroupMember } from '@/types';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -30,10 +31,13 @@ export default function GroupDetailScreen() {
   if (!group) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={styles.topBar}>
           <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={28} color={Colors.black} />
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
+          <View style={styles.topBarCenter}>
+            <LetterSpacedHeader text="GROUP" size={32} />
+          </View>
         </View>
         <Text style={styles.emptyText}>Group not found</Text>
       </View>
@@ -56,38 +60,16 @@ export default function GroupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.topBar}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={28} color={Colors.black} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{group.name}</Text>
-        {isCreator && (
-          <View style={styles.headerActions}>
-            <Pressable onPress={() => router.push(`/create-group?groupId=${group.id}`)}>
-              <Text style={styles.headerActionText}>Edit</Text>
-            </Pressable>
-            <Text style={styles.headerActionDivider}>|</Text>
-            <Pressable
-              onPress={() => {
-                if (Platform.OS === 'web') {
-                  if (confirm('Delete this group? This cannot be undone.')) {
-                    deleteGroup(group.id).then(() => router.back());
-                  }
-                } else {
-                  Alert.alert('Delete Group', 'Delete this group? This cannot be undone.', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Delete', style: 'destructive', onPress: () => deleteGroup(group.id).then(() => router.back()) },
-                  ]);
-                }
-              }}
-            >
-              <Text style={styles.headerActionTextMuted}>Delete</Text>
-            </Pressable>
-          </View>
-        )}
+        <View style={styles.topBarCenter}>
+          <LetterSpacedHeader text="GROUP" size={32} />
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Group Image & Info */}
         <View style={styles.heroSection}>
           {group.image ? (
@@ -105,6 +87,31 @@ export default function GroupDetailScreen() {
             {group.member_count ?? 0} member{(group.member_count ?? 0) !== 1 ? 's' : ''}
           </Text>
         </View>
+
+        {isCreator && (
+          <View style={styles.manageRow}>
+            <Pressable style={styles.manageBtn} onPress={() => router.push(`/create-group?groupId=${group.id}`)}>
+              <Text style={styles.manageBtnText}>Edit</Text>
+            </Pressable>
+            <Pressable
+              style={styles.manageBtn}
+              onPress={() => {
+                if (Platform.OS === 'web') {
+                  if (confirm('Delete this group? This cannot be undone.')) {
+                    deleteGroup(group.id).then(() => router.back());
+                  }
+                } else {
+                  Alert.alert('Delete Group', 'Delete this group? This cannot be undone.', [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => deleteGroup(group.id).then(() => router.back()) },
+                  ]);
+                }
+              }}
+            >
+              <Text style={styles.manageBtnText}>Delete</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
@@ -208,7 +215,7 @@ export default function GroupDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: {
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
@@ -218,43 +225,22 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.lightGray,
     backgroundColor: Colors.white,
   },
-  backArrow: { paddingRight: 12 },
-  backArrowText: {
-    fontSize: 24,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-    flex: 1,
-  },
-  headerActions: {
-    flexDirection: 'row',
+  backArrow: {
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
   },
-  headerActionText: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  headerActionTextMuted: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansMedium,
-    fontWeight: FontWeights.medium,
-    color: Colors.gray,
-  },
-  headerActionDivider: {
-    fontSize: 13,
-    color: Colors.lightGray,
-    fontFamily: Fonts!.sans,
-  },
-  content: { padding: 24, paddingBottom: 40 },
+  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  scrollContent: { padding: 24, paddingBottom: 40 },
   emptyText: {
     fontSize: 15,
     color: Colors.gray,
@@ -263,6 +249,9 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
   },
   heroSection: { alignItems: 'center', marginBottom: 24 },
+  manageRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 16 },
+  manageBtn: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
+  manageBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   groupImage: { width: 96, height: 96, borderRadius: 16 },
   groupImagePlaceholder: {
     width: 96,

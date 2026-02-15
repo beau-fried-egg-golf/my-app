@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { EditIcon, SignOutIcon } from '@/components/icons/CustomIcons';
 import PassportStamp from '@/components/PassportStamp';
 
 export default function ProfileScreen() {
@@ -34,16 +35,17 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
         <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={28} color={Colors.black} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <LetterSpacedHeader text="PROFILE" size={32} />
-        <View style={styles.headerActions}>
-          <Pressable onPress={() => router.push('/edit-profile')}>
-            <Text style={styles.headerActionText}>Edit</Text>
+        <View style={styles.headerCenter}>
+          <LetterSpacedHeader text="PROFILE" size={32} />
+        </View>
+        <View style={styles.headerPill}>
+          <Pressable onPress={() => router.push('/edit-profile')} style={styles.headerPillBtn}>
+            <EditIcon size={28} color={Colors.black} />
           </Pressable>
-          <Text style={styles.headerActionDivider}>|</Text>
-          <Pressable onPress={handleSignOut}>
-            <Text style={styles.headerActionTextMuted}>Sign Out</Text>
+          <Pressable onPress={handleSignOut} style={styles.headerPillBtn}>
+            <SignOutIcon size={28} color={Colors.gray} />
           </Pressable>
         </View>
       </View>
@@ -215,42 +217,50 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 24,
   },
   backArrow: {
-    paddingRight: 12,
-    paddingTop: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
   },
-  backArrowText: {
-    fontSize: 24,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
+  headerCenter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
-  headerActions: {
+  headerPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 'auto',
-    gap: 8,
-    paddingTop: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    gap: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  headerActionText: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-  },
-  headerActionTextMuted: {
-    fontSize: 13,
-    fontFamily: Fonts!.sansMedium,
-    fontWeight: FontWeights.medium,
-    color: Colors.gray,
-  },
-  headerActionDivider: {
-    fontSize: 13,
-    color: Colors.lightGray,
-    fontFamily: Fonts!.sans,
+  headerPillBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarSection: {
     alignItems: 'center',

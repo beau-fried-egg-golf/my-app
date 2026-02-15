@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Profile } from '@/types';
+import { SearchIcon } from '@/components/icons/CustomIcons';
 
 function getDistanceMiles(
   lat1: number,
@@ -115,15 +116,6 @@ export default function MembersScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
-        <TextInput
-          style={styles.searchInput}
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search members..."
-          placeholderTextColor={Colors.gray}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
         <View style={styles.sortToggle}>
         <Pressable
           style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
@@ -144,13 +136,30 @@ export default function MembersScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderMember}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 140 }]}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No members yet</Text>
           </View>
         }
       />
+      <View style={styles.bottomSearchBar}>
+        <SearchIcon size={28} color={Colors.gray} />
+        <TextInput
+          style={styles.bottomSearchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search members..."
+          placeholderTextColor={Colors.gray}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch('')} style={{ padding: 4 }}>
+            <Ionicons name="close-circle" size={18} color={Colors.gray} />
+          </Pressable>
+        )}
+      </View>
     </View>
   );
 }
@@ -165,20 +174,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  searchInput: {
+  bottomSearchBar: {
+    position: 'absolute',
+    bottom: 84,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    height: 44,
+    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    zIndex: 10,
+  },
+  bottomSearchInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '300',
     fontFamily: Fonts!.sans,
     color: Colors.black,
+    paddingVertical: 0,
   },
   sortToggle: {
     flexDirection: 'row',
     gap: 4,
+    marginLeft: 'auto',
   },
   sortBtn: {
     paddingHorizontal: 6,

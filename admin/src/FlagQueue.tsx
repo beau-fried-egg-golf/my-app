@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchFlaggedContent, republishContent, keepContentHidden } from './storage';
+import { fetchFlaggedContent, republishContent, keepContentHidden, dismissCourseReport } from './storage';
 import type { ContentFlag } from './types';
 
 function formatTime(iso: string): string {
@@ -30,7 +30,13 @@ export default function FlagQueue() {
 
   async function handleKeepHidden(flag: ContentFlag) {
     if (!window.confirm('Clear flags and keep this content hidden?')) return;
-    await keepContentHidden(flag.content_type, flag.content_id);
+    await keepContentHidden(flag.content_type as 'post' | 'writeup', flag.content_id);
+    setFlags(prev => prev.filter(f => f.content_id !== flag.content_id));
+  }
+
+  async function handleDismissReport(flag: ContentFlag) {
+    if (!window.confirm('Dismiss this course report?')) return;
+    await dismissCourseReport(flag.content_id);
     setFlags(prev => prev.filter(f => f.content_id !== flag.content_id));
   }
 
@@ -66,9 +72,16 @@ export default function FlagQueue() {
                     </span>
                   </td>
                   <td style={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {flag.content_preview}
+                    {flag.content_type === 'course' ? (
+                      <span>
+                        <strong>{flag.course_name}</strong>
+                        {flag.reason ? ` — ${flag.reason}` : ''}
+                      </span>
+                    ) : (
+                      flag.content_preview
+                    )}
                   </td>
-                  <td>{flag.author_name}</td>
+                  <td>{flag.content_type === 'course' ? '—' : flag.author_name}</td>
                   <td>
                     <strong style={{ color: (flag.flag_count ?? 0) >= 3 ? '#e74c3c' : undefined }}>
                       {flag.flag_count}
@@ -76,14 +89,20 @@ export default function FlagQueue() {
                   </td>
                   <td>{formatTime(flag.created_at)}</td>
                   <td>
-                    <div className="btn-group">
-                      <button className="btn btn-sm" onClick={() => handleRepublish(flag)}>
-                        Republish
+                    {flag.content_type === 'course' ? (
+                      <button className="btn btn-sm" onClick={() => handleDismissReport(flag)}>
+                        Dismiss
                       </button>
-                      <button className="btn btn-sm btn-danger" onClick={() => handleKeepHidden(flag)}>
-                        Keep Hidden
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="btn-group">
+                        <button className="btn btn-sm" onClick={() => handleRepublish(flag)}>
+                          Republish
+                        </button>
+                        <button className="btn btn-sm btn-danger" onClick={() => handleKeepHidden(flag)}>
+                          Keep Hidden
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
