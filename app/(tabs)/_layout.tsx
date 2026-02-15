@@ -3,7 +3,7 @@ import { Image, Pressable, StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, MessagingIcon, NotificationsIcon } from '@/components/icons/CustomIcons';
 
@@ -32,16 +32,19 @@ function SolidTabBarBackground() {
 
 function HeaderRight() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, hasUnreadMessages, hasUnreadNotifications } = useStore();
+  const isOnNotifications = pathname === '/notifications';
+  const isOnConversations = pathname === '/conversations';
   return (
     <View style={styles.headerPill}>
       <Pressable onPress={() => router.push('/notifications')} style={styles.headerPillBtn}>
-        <NotificationsIcon size={28} color={Colors.black} />
-        {hasUnreadNotifications && <View style={styles.unreadBadge} />}
+        <NotificationsIcon size={28} color={isOnNotifications ? Colors.orange : Colors.black} />
+        {hasUnreadNotifications && !isOnNotifications && <View style={styles.unreadBadge} />}
       </Pressable>
       <Pressable onPress={() => router.push('/conversations')} style={styles.headerPillBtn}>
-        <MessagingIcon size={28} color={Colors.black} />
-        {hasUnreadMessages && <View style={styles.unreadBadge} />}
+        <MessagingIcon size={28} color={isOnConversations ? Colors.orange : Colors.black} />
+        {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
       </Pressable>
       <Pressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
         {user?.image ? (
@@ -166,7 +169,6 @@ export default function TabLayout() {
         options={{
           href: null,
           headerTitle: () => <LetterSpacedHeader text="MESSAGES" size={32} />,
-          headerLeft: () => <BackButton />,
         }}
       />
       <Tabs.Screen
@@ -174,7 +176,6 @@ export default function TabLayout() {
         options={{
           href: null,
           headerTitle: () => <LetterSpacedHeader text="ALERTS" size={32} />,
-          headerLeft: () => <BackButton />,
         }}
       />
     </Tabs>

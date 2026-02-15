@@ -236,10 +236,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   headerCenter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    marginLeft: 12,
   },
   headerPill: {
     flexDirection: 'row',
