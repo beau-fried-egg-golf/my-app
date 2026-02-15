@@ -48,6 +48,9 @@ export interface Message {
   user_id: string;
   content: string;
   created_at: string;
+  reply_to_id?: string | null;
+  reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface UserBlock {
@@ -283,6 +286,9 @@ export interface GroupMessage {
   created_at: string;
   sender_name?: string;
   sender_image?: string | null;
+  reply_to_id?: string | null;
+  reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
+  reactions?: Record<string, string[]>;
 }
 
 export interface ConversationListItem {
@@ -344,6 +350,17 @@ export interface MeetupMessage {
   created_at: string;
   sender_name?: string;
   sender_image?: string | null;
+  reply_to_id?: string | null;
+  reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
+  reactions?: Record<string, string[]>;
+}
+
+export interface MessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  reaction: string;
+  created_at: string;
 }
 
 export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply';

@@ -39,11 +39,11 @@ function HeaderRight() {
   return (
     <View style={styles.headerPill}>
       <Pressable onPress={() => router.push('/notifications')} style={styles.headerPillBtn}>
-        <NotificationsIcon size={28} color={isOnNotifications ? Colors.orange : Colors.black} />
+        <NotificationsIcon size={34} color={isOnNotifications ? Colors.orange : Colors.black} />
         {hasUnreadNotifications && !isOnNotifications && <View style={styles.unreadBadge} />}
       </Pressable>
       <Pressable onPress={() => router.push('/conversations')} style={styles.headerPillBtn}>
-        <MessagingIcon size={28} color={isOnConversations ? Colors.orange : Colors.black} />
+        <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} />
         {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
       </Pressable>
       <Pressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
@@ -51,7 +51,7 @@ function HeaderRight() {
           <Image source={{ uri: user.image }} style={styles.profileImage} />
         ) : (
           <View style={styles.profilePlaceholder}>
-            <Ionicons name="person" size={16} color={Colors.black} />
+            <Ionicons name="person" size={20} color={Colors.black} />
           </View>
         )}
       </Pressable>
@@ -227,10 +227,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 22,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    paddingHorizontal: 2,
+    paddingVertical: 2,
     marginRight: 8,
-    gap: 2,
+    gap: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.12,
@@ -238,9 +238,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerPillBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -257,14 +257,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.white,
   },
   profileImage: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
   },
   profilePlaceholder: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.lightGray,

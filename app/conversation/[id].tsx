@@ -5,18 +5,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Message } from '@/types';
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
+import MessageBubble from '@/components/chat/MessageBubble';
+import MessageContextMenu from '@/components/chat/MessageContextMenu';
+import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
+import EmojiPicker from '@/components/chat/EmojiPicker';
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     session, getMessages, sendMessage, conversations,
     profiles, blockUser, unblockUser, isBlocked, isBlockedBy,
-    markConversationRead, loadConversations,
+    markConversationRead, loadConversations, toggleMessageReaction,
   } = useStore();
   const router = useRouter();
 
@@ -25,6 +24,12 @@ export default function ConversationScreen() {
   const [sending, setSending] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  // Chat feature state
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean; messageId: string; position: { x: number; y: number } }>({ visible: false, messageId: '', position: { x: 0, y: 0 } });
+  const inputRef = useRef<TextInput>(null);
 
   const conversation = conversations.find(c => c.id === id);
   const currentUserId = session?.user?.id;
@@ -51,7 +56,10 @@ export default function ConversationScreen() {
     loadConversations();
     loadMessages();
     if (id) markConversationRead(id);
-    const interval = setInterval(loadMessages, 5000);
+    const interval = setInterval(() => {
+      loadMessages();
+      if (id) markConversationRead(id);
+    }, 5000);
     return () => clearInterval(interval);
   }, [loadConversations, loadMessages, id, markConversationRead]);
 
@@ -59,9 +67,11 @@ export default function ConversationScreen() {
     if (!text.trim() || sending || !id) return;
     setSending(true);
     try {
-      const msg = await sendMessage(id, text.trim());
-      setMessages(prev => [...prev, msg]);
+      const msg = await sendMessage(id, text.trim(), replyTo?.id);
+      setMessages(prev => [...prev, { ...msg, reactions: {}, reply_to: replyTo ? { id: replyTo.id, content: replyTo.content, user_id: replyTo.user_id } : null }]);
       setText('');
+      setReplyTo(null);
+      setShowEmojiPicker(false);
     } catch (e) {
       console.error('Failed to send message', e);
     } finally {
@@ -79,6 +89,69 @@ export default function ConversationScreen() {
     }
   };
 
+  const handleContextMenuOpen = (messageId: string, position: { x: number; y: number }) => {
+    setContextMenu({ visible: true, messageId, position });
+  };
+
+  const handleReaction = async (emoji: string) => {
+    if (!id || !contextMenu.messageId) return;
+    const messageId = contextMenu.messageId;
+
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const reactions = { ...(m.reactions ?? {}) };
+      const users = reactions[emoji] ?? [];
+      if (currentUserId && users.includes(currentUserId)) {
+        reactions[emoji] = users.filter(u => u !== currentUserId);
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+      } else if (currentUserId) {
+        reactions[emoji] = [...users, currentUserId];
+      }
+      return { ...m, reactions };
+    }));
+
+    await toggleMessageReaction(messageId, id, emoji);
+  };
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    if (!id) return;
+
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const reactions = { ...(m.reactions ?? {}) };
+      const users = reactions[emoji] ?? [];
+      if (currentUserId && users.includes(currentUserId)) {
+        reactions[emoji] = users.filter(u => u !== currentUserId);
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+      } else if (currentUserId) {
+        reactions[emoji] = [...users, currentUserId];
+      }
+      return { ...m, reactions };
+    }));
+
+    await toggleMessageReaction(messageId, id, emoji);
+  };
+
+  const handleReply = () => {
+    const msg = messages.find(m => m.id === contextMenu.messageId);
+    if (msg) {
+      setReplyTo(msg);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setText(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  const contextMenuMessage = messages.find(m => m.id === contextMenu.messageId);
+  const currentUserReactions = contextMenuMessage?.reactions
+    ? Object.entries(contextMenuMessage.reactions)
+        .filter(([, users]) => currentUserId && users.includes(currentUserId))
+        .map(([emoji]) => emoji)
+    : [];
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -89,7 +162,7 @@ export default function ConversationScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={28} color={Colors.black} />
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
           {otherProfile?.image ? (
             <Image source={{ uri: otherProfile.image }} style={styles.headerAvatar} />
@@ -121,14 +194,14 @@ export default function ConversationScreen() {
         renderItem={({ item }) => {
           const isOwn = item.user_id === currentUserId;
           return (
-            <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-              <Text style={[styles.bubbleText, isOwn ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
-                {item.content}
-              </Text>
-              <Text style={[styles.bubbleTime, isOwn ? styles.bubbleTimeOwn : styles.bubbleTimeOther]}>
-                {formatTime(item.created_at)}
-              </Text>
-            </View>
+            <MessageBubble
+              message={item}
+              isOwn={isOwn}
+              showSenderName={false}
+              currentUserId={currentUserId}
+              onLongPress={handleContextMenuOpen}
+              onToggleReaction={handleToggleReaction}
+            />
           );
         }}
         contentContainerStyle={styles.messagesList}
@@ -139,6 +212,20 @@ export default function ConversationScreen() {
           </View>
         }
       />
+
+      {/* Reply preview bar */}
+      {replyTo && (
+        <ReplyPreviewBar
+          senderName={otherName}
+          content={replyTo.content}
+          onCancel={() => setReplyTo(null)}
+        />
+      )}
+
+      {/* Emoji picker */}
+      {showEmojiPicker && (
+        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
 
       {/* Input or blocked state */}
       {blocked ? (
@@ -151,8 +238,12 @@ export default function ConversationScreen() {
         </View>
       ) : (
         <View style={styles.inputBar}>
+          <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
+            <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
+          </Pressable>
           <View style={styles.inputWrapper}>
             <TextInput
+              ref={inputRef}
               style={styles.input}
               value={text}
               onChangeText={setText}
@@ -179,6 +270,16 @@ export default function ConversationScreen() {
           </View>
         </View>
       )}
+
+      {/* Context menu modal */}
+      <MessageContextMenu
+        visible={contextMenu.visible}
+        position={contextMenu.position}
+        currentReactions={currentUserReactions}
+        onReaction={handleReaction}
+        onReply={handleReply}
+        onClose={() => setContextMenu({ visible: false, messageId: '', position: { x: 0, y: 0 } })}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -198,13 +299,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backArrow: {
-    paddingRight: 12,
-  },
-  backArrowText: {
-    fontSize: 24,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   headerAvatar: {
     width: 30,
@@ -229,7 +336,17 @@ const styles = StyleSheet.create({
   },
   headerMenu: {
     marginLeft: 'auto',
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   menuDropdown: {
     position: 'absolute',
@@ -258,39 +375,27 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     justifyContent: 'flex-end',
   },
-  bubble: {
-    maxWidth: '80%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-    marginBottom: 8,
-  },
-  bubbleOwn: {
-    alignSelf: 'flex-end',
-    backgroundColor: Colors.black,
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.lightGray,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: { fontSize: 15, lineHeight: 21, fontFamily: Fonts!.sans },
-  bubbleTextOwn: { color: Colors.white },
-  bubbleTextOther: { color: Colors.black },
-  bubbleTime: { fontSize: 11, marginTop: 4, fontFamily: Fonts!.sans },
-  bubbleTimeOwn: { color: 'rgba(255,255,255,0.6)', textAlign: 'right' },
-  bubbleTimeOther: { color: Colors.gray },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
   inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.lightGray,
     backgroundColor: Colors.white,
+    gap: 8,
+  },
+  emojiBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
   },
   inputWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderWidth: 1,

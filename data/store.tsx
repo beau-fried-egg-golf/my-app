@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Platform } from 'react-native';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, ConversationListItem, Notification, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, MessageReaction, ConversationListItem, Notification, profileToUser } from '@/types';
 
 async function updateBadgeCount(
   notifications: Notification[],
@@ -72,7 +72,8 @@ interface StoreContextType {
   loadConversations: () => Promise<void>;
   getOrCreateConversation: (otherUserId: string) => Promise<string>;
   getMessages: (conversationId: string) => Promise<Message[]>;
-  sendMessage: (conversationId: string, content: string) => Promise<Message>;
+  sendMessage: (conversationId: string, content: string, replyToId?: string) => Promise<Message>;
+  toggleMessageReaction: (messageId: string, conversationId: string, reaction: string) => Promise<void>;
   blockUser: (userId: string) => Promise<void>;
   unblockUser: (userId: string) => Promise<void>;
   toggleDms: (disabled: boolean) => Promise<void>;
@@ -92,7 +93,8 @@ interface StoreContextType {
   leaveGroup: (groupId: string) => Promise<void>;
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>;
   getGroupMessages: (groupId: string) => Promise<GroupMessage[]>;
-  sendGroupMessage: (groupId: string, content: string) => Promise<GroupMessage>;
+  sendGroupMessage: (groupId: string, content: string, replyToId?: string) => Promise<GroupMessage>;
+  toggleGroupMessageReaction: (messageId: string, groupId: string, reaction: string) => Promise<void>;
   markGroupRead: (groupId: string) => Promise<void>;
   // Meetups
   meetups: Meetup[];
@@ -105,7 +107,8 @@ interface StoreContextType {
   withdrawAndRefund: (meetupId: string, memberId: string) => Promise<boolean>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
-  sendMeetupMessage: (meetupId: string, content: string) => Promise<MeetupMessage>;
+  sendMeetupMessage: (meetupId: string, content: string, replyToId?: string) => Promise<MeetupMessage>;
+  toggleMeetupMessageReaction: (messageId: string, meetupId: string, reaction: string) => Promise<void>;
   markMeetupRead: (meetupId: string) => Promise<void>;
   // Notifications
   notifications: Notification[];
@@ -1621,18 +1624,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
-      return data ?? [];
+
+      if (!data || data.length === 0) return [];
+
+      const msgIds = data.map(m => m.id);
+
+      // Fetch reactions
+      const { data: reactions } = await supabase
+        .from('message_reactions')
+        .select('message_id, user_id, reaction')
+        .in('message_id', msgIds);
+
+      const reactionsMap = new Map<string, Record<string, string[]>>();
+      for (const r of reactions ?? []) {
+        const map = reactionsMap.get(r.message_id) ?? {};
+        map[r.reaction] = map[r.reaction] ?? [];
+        map[r.reaction].push(r.user_id);
+        reactionsMap.set(r.message_id, map);
+      }
+
+      // Build message map for reply resolution
+      const msgMap = new Map(data.map(m => [m.id, m]));
+
+      // Resolve sender names for replies
+      const replyUserIds = [...new Set(data.filter(m => m.reply_to_id).map(m => {
+        const orig = msgMap.get(m.reply_to_id);
+        return orig?.user_id;
+      }).filter(Boolean))] as string[];
+
+      const { data: replyProfiles } = replyUserIds.length > 0
+        ? await supabase.from('profiles').select('id, name').in('id', replyUserIds)
+        : { data: [] };
+      const replyProfileMap = new Map((replyProfiles ?? []).map(p => [p.id, p.name]));
+
+      return data.map(m => ({
+        ...m,
+        reactions: reactionsMap.get(m.id) ?? {},
+        reply_to: m.reply_to_id ? (() => {
+          const orig = msgMap.get(m.reply_to_id);
+          if (!orig) return null;
+          return { id: orig.id, content: orig.content, user_id: orig.user_id, sender_name: replyProfileMap.get(orig.user_id) ?? 'Member' };
+        })() : null,
+      }));
     },
     [],
   );
 
   const sendMessage = useCallback(
-    async (conversationId: string, content: string): Promise<Message> => {
+    async (conversationId: string, content: string, replyToId?: string): Promise<Message> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
       const { data, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: conversationId, user_id: userId, content })
+        .insert({ conversation_id: conversationId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
         .select()
         .single();
       if (error || !data) throw error ?? new Error('Failed to send message');
@@ -1689,6 +1733,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .from('conversations')
         .update({ [field]: now })
         .eq('id', conversationId);
+    },
+    [session],
+  );
+
+  const toggleMessageReaction = useCallback(
+    async (messageId: string, conversationId: string, reaction: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      const { data: existing } = await supabase
+        .from('message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', userId)
+        .eq('reaction', reaction)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('message_reactions').delete().eq('id', existing.id);
+      } else {
+        await supabase.from('message_reactions').insert({ message_id: messageId, user_id: userId, reaction });
+      }
     },
     [session],
   );
@@ -1970,30 +2036,50 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (!msgs || msgs.length === 0) return [];
 
+      const msgIds = msgs.map(m => m.id);
       const userIds = [...new Set(msgs.map(m => m.user_id))];
-      const { data: senderProfiles } = await supabase
-        .from('profiles')
-        .select('id, name, image')
-        .in('id', userIds);
-      const profileMap = new Map((senderProfiles ?? []).map(p => [p.id, p]));
+
+      const [senderProfilesRes, reactionsRes] = await Promise.all([
+        supabase.from('profiles').select('id, name, image').in('id', userIds),
+        supabase.from('group_message_reactions').select('message_id, user_id, reaction').in('message_id', msgIds),
+      ]);
+
+      const profileMap = new Map((senderProfilesRes.data ?? []).map(p => [p.id, p]));
+
+      const reactionsMap = new Map<string, Record<string, string[]>>();
+      for (const r of reactionsRes.data ?? []) {
+        const map = reactionsMap.get(r.message_id) ?? {};
+        map[r.reaction] = map[r.reaction] ?? [];
+        map[r.reaction].push(r.user_id);
+        reactionsMap.set(r.message_id, map);
+      }
+
+      // Build message map for reply resolution
+      const msgMap = new Map(msgs.map(m => [m.id, m]));
 
       return msgs.map(m => ({
         ...m,
         sender_name: profileMap.get(m.user_id)?.name ?? 'Member',
         sender_image: profileMap.get(m.user_id)?.image ?? null,
+        reactions: reactionsMap.get(m.id) ?? {},
+        reply_to: m.reply_to_id ? (() => {
+          const orig = msgMap.get(m.reply_to_id);
+          if (!orig) return null;
+          return { id: orig.id, content: orig.content, user_id: orig.user_id, sender_name: profileMap.get(orig.user_id)?.name ?? 'Member' };
+        })() : null,
       }));
     },
     [],
   );
 
   const sendGroupMessage = useCallback(
-    async (groupId: string, content: string): Promise<GroupMessage> => {
+    async (groupId: string, content: string, replyToId?: string): Promise<GroupMessage> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data, error } = await supabase
         .from('group_messages')
-        .insert({ group_id: groupId, user_id: userId, content })
+        .insert({ group_id: groupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
         .select()
         .single();
 
@@ -2017,6 +2103,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
     },
     [session, user],
+  );
+
+  const toggleGroupMessageReaction = useCallback(
+    async (messageId: string, groupId: string, reaction: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      const { data: existing } = await supabase
+        .from('group_message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', userId)
+        .eq('reaction', reaction)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('group_message_reactions').delete().eq('id', existing.id);
+      } else {
+        await supabase.from('group_message_reactions').insert({ message_id: messageId, user_id: userId, reaction });
+      }
+    },
+    [session],
   );
 
   const markGroupRead = useCallback(
@@ -2378,30 +2486,49 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       if (!msgs || msgs.length === 0) return [];
 
+      const msgIds = msgs.map(m => m.id);
       const userIds = [...new Set(msgs.map(m => m.user_id))];
-      const { data: senderProfiles } = await supabase
-        .from('profiles')
-        .select('id, name, image')
-        .in('id', userIds);
-      const profileMap = new Map((senderProfiles ?? []).map(p => [p.id, p]));
+
+      const [senderProfilesRes, reactionsRes] = await Promise.all([
+        supabase.from('profiles').select('id, name, image').in('id', userIds),
+        supabase.from('meetup_message_reactions').select('message_id, user_id, reaction').in('message_id', msgIds),
+      ]);
+
+      const profileMap = new Map((senderProfilesRes.data ?? []).map(p => [p.id, p]));
+
+      const reactionsMap = new Map<string, Record<string, string[]>>();
+      for (const r of reactionsRes.data ?? []) {
+        const map = reactionsMap.get(r.message_id) ?? {};
+        map[r.reaction] = map[r.reaction] ?? [];
+        map[r.reaction].push(r.user_id);
+        reactionsMap.set(r.message_id, map);
+      }
+
+      const msgMap = new Map(msgs.map(m => [m.id, m]));
 
       return msgs.map(m => ({
         ...m,
         sender_name: profileMap.get(m.user_id)?.name ?? 'Member',
         sender_image: profileMap.get(m.user_id)?.image ?? null,
+        reactions: reactionsMap.get(m.id) ?? {},
+        reply_to: m.reply_to_id ? (() => {
+          const orig = msgMap.get(m.reply_to_id);
+          if (!orig) return null;
+          return { id: orig.id, content: orig.content, user_id: orig.user_id, sender_name: profileMap.get(orig.user_id)?.name ?? 'Member' };
+        })() : null,
       }));
     },
     [],
   );
 
   const sendMeetupMessage = useCallback(
-    async (meetupId: string, content: string): Promise<MeetupMessage> => {
+    async (meetupId: string, content: string, replyToId?: string): Promise<MeetupMessage> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data, error } = await supabase
         .from('meetup_messages')
-        .insert({ meetup_id: meetupId, user_id: userId, content })
+        .insert({ meetup_id: meetupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
         .select()
         .single();
 
@@ -2425,6 +2552,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
     },
     [session, user],
+  );
+
+  const toggleMeetupMessageReaction = useCallback(
+    async (messageId: string, meetupId: string, reaction: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      const { data: existing } = await supabase
+        .from('meetup_message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', userId)
+        .eq('reaction', reaction)
+        .maybeSingle();
+
+      if (existing) {
+        await supabase.from('meetup_message_reactions').delete().eq('id', existing.id);
+      } else {
+        await supabase.from('meetup_message_reactions').insert({ message_id: messageId, user_id: userId, reaction });
+      }
+    },
+    [session],
   );
 
   const markMeetupRead = useCallback(
@@ -2579,6 +2728,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getOrCreateConversation,
         getMessages,
         sendMessage,
+        toggleMessageReaction,
         blockUser,
         unblockUser,
         toggleDms,
@@ -2598,6 +2748,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getGroupMembers,
         getGroupMessages,
         sendGroupMessage,
+        toggleGroupMessageReaction,
         markGroupRead,
         meetups,
         loadMeetups,
@@ -2610,6 +2761,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getMeetupMembers,
         getMeetupMessages,
         sendMeetupMessage,
+        toggleMeetupMessageReaction,
         markMeetupRead,
         notifications,
         hasUnreadNotifications,

@@ -4,17 +4,19 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { MeetupMessage } from '@/types';
-
-function formatTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-}
+import { MeetupMessage, MeetupMember } from '@/types';
+import { MeetupsIcon } from '@/components/icons/CustomIcons';
+import MessageBubble from '@/components/chat/MessageBubble';
+import MessageContextMenu from '@/components/chat/MessageContextMenu';
+import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
+import EmojiPicker from '@/components/chat/EmojiPicker';
+import MentionAutocomplete from '@/components/chat/MentionAutocomplete';
 
 export default function MeetupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     session, meetups, getMeetupMessages, sendMeetupMessage, markMeetupRead, loadMeetups,
+    toggleMeetupMessageReaction, getMeetupMembers,
   } = useStore();
   const router = useRouter();
 
@@ -22,6 +24,14 @@ export default function MeetupChatScreen() {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  // Chat feature state
+  const [replyTo, setReplyTo] = useState<MeetupMessage | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ visible: boolean; messageId: string; position: { x: number; y: number } }>({ visible: false, messageId: '', position: { x: 0, y: 0 } });
+  const [members, setMembers] = useState<MeetupMember[]>([]);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const inputRef = useRef<TextInput>(null);
 
   const meetup = meetups.find(m => m.id === id);
   const currentUserId = session?.user?.id;
@@ -35,24 +45,115 @@ export default function MeetupChatScreen() {
   useEffect(() => {
     loadMeetups();
     loadMessages();
-    if (id) markMeetupRead(id);
-    const interval = setInterval(loadMessages, 5000);
+    if (id) {
+      markMeetupRead(id);
+      getMeetupMembers(id).then(setMembers);
+    }
+    const interval = setInterval(() => {
+      loadMessages();
+      if (id) markMeetupRead(id);
+    }, 5000);
     return () => clearInterval(interval);
-  }, [loadMeetups, loadMessages, id, markMeetupRead]);
+  }, [loadMeetups, loadMessages, id, markMeetupRead, getMeetupMembers]);
 
   const handleSend = async () => {
     if (!text.trim() || sending || !id) return;
     setSending(true);
     try {
-      const msg = await sendMeetupMessage(id, text.trim());
-      setMessages(prev => [...prev, msg]);
+      const msg = await sendMeetupMessage(id, text.trim(), replyTo?.id);
+      setMessages(prev => [...prev, { ...msg, reactions: {}, reply_to: replyTo ? { id: replyTo.id, content: replyTo.content, user_id: replyTo.user_id, sender_name: replyTo.sender_name } : null }]);
       setText('');
+      setReplyTo(null);
+      setShowEmojiPicker(false);
     } catch (e) {
       console.error('Failed to send meetup message', e);
     } finally {
       setSending(false);
     }
   };
+
+  const handleContextMenuOpen = (messageId: string, position: { x: number; y: number }) => {
+    setContextMenu({ visible: true, messageId, position });
+  };
+
+  const handleReaction = async (emoji: string) => {
+    if (!id || !contextMenu.messageId) return;
+    const messageId = contextMenu.messageId;
+
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const reactions = { ...(m.reactions ?? {}) };
+      const users = reactions[emoji] ?? [];
+      if (currentUserId && users.includes(currentUserId)) {
+        reactions[emoji] = users.filter(u => u !== currentUserId);
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+      } else if (currentUserId) {
+        reactions[emoji] = [...users, currentUserId];
+      }
+      return { ...m, reactions };
+    }));
+
+    await toggleMeetupMessageReaction(messageId, id, emoji);
+  };
+
+  const handleToggleReaction = async (messageId: string, emoji: string) => {
+    if (!id) return;
+
+    setMessages(prev => prev.map(m => {
+      if (m.id !== messageId) return m;
+      const reactions = { ...(m.reactions ?? {}) };
+      const users = reactions[emoji] ?? [];
+      if (currentUserId && users.includes(currentUserId)) {
+        reactions[emoji] = users.filter(u => u !== currentUserId);
+        if (reactions[emoji].length === 0) delete reactions[emoji];
+      } else if (currentUserId) {
+        reactions[emoji] = [...users, currentUserId];
+      }
+      return { ...m, reactions };
+    }));
+
+    await toggleMeetupMessageReaction(messageId, id, emoji);
+  };
+
+  const handleReply = () => {
+    const msg = messages.find(m => m.id === contextMenu.messageId);
+    if (msg) {
+      setReplyTo(msg);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleTextChange = (newText: string) => {
+    setText(newText);
+    const atMatch = newText.match(/@(\w*)$/);
+    if (atMatch) {
+      setMentionQuery(atMatch[1]);
+    } else {
+      setMentionQuery('');
+    }
+  };
+
+  const handleMentionSelect = (name: string) => {
+    const atMatch = text.match(/@(\w*)$/);
+    if (atMatch) {
+      const before = text.slice(0, text.length - atMatch[0].length);
+      setText(before + '@' + name + ' ');
+    }
+    setMentionQuery('');
+    inputRef.current?.focus();
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setText(prev => prev + emoji);
+    inputRef.current?.focus();
+  };
+
+  const contextMenuMessage = messages.find(m => m.id === contextMenu.messageId);
+  const currentUserReactions = contextMenuMessage?.reactions
+    ? Object.entries(contextMenuMessage.reactions)
+        .filter(([, users]) => currentUserId && users.includes(currentUserId))
+        .map(([emoji]) => emoji)
+    : [];
 
   return (
     <KeyboardAvoidingView
@@ -64,17 +165,17 @@ export default function MeetupChatScreen() {
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={28} color={Colors.black} />
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
           <Pressable
             style={styles.headerTitleArea}
             onPress={() => router.push(`/meetup/${id}`)}
           >
-            <Ionicons name="calendar" size={18} color={Colors.black} style={{ marginRight: 8 }} />
+            <MeetupsIcon size={34} color={Colors.black} />
             <Text style={styles.headerTitle} numberOfLines={1}>{meetup?.name ?? 'Meetup'}</Text>
           </Pressable>
           <Pressable onPress={() => router.push(`/meetup/${id}`)} style={styles.headerMenu}>
-            <Ionicons name="information-circle-outline" size={22} color={Colors.black} />
+            <Ionicons name="information-circle-outline" size={20} color={Colors.black} />
           </Pressable>
         </View>
       </View>
@@ -90,19 +191,14 @@ export default function MeetupChatScreen() {
             index === 0 || messages[index - 1].user_id !== item.user_id
           );
           return (
-            <View style={[styles.bubbleWrapper, isOwn ? styles.bubbleWrapperOwn : styles.bubbleWrapperOther]}>
-              {showSenderName && (
-                <Text style={styles.senderName}>{item.sender_name ?? 'Member'}</Text>
-              )}
-              <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
-                <Text style={[styles.bubbleText, isOwn ? styles.bubbleTextOwn : styles.bubbleTextOther]}>
-                  {item.content}
-                </Text>
-                <Text style={[styles.bubbleTime, isOwn ? styles.bubbleTimeOwn : styles.bubbleTimeOther]}>
-                  {formatTime(item.created_at)}
-                </Text>
-              </View>
-            </View>
+            <MessageBubble
+              message={item}
+              isOwn={isOwn}
+              showSenderName={showSenderName}
+              currentUserId={currentUserId}
+              onLongPress={handleContextMenuOpen}
+              onToggleReaction={handleToggleReaction}
+            />
           );
         }}
         contentContainerStyle={styles.messagesList}
@@ -114,13 +210,40 @@ export default function MeetupChatScreen() {
         }
       />
 
+      {/* Mention autocomplete */}
+      {mentionQuery !== '' && (
+        <MentionAutocomplete
+          query={mentionQuery}
+          members={members}
+          onSelect={handleMentionSelect}
+        />
+      )}
+
+      {/* Reply preview bar */}
+      {replyTo && (
+        <ReplyPreviewBar
+          senderName={replyTo.sender_name ?? 'Member'}
+          content={replyTo.content}
+          onCancel={() => setReplyTo(null)}
+        />
+      )}
+
+      {/* Emoji picker */}
+      {showEmojiPicker && (
+        <EmojiPicker onSelect={handleEmojiSelect} onClose={() => setShowEmojiPicker(false)} />
+      )}
+
       {/* Input */}
       <View style={styles.inputBar}>
+        <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
+          <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
+        </Pressable>
         <View style={styles.inputWrapper}>
           <TextInput
+            ref={inputRef}
             style={styles.input}
             value={text}
-            onChangeText={setText}
+            onChangeText={handleTextChange}
             placeholder="Type a message..."
             placeholderTextColor={Colors.gray}
             multiline
@@ -143,6 +266,16 @@ export default function MeetupChatScreen() {
           )}
         </View>
       </View>
+
+      {/* Context menu modal */}
+      <MessageContextMenu
+        visible={contextMenu.visible}
+        position={contextMenu.position}
+        currentReactions={currentUserReactions}
+        onReaction={handleReaction}
+        onReply={handleReply}
+        onClose={() => setContextMenu({ visible: false, messageId: '', position: { x: 0, y: 0 } })}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -161,17 +294,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  backArrow: { paddingRight: 12 },
-  backArrowText: {
-    fontSize: 24,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
+  backArrow: {
+    zIndex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
   headerTitleArea: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   headerTitle: {
     fontSize: 17,
@@ -181,60 +323,44 @@ const styles = StyleSheet.create({
   },
   headerMenu: {
     marginLeft: 'auto',
-    padding: 4,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.white,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   messagesList: {
     padding: 16,
     flexGrow: 1,
     justifyContent: 'flex-end',
   },
-  bubbleWrapper: {
-    marginBottom: 8,
-  },
-  bubbleWrapperOwn: {
-    alignItems: 'flex-end',
-  },
-  bubbleWrapperOther: {
-    alignItems: 'flex-start',
-  },
-  senderName: {
-    fontSize: 12,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.gray,
-    marginBottom: 2,
-    marginLeft: 4,
-  },
-  bubble: {
-    maxWidth: '80%',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 16,
-  },
-  bubbleOwn: {
-    backgroundColor: Colors.black,
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    backgroundColor: Colors.lightGray,
-    borderBottomLeftRadius: 4,
-  },
-  bubbleText: { fontSize: 15, lineHeight: 21, fontFamily: Fonts!.sans },
-  bubbleTextOwn: { color: Colors.white },
-  bubbleTextOther: { color: Colors.black },
-  bubbleTime: { fontSize: 11, marginTop: 4, fontFamily: Fonts!.sans },
-  bubbleTimeOwn: { color: 'rgba(255,255,255,0.6)', textAlign: 'right' as const },
-  bubbleTimeOther: { color: Colors.gray },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
   inputBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderTopWidth: 1,
     borderTopColor: Colors.lightGray,
     backgroundColor: Colors.white,
+    gap: 8,
+  },
+  emojiBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 0,
   },
   inputWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderWidth: 1,
