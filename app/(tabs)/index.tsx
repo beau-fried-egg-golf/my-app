@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -317,10 +318,45 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, profiles, posts, session, followingIds } = useStore();
+  const { activities, writeups, profiles, posts, session, followingIds, toggleFollow, isFollowing, getFollowerCount } = useStore();
   const router = useRouter();
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'FOLLOWING'>('ALL');
+  const [showFollowRibbon, setShowFollowRibbon] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('followRibbonDismissed').then(val => {
+      if (val !== 'true') setShowFollowRibbon(true);
+    });
+  }, []);
+
+  const dismissRibbon = () => {
+    setShowFollowRibbon(false);
+    AsyncStorage.setItem('followRibbonDismissed', 'true');
+  };
+
+  const ribbonHidden = !showFollowRibbon || followingIds.size >= 5;
+
+  const recommendedMembers = useMemo(() => {
+    if (!session?.user?.id) return [];
+    const currentUserId = session.user.id;
+    const friedEgg = profiles.find(p => p.name.toLowerCase().includes('fried egg'));
+    const candidates = profiles.filter(p =>
+      p.id !== currentUserId && !followingIds.has(p.id)
+    );
+    const sorted = [...candidates].sort((a, b) => getFollowerCount(b.id) - getFollowerCount(a.id));
+    const result: Profile[] = [];
+    if (friedEgg && friedEgg.id !== currentUserId && !followingIds.has(friedEgg.id)) {
+      result.push(friedEgg);
+    }
+    for (const p of sorted) {
+      if (result.length >= 3) break;
+      if (!result.find(r => r.id === p.id)) {
+        result.push(p);
+      }
+    }
+    return result;
+  }, [profiles, session, followingIds, getFollowerCount]);
 
   if (!session) return null;
 
@@ -364,6 +400,42 @@ export default function FeedScreen() {
             }}
           />
         )}
+        ListHeaderComponent={!ribbonHidden && recommendedMembers.length > 0 ? (
+          <View style={styles.ribbonContainer}>
+            <View style={styles.ribbonHeader}>
+              <Text style={styles.ribbonTitle}>Members to Follow</Text>
+              <Pressable onPress={dismissRibbon} hitSlop={8}>
+                <Ionicons name="close" size={20} color={Colors.gray} />
+              </Pressable>
+            </View>
+            <View style={styles.ribbonCards}>
+              {recommendedMembers.map(member => (
+                <Pressable key={member.id} style={styles.ribbonCard} onPress={() => router.push(`/member/${member.id}`)}>
+                  {member.image ? (
+                    <Image source={{ uri: member.image }} style={styles.ribbonAvatar} />
+                  ) : (
+                    <View style={styles.ribbonAvatarPlaceholder}>
+                      <Ionicons name="person" size={20} color={Colors.gray} />
+                    </View>
+                  )}
+                  <Text style={styles.ribbonName} numberOfLines={1}>{member.name}</Text>
+                  <Pressable
+                    style={[styles.ribbonFollowBtn, isFollowing(member.id) && styles.ribbonFollowingBtn]}
+                    onPress={() => toggleFollow(member.id)}
+                  >
+                    <Text style={[styles.ribbonFollowText, isFollowing(member.id) && styles.ribbonFollowingText]}>
+                      {isFollowing(member.id) ? 'Following' : 'Follow'}
+                    </Text>
+                  </Pressable>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable onPress={() => router.push('/members')} style={styles.ribbonSeeAll}>
+              <Text style={styles.ribbonSeeAllText}>See All Members</Text>
+              <Ionicons name="arrow-forward" size={14} color={Colors.black} />
+            </Pressable>
+          </View>
+        ) : null}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>No activity yet</Text>
@@ -633,5 +705,85 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.lightGray,
     marginLeft: 58,
+  },
+  ribbonContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  ribbonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  ribbonTitle: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  ribbonCards: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  ribbonCard: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  ribbonAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  ribbonAvatarPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ribbonName: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.black,
+    textAlign: 'center',
+    maxWidth: 90,
+  },
+  ribbonFollowBtn: {
+    backgroundColor: Colors.black,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
+  ribbonFollowingBtn: {
+    backgroundColor: Colors.lightGray,
+  },
+  ribbonFollowText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.white,
+  },
+  ribbonFollowingText: {
+    color: Colors.black,
+  },
+  ribbonSeeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: 12,
+  },
+  ribbonSeeAllText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
   },
 });
