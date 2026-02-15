@@ -236,6 +236,7 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   headerCenter: {
+    flex: 1,
     marginLeft: 12,
   },
   headerPill: {
