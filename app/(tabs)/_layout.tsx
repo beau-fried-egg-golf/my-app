@@ -92,7 +92,7 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: Colors.white },
         headerTintColor: Colors.black,
         headerShadowVisible: false,
-        headerTitleAlign: 'center',
+        headerTitleAlign: 'left',
         headerTitleStyle: {
           fontFamily: Fonts!.sansBold,
           fontWeight: FontWeights.bold,
