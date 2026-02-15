@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  topBarCenter: { marginLeft: 12 },
   scrollContent: { padding: 24, paddingBottom: 40 },
   emptyText: {
     fontSize: 15,

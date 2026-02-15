@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  topBarCenter: { marginLeft: 12 },
   content: { padding: 16, paddingBottom: 16 },
   courseName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 1, marginBottom: 8 },
   title: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, lineHeight: 32 },

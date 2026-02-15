@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBarCenter: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
+  topBarCenter: { marginLeft: 12 },
   content: { padding: 16, paddingBottom: 16 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
   date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
