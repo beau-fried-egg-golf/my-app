@@ -298,6 +298,6 @@ const styles = StyleSheet.create({
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
   replyInputBar: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
-  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 15, outlineColor: 'transparent', fontFamily: Fonts!.sans, color: Colors.black },
+  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
   sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },
 });

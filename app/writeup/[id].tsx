@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
   replyInputBar: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
-  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 15, outlineColor: 'transparent', fontFamily: Fonts!.sans, color: Colors.black },
+  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
   sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   cancelText: { fontSize: 16, color: Colors.gray, fontFamily: Fonts!.sans },
@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
   editPhotoItem: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 8 },
   editPhotoRow: { flexDirection: 'row', gap: 10 },
   editPhotoThumb: { width: 72, height: 72, borderRadius: 6 },
-  editCaptionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans },
+  editCaptionInput: { flex: 1, fontSize: 16, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   editRemovePhoto: { alignSelf: 'flex-start' },
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
 });

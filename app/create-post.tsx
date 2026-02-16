@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
   photoItem: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 8 },
   photoRow: { flexDirection: 'row', gap: 10 },
   photoThumb: { width: 72, height: 72, borderRadius: 6 },
-  captionInput: { flex: 1, fontSize: 14, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans },
+  captionInput: { flex: 1, fontSize: 16, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   removePhoto: { alignSelf: 'flex-start' },
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },

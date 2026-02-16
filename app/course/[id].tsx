@@ -569,7 +569,7 @@ const styles = StyleSheet.create({
   reportOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   reportModal: { backgroundColor: Colors.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 400 },
   reportTitle: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 16 },
-  reportInput: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 12, fontSize: 15, fontFamily: Fonts!.sans, minHeight: 100, textAlignVertical: 'top' },
+  reportInput: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 12, fontSize: 16, fontFamily: Fonts!.sans, minHeight: 100, textAlignVertical: 'top', outlineStyle: 'none' } as any,
   reportActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 },
   reportCancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
   reportCancelText: { fontSize: 15, fontFamily: Fonts!.sans, color: Colors.gray },

@@ -197,12 +197,13 @@ const styles = StyleSheet.create({
   },
   bottomSearchInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '300',
     fontFamily: Fonts!.sans,
     color: Colors.black,
     paddingVertical: 0,
-  },
+    outlineStyle: 'none',
+  } as any,
   sortToggle: {
     flexDirection: 'row',
     gap: 4,

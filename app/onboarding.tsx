@@ -379,9 +379,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 14,
+    fontSize: 16,
     color: Colors.black,
-  },
+    outlineStyle: 'none',
+  } as any,
   pickerSortToggle: {
     flexDirection: 'row',
     gap: 4,

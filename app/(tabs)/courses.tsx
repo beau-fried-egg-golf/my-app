@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
   bottomSearchBar: { position: 'absolute', bottom: 84, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 14, height: 44, borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
-  bottomSearchInput: { flex: 1, fontSize: 15, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
+  bottomSearchInput: { flex: 1, fontSize: 16, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },

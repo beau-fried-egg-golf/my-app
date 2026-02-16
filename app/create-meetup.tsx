@@ -469,10 +469,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 8,
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: Fonts!.sans,
     color: Colors.black,
-  },
+    outlineStyle: 'none',
+  } as any,
   pickerSortToggle: {
     flexDirection: 'row',
     gap: 4,
