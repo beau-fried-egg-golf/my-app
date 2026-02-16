@@ -8,6 +8,7 @@ export interface Profile {
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
+  is_verified?: boolean;
   dms_disabled?: boolean;
 }
 

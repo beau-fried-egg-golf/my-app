@@ -1,5 +1,5 @@
 import { Tabs, Redirect } from 'expo-router';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -84,6 +84,8 @@ function BackButton() {
 export default function TabLayout() {
   const { session, isLoading } = useStore();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  const TAB_BAR_WIDTH = 286;
 
   if (isLoading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
@@ -102,20 +104,12 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.orange,
         tabBarInactiveTintColor: Colors.gray,
         tabBarShowLabel: false,
-        tabBarStyle: [styles.tabBar, { bottom: Math.max(16, insets.bottom) }],
+        tabBarStyle: [styles.tabBar, { bottom: Math.max(16, insets.bottom), transform: [{ translateX: (screenWidth - TAB_BAR_WIDTH) / 2 }] }],
         tabBarItemStyle: styles.tabBarItem,
         tabBarButton: HapticTab,
         tabBarIconStyle: { flex: 1, justifyContent: 'center', alignItems: 'center' },
         tabBarBackground: () => <TabBarBackground />,
-        ...(Platform.OS === 'ios' ? {
-          headerTransparent: true,
-          headerBackground: () => (
-            <BlurView intensity={80} tint="systemChromeMaterial" style={StyleSheet.absoluteFill} />
-          ),
-          headerStyle: { backgroundColor: 'transparent' },
-        } : {
-          headerStyle: { backgroundColor: Colors.white },
-        }),
+        headerStyle: { backgroundColor: Colors.white, height: 100 },
         headerTintColor: Colors.black,
         headerShadowVisible: false,
         headerTitleAlign: 'left',
@@ -210,10 +204,7 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     bottom: 16,
-    alignSelf: 'center',
     width: 286,
-    left: '50%',
-    marginLeft: -143,
     height: 56,
     borderRadius: 28,
     backgroundColor: 'transparent',

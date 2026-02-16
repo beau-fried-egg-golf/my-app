@@ -11,6 +11,8 @@ import CourseMapSheet from '@/components/course-map-sheet';
 import WordHighlight from '@/components/WordHighlight';
 import CourseMap from '@/components/course-map';
 import { SearchIcon } from '@/components/icons/CustomIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -54,6 +56,12 @@ type SortOrder = 'alpha' | 'distance';
 export default function CoursesScreen() {
   const { courses, writeups, meetups } = useStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+
+  // Tab bar bottom = Math.max(16, insets.bottom), height = 56, gap = 12
+  const defaultBottom = Math.max(16, insets.bottom) + 56 + 12;
+  const searchBarBottom = keyboardHeight > 0 ? keyboardHeight + 12 : defaultBottom;
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
@@ -383,7 +391,7 @@ export default function CoursesScreen() {
             keyExtractor={(item) => item.id}
             renderItem={renderCourse}
             ItemSeparatorComponent={() => <View style={styles.separator} />}
-            contentContainerStyle={[styles.list, { paddingBottom: 140 }]}
+            contentContainerStyle={[styles.list, { paddingBottom: searchBarBottom + 56 }]}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No courses match your filters</Text>
@@ -400,7 +408,7 @@ export default function CoursesScreen() {
               ) : null
             }
           />
-          <View style={styles.bottomSearchBar}>
+          <View style={[styles.bottomSearchBar, { bottom: searchBarBottom }]}>
             <SearchIcon size={28} color={Colors.gray} />
             <TextInput
               style={styles.bottomSearchInput}
@@ -465,7 +473,7 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.black },
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
-  bottomSearchBar: { position: 'absolute', bottom: 84, left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 14, height: 44, borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
+  bottomSearchBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 14, height: 44, borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
   bottomSearchInput: { flex: 1, fontSize: 16, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },

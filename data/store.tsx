@@ -45,6 +45,7 @@ interface StoreContextType {
   getWriteupsForCourse: (courseId: string) => Writeup[];
   getCourseName: (courseId: string) => string;
   getUserName: (userId: string) => string;
+  isUserVerified: (userId: string) => boolean;
   markCoursePlayed: (courseId: string) => Promise<void>;
   unmarkCoursePlayed: (courseId: string) => Promise<void>;
   posts: Post[];
@@ -136,7 +137,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [coursesPlayed, setCoursesPlayed] = useState<CoursePlayed[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [profileCache, setProfileCache] = useState<Map<string, string>>(new Map());
+  const [profileCache, setProfileCache] = useState<Map<string, { name: string; verified: boolean }>>(new Map());
   const coursesRef = useRef<Course[]>([]);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -432,14 +433,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const authorIds = [...new Set(rawWriteups.map(w => w.user_id))];
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, is_verified')
       .in('id', authorIds);
 
-    const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+    const profileMap = new Map((profiles ?? []).map(p => [p.id, { name: p.name as string, verified: !!p.is_verified }]));
     // Update cache
     setProfileCache(prev => {
       const next = new Map(prev);
-      for (const [id, name] of profileMap) next.set(id, name);
+      for (const [id, info] of profileMap) next.set(id, info);
       return next;
     });
 
@@ -478,7 +479,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         user_reactions: rData?.userReactions ?? [],
         reaction_count: reactionCount,
         reply_count: replyCountByWriteup.get(w.id) ?? 0,
-        author_name: profileMap.get(w.user_id) ?? 'Member',
+        author_name: profileMap.get(w.user_id)?.name ?? 'Member',
+        author_verified: profileMap.get(w.user_id)?.verified ?? false,
       };
     });
   }
@@ -584,9 +586,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const authorIds = [...new Set(rawPosts.map(p => p.user_id))];
     const { data: authorProfiles } = await supabase
       .from('profiles')
-      .select('id, name')
+      .select('id, name, is_verified')
       .in('id', authorIds);
-    const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+    const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, { name: p.name as string, verified: !!p.is_verified }]));
 
     const currentUserId = session?.user?.id;
 
@@ -620,7 +622,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         reactions: rData?.counts ?? {},
         user_reactions: rData?.userReactions ?? [],
         reply_count: replyCountByPost.get(p.id) ?? 0,
-        author_name: authorMap.get(p.user_id) ?? 'Member',
+        author_name: authorMap.get(p.user_id)?.name ?? 'Member',
+        author_verified: authorMap.get(p.user_id)?.verified ?? false,
       };
     });
   }
@@ -911,6 +914,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         reaction_count: 0,
         reply_count: 0,
         author_name: user?.name ?? 'Member',
+        author_verified: user?.isVerified ?? false,
       };
 
       setWriteups(prev => [writeup, ...prev]);
@@ -1211,6 +1215,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         user_reactions: [],
         reply_count: 0,
         author_name: user?.name ?? 'Member',
+        author_verified: user?.isVerified ?? false,
       };
 
       setPosts(prev => [post, ...prev]);
@@ -1281,13 +1286,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const authorIds = [...new Set(replies.map(r => r.user_id))];
       const { data: authorProfiles } = await supabase
         .from('profiles')
-        .select('id, name')
+        .select('id, name, is_verified')
         .in('id', authorIds);
-      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, { name: p.name as string, verified: !!p.is_verified }]));
 
       return replies.map(r => ({
         ...r,
-        author_name: authorMap.get(r.user_id) ?? 'Member',
+        author_name: authorMap.get(r.user_id)?.name ?? 'Member',
+        author_verified: authorMap.get(r.user_id)?.verified ?? false,
       }));
     },
     [],
@@ -1342,7 +1348,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const newActivities = await loadActivities();
       setActivities(newActivities);
 
-      return { ...reply, author_name: user?.name ?? 'Member' };
+      return { ...reply, author_name: user?.name ?? 'Member', author_verified: user?.isVerified ?? false };
     },
     [session, user, posts],
   );
@@ -1360,13 +1366,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const authorIds = [...new Set(replies.map(r => r.user_id))];
       const { data: authorProfiles } = await supabase
         .from('profiles')
-        .select('id, name')
+        .select('id, name, is_verified')
         .in('id', authorIds);
-      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, p.name]));
+      const authorMap = new Map((authorProfiles ?? []).map(p => [p.id, { name: p.name as string, verified: !!p.is_verified }]));
 
       return replies.map(r => ({
         ...r,
-        author_name: authorMap.get(r.user_id) ?? 'Member',
+        author_name: authorMap.get(r.user_id)?.name ?? 'Member',
+        author_verified: authorMap.get(r.user_id)?.verified ?? false,
       }));
     },
     [],
@@ -1421,7 +1428,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const newActivities = await loadActivities();
       setActivities(newActivities);
 
-      return { ...reply, author_name: user?.name ?? 'Member' };
+      return { ...reply, author_name: user?.name ?? 'Member', author_verified: user?.isVerified ?? false };
     },
     [session, user, writeups],
   );
@@ -2670,9 +2677,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const getUserName = useCallback(
     (userId: string) => {
       if (user && user.id === userId) return user.name;
-      return profileCache.get(userId) ?? 'Member';
+      return profileCache.get(userId)?.name ?? 'Member';
     },
     [user, profileCache],
+  );
+
+  const isUserVerified = useCallback(
+    (userId: string): boolean => {
+      const profile = profiles.find(p => p.id === userId);
+      if (profile) return !!profile.is_verified;
+      return profileCache.get(userId)?.verified ?? false;
+    },
+    [profiles, profileCache],
   );
 
   return (
@@ -2702,6 +2718,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         getWriteupsForCourse,
         getCourseName,
         getUserName,
+        isUserVerified,
         markCoursePlayed,
         unmarkCoursePlayed,
         posts,

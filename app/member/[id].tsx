@@ -7,6 +7,7 @@ import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
 import PassportStamp from '@/components/PassportStamp';
 import DetailHeader from '@/components/DetailHeader';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -63,7 +64,10 @@ export default function MemberProfileScreen() {
             <Ionicons name="person" size={40} color={Colors.gray} />
           </View>
         )}
-        <Text style={styles.name}>{profile.name}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <Text style={styles.name}>{profile.name}</Text>
+          {profile.is_verified && <VerifiedBadge size={18} />}
+        </View>
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
         {!isOwnProfile && (
           <View style={styles.actionRow}>

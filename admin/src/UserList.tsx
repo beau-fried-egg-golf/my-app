@@ -20,6 +20,7 @@ interface UserRow {
   member_since: string;
   writeup_count: number;
   photo_count: number;
+  is_verified: boolean;
 }
 
 export default function UserList() {
@@ -41,6 +42,7 @@ export default function UserList() {
           member_since: p.member_since,
           writeup_count: userWriteups.length,
           photo_count: photoCount,
+          is_verified: !!p.is_verified,
         };
       });
 
@@ -74,6 +76,11 @@ export default function UserList() {
                   <Link to={`/users/${u.id}`} className="link">
                     <strong>{u.name}</strong>
                   </Link>
+                  {u.is_verified && (
+                    <span className="badge badge-verified" style={{ marginLeft: 6, verticalAlign: 'middle' }}>
+                      Verified
+                    </span>
+                  )}
                 </td>
                 <td>{u.location || '-'}</td>
                 <td>{u.handicap !== null ? u.handicap : '-'}</td>

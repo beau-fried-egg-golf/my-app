@@ -10,6 +10,7 @@ import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,6 +21,7 @@ export default function ConversationScreen() {
   } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
@@ -158,7 +160,7 @@ export default function ConversationScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      keyboardVerticalOffset={0}
     >
       {/* Header */}
       <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
@@ -239,7 +241,7 @@ export default function ConversationScreen() {
           <Text style={styles.blockedText}>This user is not accepting messages</Text>
         </View>
       ) : (
-        <View style={[styles.inputBar, { paddingBottom: Math.max(10, insets.bottom) }]}>
+        <View style={[styles.inputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
           <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
             <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
           </Pressable>

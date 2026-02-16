@@ -21,7 +21,9 @@ import { Photo, WriteupReply } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import WordHighlight from '@/components/WordHighlight';
 import DetailHeader from '@/components/DetailHeader';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -75,6 +77,7 @@ export default function WriteupDetailScreen() {
   } = useStore();
 
   const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const writeup = writeups.find((w) => w.id === id);
 
   const [editing, setEditing] = useState(false);
@@ -252,8 +255,9 @@ export default function WriteupDetailScreen() {
       <Text style={styles.title}>{writeup.title}</Text>
 
       <View style={styles.authorRow}>
-        <Pressable onPress={() => router.push(`/member/${writeup.user_id}`)}>
+        <Pressable onPress={() => router.push(`/member/${writeup.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
           <WordHighlight words={authorParts} size={12} />
+          {writeup.author_verified && <VerifiedBadge size={14} />}
         </Pressable>
         <Text style={styles.date}> · {formatDate(writeup.created_at)}</Text>
       </View>
@@ -340,7 +344,7 @@ export default function WriteupDetailScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      keyboardVerticalOffset={0}
     >
       <DetailHeader title="REVIEW" />
       <FlatList
@@ -353,8 +357,9 @@ export default function WriteupDetailScreen() {
           return (
             <View style={styles.replyItem}>
               <View style={styles.replyAuthorRow}>
-                <Pressable onPress={() => router.push(`/member/${item.user_id}`)}>
+                <Pressable onPress={() => router.push(`/member/${item.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <WordHighlight words={replyAuthorParts} size={11} />
+                  {item.author_verified && <VerifiedBadge size={12} />}
                 </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
               </View>
@@ -366,7 +371,7 @@ export default function WriteupDetailScreen() {
           <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
         }
       />
-      <View style={[styles.replyInputBar, { paddingBottom: Math.max(10, insets.bottom) }]}>
+      <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.replyInput}

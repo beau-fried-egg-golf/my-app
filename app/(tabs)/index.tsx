@@ -9,6 +9,7 @@ import { useStore } from '@/data/store';
 import { Activity, Profile, Writeup, Post } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 import LinkPreview from '@/components/LinkPreview';
+import VerifiedBadge from '@/components/VerifiedBadge';
 
 function decodeEntities(str: string): string {
   return str
@@ -36,6 +37,8 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
       ? posts.find(p => p.id === item.post_id)?.photos[0]?.url
       : undefined;
 
+  const isVerified = !!userProfile?.is_verified;
+
   if (item.type === 'post') {
     const name = item.user_name ?? '';
     const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
@@ -60,6 +63,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> posted</Text>
           </View>
           {contentPreview ? (
@@ -113,6 +117,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> commented on </Text>
             <Text style={styles.activityTextBold}>{postDisplayName}</Text>
           </View>
@@ -135,6 +140,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> commented on </Text>
             <Text style={styles.activityTextBold}>{writeupDisplayName}</Text>
           </View>
@@ -160,6 +166,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> created a group </Text>
             <Text style={styles.activityTextBold}>{groupName}</Text>
           </View>
@@ -184,6 +191,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> created a meetup </Text>
             <Text style={styles.activityTextBold}>{meetupName}</Text>
           </View>
@@ -214,6 +222,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> signed up for </Text>
             <Text style={styles.activityTextBold}>{meetupName}</Text>
           </View>
@@ -242,6 +251,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> posted a review on{' '}</Text>
           </View>
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
@@ -272,6 +282,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <View style={styles.activityContent}>
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
+            {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> played{' '}</Text>
           </View>
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
@@ -296,6 +307,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
       <View style={styles.activityContent}>
         <View style={styles.activityRow}>
           <Text style={styles.activityTextBold}>{name}</Text>
+          {isVerified && <VerifiedBadge size={12} />}
           <Text style={styles.activityText}> liked </Text>
           <Text style={styles.activityTextBold}>{targetName}</Text>
           <Text style={styles.activityText}>{'\'s review on'}</Text>

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Course, Meetup, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
+import VerifiedBadge from '@/components/VerifiedBadge';
 import EggRating from '@/components/EggRating';
 import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,20 +47,30 @@ function WriteupCard({
   userName,
   onPress,
   isFeatured,
+  isVerified,
+  verifiedFeatured,
 }: {
   writeup: Writeup;
   userName: string;
   onPress: () => void;
   isFeatured?: boolean;
+  isVerified?: boolean;
+  verifiedFeatured?: boolean;
 }) {
   const nameParts = userName.split(' ').filter(Boolean);
 
   return (
-    <Pressable style={[styles.writeupCard, isFeatured && styles.featuredCard]} onPress={onPress}>
-      {isFeatured && (
+    <Pressable style={[styles.writeupCard, isFeatured && styles.featuredCard, verifiedFeatured && styles.verifiedFeaturedCard]} onPress={onPress}>
+      {isFeatured && !verifiedFeatured && (
         <View style={styles.featuredBadge}>
           <Ionicons name="thumbs-up" size={12} color={Colors.black} />
           <Text style={styles.featuredText}>MOST LIKED</Text>
+        </View>
+      )}
+      {verifiedFeatured && (
+        <View style={styles.featuredBadge}>
+          <Ionicons name="checkmark-circle" size={12} color="#22C55E" />
+          <Text style={styles.verifiedFeaturedText}>VERIFIED</Text>
         </View>
       )}
       <Text style={styles.writeupTitle}>{writeup.title}</Text>
@@ -68,6 +79,7 @@ function WriteupCard({
       </Text>
       <View style={styles.writeupMeta}>
         <WordHighlight words={nameParts} size={10} />
+        {isVerified && <VerifiedBadge size={12} />}
         <Text style={styles.writeupDot}> · </Text>
         <Text style={styles.writeupTime}>{formatTime(writeup.created_at)}</Text>
         <Text style={styles.writeupDot}> · </Text>
@@ -99,6 +111,7 @@ export default function CourseDetailScreen() {
   const [reportVisible, setReportVisible] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [showAllRecent, setShowAllRecent] = useState(false);
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const insets = useSafeAreaInsets();
@@ -115,8 +128,25 @@ export default function CourseDetailScreen() {
 
   const mostUpvoted = useMemo(() => {
     if (courseWriteups.length === 0) return null;
-    return [...courseWriteups].sort((a, b) => (b.reaction_count ?? 0) - (a.reaction_count ?? 0))[0];
+    const sorted = [...courseWriteups].sort((a, b) => (b.reaction_count ?? 0) - (a.reaction_count ?? 0));
+    const top = sorted[0];
+    return top && (top.reaction_count ?? 0) > 0 ? top : null;
   }, [courseWriteups]);
+
+  const verifiedWriteups = useMemo(
+    () => courseWriteups.filter(w => w.author_verified),
+    [courseWriteups],
+  );
+
+  const mostUpvotedVerified = useMemo(() => {
+    if (verifiedWriteups.length === 0) return null;
+    const sorted = [...verifiedWriteups].sort((a, b) => (b.reaction_count ?? 0) - (a.reaction_count ?? 0));
+    const top = sorted[0];
+    if (!top || (top.reaction_count ?? 0) === 0) return null;
+    // Dedup: skip if same as overall most liked
+    if (mostUpvoted && top.id === mostUpvoted.id) return null;
+    return top;
+  }, [verifiedWriteups, mostUpvoted]);
 
   const allPhotos: GalleryPhoto[] = useMemo(
     () =>
@@ -271,27 +301,58 @@ export default function CourseDetailScreen() {
 
       {activeTab === 'writeups' && (
         <>
-          {mostUpvoted && (mostUpvoted.reaction_count ?? 0) > 0 && (
+          {mostUpvoted && (
             <View style={styles.section}>
+              <Text style={styles.sectionLabel}>MOST LIKED</Text>
               <WriteupCard
                 writeup={mostUpvoted}
                 userName={mostUpvoted.author_name ?? getUserName(mostUpvoted.user_id)}
                 onPress={() => router.push(`/writeup/${mostUpvoted.id}`)}
                 isFeatured
+                isVerified={mostUpvoted.author_verified}
               />
+            </View>
+          )}
+
+          {mostUpvotedVerified && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>MOST LIKED VERIFIED REVIEW</Text>
+              <WriteupCard
+                writeup={mostUpvotedVerified}
+                userName={mostUpvotedVerified.author_name ?? getUserName(mostUpvotedVerified.user_id)}
+                onPress={() => router.push(`/writeup/${mostUpvotedVerified.id}`)}
+                isFeatured
+                isVerified
+                verifiedFeatured
+              />
+              {verifiedWriteups.length > 1 && (
+                <Pressable onPress={() => {
+                  // Navigate to filtered view — for now show all recent
+                  setShowAllRecent(true);
+                }}>
+                  <Text style={styles.viewAllLink}>View all verified reviews ({verifiedWriteups.length})</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
           {courseWriteups.length > 0 && (
             <View style={styles.section}>
-              {courseWriteups.map((w) => (
+              <Text style={styles.sectionLabel}>MOST RECENT</Text>
+              {(showAllRecent ? courseWriteups : courseWriteups.slice(0, 3)).map((w) => (
                 <WriteupCard
                   key={w.id}
                   writeup={w}
                   userName={w.author_name ?? getUserName(w.user_id)}
                   onPress={() => router.push(`/writeup/${w.id}`)}
+                  isVerified={w.author_verified}
                 />
               ))}
+              {!showAllRecent && courseWriteups.length > 3 && (
+                <Pressable onPress={() => setShowAllRecent(true)}>
+                  <Text style={styles.viewAllLink}>View all reviews ({courseWriteups.length})</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
@@ -529,15 +590,19 @@ const styles = StyleSheet.create({
   section: { paddingHorizontal: 16, paddingTop: 16 },
   writeupCard: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 14, marginBottom: 10 },
   featuredCard: { borderColor: Colors.orange },
+  verifiedFeaturedCard: { borderColor: '#22C55E' },
   featuredBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   featuredIcon: { marginRight: 2 },
   featuredText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange },
+  verifiedFeaturedText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: '#22C55E' },
   writeupTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   writeupPreview: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, marginTop: 4, fontFamily: Fonts!.sans },
   writeupMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4, flexWrap: 'wrap' },
   writeupDot: { color: Colors.gray, fontSize: 12, fontFamily: Fonts!.sans },
   writeupTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   writeupUpvotes: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
+  sectionLabel: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 } as any,
+  viewAllLink: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, textDecorationLine: 'underline', marginTop: 4 },
   empty: { alignItems: 'center', paddingVertical: 48, gap: 8 },
   emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   writeButton: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 10, marginTop: 8 },

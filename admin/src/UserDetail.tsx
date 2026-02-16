@@ -18,6 +18,7 @@ export default function UserDetail() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [suspending, setSuspending] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -46,6 +47,15 @@ export default function UserDetail() {
     setSuspending(false);
   }
 
+  async function handleToggleVerify() {
+    if (!profile || !id) return;
+    setVerifying(true);
+    const newValue = !profile.is_verified;
+    await updateProfile(id, { is_verified: newValue });
+    setProfile({ ...profile, is_verified: newValue });
+    setVerifying(false);
+  }
+
   const userName = profile?.name || `Member ${id?.slice(0, 6)}`;
 
   return (
@@ -59,6 +69,11 @@ export default function UserDetail() {
           <div>
             <div className="detail-title">
               {userName}
+              {profile?.is_verified && (
+                <span className="badge badge-verified" style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                  Verified
+                </span>
+              )}
               {profile?.suspended && (
                 <span className="badge badge-hidden" style={{ marginLeft: 8, verticalAlign: 'middle' }}>
                   Suspended
@@ -75,18 +90,30 @@ export default function UserDetail() {
             )}
           </div>
           {profile && (
-            <button
-              className={`btn btn-sm ${profile.suspended ? '' : 'btn-danger'}`}
-              onClick={handleToggleSuspend}
-              disabled={suspending}
-              style={{ marginLeft: 'auto' }}
-            >
-              {suspending
-                ? 'Updating...'
-                : profile.suspended
-                  ? 'Unsuspend Account'
-                  : 'Suspend Account'}
-            </button>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button
+                className={`btn btn-sm ${profile.is_verified ? '' : 'btn-primary'}`}
+                onClick={handleToggleVerify}
+                disabled={verifying}
+              >
+                {verifying
+                  ? 'Updating...'
+                  : profile.is_verified
+                    ? 'Unverify'
+                    : 'Verify'}
+              </button>
+              <button
+                className={`btn btn-sm ${profile.suspended ? '' : 'btn-danger'}`}
+                onClick={handleToggleSuspend}
+                disabled={suspending}
+              >
+                {suspending
+                  ? 'Updating...'
+                  : profile.suspended
+                    ? 'Unsuspend Account'
+                    : 'Suspend Account'}
+              </button>
+            </div>
           )}
         </div>
 

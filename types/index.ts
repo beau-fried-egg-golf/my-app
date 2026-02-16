@@ -11,6 +11,7 @@ export interface Profile {
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
+  is_verified?: boolean;
   dms_disabled?: boolean;
   expo_push_token?: string | null;
   push_dm_enabled?: boolean;
@@ -73,6 +74,7 @@ export interface User {
   homeCourseId: string | null;
   favoriteBall: string;
   memberSince: string;
+  isVerified?: boolean;
 }
 
 export interface Course {
@@ -154,6 +156,7 @@ export interface Writeup {
   reaction_count?: number;
   reply_count: number;
   author_name?: string;
+  author_verified?: boolean;
 }
 
 export interface CoursePlayed {
@@ -183,6 +186,7 @@ export interface Post {
   user_reactions: string[];
   reply_count: number;
   author_name?: string;
+  author_verified?: boolean;
   link_url?: string | null;
   link_title?: string | null;
   link_description?: string | null;
@@ -196,6 +200,7 @@ export interface PostReply {
   content: string;
   created_at: string;
   author_name?: string;
+  author_verified?: boolean;
 }
 
 export interface WriteupReply {
@@ -205,6 +210,7 @@ export interface WriteupReply {
   content: string;
   created_at: string;
   author_name?: string;
+  author_verified?: boolean;
 }
 
 export interface Activity {
@@ -241,6 +247,7 @@ export function profileToUser(p: Profile): User {
     homeCourseId: p.home_course_id,
     favoriteBall: p.favorite_ball,
     memberSince: p.member_since,
+    isVerified: p.is_verified,
   };
 }
 

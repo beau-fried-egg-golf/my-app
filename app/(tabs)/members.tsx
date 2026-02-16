@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Platform, StyleSheet, Text, TextInput, View } from 'react-native';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -8,6 +8,9 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Profile } from '@/types';
 import { SearchIcon } from '@/components/icons/CustomIcons';
+import VerifiedBadge from '@/components/VerifiedBadge';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 
 function getDistanceMiles(
   lat1: number,
@@ -32,9 +35,15 @@ type MemberSortOrder = 'distance' | 'alpha';
 export default function MembersScreen() {
   const { profiles, writeups, session, coursesPlayed, courses } = useStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [sortOrder, setSortOrder] = useState<MemberSortOrder>('distance');
   const [search, setSearch] = useState('');
+
+  // Tab bar bottom = Math.max(16, insets.bottom), height = 56, gap = 12
+  const defaultBottom = Math.max(16, insets.bottom) + 56 + 12;
+  const searchBarBottom = keyboardHeight > 0 ? keyboardHeight + 12 : defaultBottom;
 
   useEffect(() => {
     (async () => {
@@ -103,7 +112,10 @@ export default function MembersScreen() {
           </View>
         )}
         <View style={styles.info}>
-          <Text style={styles.name}>{item.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.name}>{item.name}</Text>
+            {item.is_verified && <VerifiedBadge size={14} />}
+          </View>
           <Text style={styles.meta}>
             {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
             {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
@@ -137,14 +149,14 @@ export default function MembersScreen() {
         keyExtractor={(item) => item.id}
         renderItem={renderMember}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        contentContainerStyle={[styles.list, { paddingBottom: 140 }]}
+        contentContainerStyle={[styles.list, { paddingBottom: searchBarBottom + 56 }]}
         ListEmptyComponent={
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No members yet</Text>
           </View>
         }
       />
-      <View style={styles.bottomSearchBar}>
+      <View style={[styles.bottomSearchBar, { bottom: searchBarBottom }]}>
         <SearchIcon size={28} color={Colors.gray} />
         <TextInput
           style={styles.bottomSearchInput}
@@ -177,7 +189,6 @@ const styles = StyleSheet.create({
   },
   bottomSearchBar: {
     position: 'absolute',
-    bottom: 84,
     left: 16,
     right: 16,
     flexDirection: 'row',

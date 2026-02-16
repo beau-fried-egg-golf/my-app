@@ -272,6 +272,11 @@ tr:hover {
   color: #991b1b;
 }
 
+.badge-verified {
+  background: #dcfce7;
+  color: #166534;
+}
+
 .badge-public {
   background: #dbeafe;
   color: #1e40af;

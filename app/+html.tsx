@@ -7,11 +7,12 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, interactive-widget=resizes-content" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/app-icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="theme-color" content="#FFFFFF" />
         <link
           rel="preload"
           href="/fonts/Ionicons.ttf"
@@ -45,6 +46,13 @@ export default function Root({ children }: PropsWithChildren) {
           href="https://api.mapbox.com/mapbox-gl-js/v3.12.0/mapbox-gl.css"
         />
         <ScrollViewStyleReset />
+        <style dangerouslySetInnerHTML={{ __html: `
+          html, body, #root {
+            height: 100%;
+            overflow: hidden;
+            background-color: #FFFFFF;
+          }
+        `}} />
         <style id="expo-generated-fonts" dangerouslySetInnerHTML={{ __html: `
           @font-face {
             font-family: 'ionicons';
