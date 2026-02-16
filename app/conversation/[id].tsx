@@ -9,6 +9,7 @@ import MessageBubble from '@/components/chat/MessageBubble';
 import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,6 +19,7 @@ export default function ConversationScreen() {
     markConversationRead, loadConversations, toggleMessageReaction,
   } = useStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
@@ -156,10 +158,10 @@ export default function ConversationScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
             <Ionicons name="chevron-back" size={20} color={Colors.black} />
@@ -229,15 +231,15 @@ export default function ConversationScreen() {
 
       {/* Input or blocked state */}
       {blocked ? (
-        <View style={styles.blockedBar}>
+        <View style={[styles.blockedBar, { paddingBottom: Math.max(16, insets.bottom) }]}>
           <Text style={styles.blockedText}>You have blocked this user</Text>
         </View>
       ) : !canSend ? (
-        <View style={styles.blockedBar}>
+        <View style={[styles.blockedBar, { paddingBottom: Math.max(16, insets.bottom) }]}>
           <Text style={styles.blockedText}>This user is not accepting messages</Text>
         </View>
       ) : (
-        <View style={styles.inputBar}>
+        <View style={[styles.inputBar, { paddingBottom: Math.max(10, insets.bottom) }]}>
           <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
             <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
           </Pressable>

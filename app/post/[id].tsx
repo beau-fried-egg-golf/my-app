@@ -16,8 +16,9 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import LinkPreview from '@/components/LinkPreview';
+import DetailHeader from '@/components/DetailHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -56,6 +57,7 @@ export default function PostDetailScreen() {
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
 
+  const insets = useSafeAreaInsets();
   const post = posts.find(p => p.id === id);
 
   useEffect(() => {
@@ -205,16 +207,9 @@ export default function PostDetailScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.topBarCenter}>
-          <LetterSpacedHeader text="POST" size={32} />
-        </View>
-      </View>
+      <DetailHeader title="POST" />
       <FlatList
         data={replies}
         keyExtractor={item => item.id}
@@ -238,7 +233,7 @@ export default function PostDetailScreen() {
           <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
         }
       />
-      <View style={styles.replyInputBar}>
+      <View style={[styles.replyInputBar, { paddingBottom: Math.max(10, insets.bottom) }]}>
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.replyInput}
@@ -272,31 +267,6 @@ export default function PostDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? 16 : 56,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-    backgroundColor: Colors.white,
-  },
-  backArrow: {
-    zIndex: 1,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarCenter: { marginLeft: 12 },
   content: { padding: 16, paddingBottom: 16 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
   date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },

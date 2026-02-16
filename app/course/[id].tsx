@@ -21,6 +21,7 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
 import EggRating from '@/components/EggRating';
 import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -100,6 +101,7 @@ export default function CourseDetailScreen() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const galleryScrollRef = useRef<ScrollView>(null);
 
+  const insets = useSafeAreaInsets();
   const course = courses.find((c) => c.id === id);
   if (!course) return null;
 
@@ -147,7 +149,7 @@ export default function CourseDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.courseNameBlock}>
+      <View style={[styles.courseNameBlock, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
         <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/courses')} style={styles.backArrow}>
           <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
@@ -487,7 +489,7 @@ export default function CourseDetailScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { paddingBottom: 40 },
-  courseNameBlock: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 16 },
+  courseNameBlock: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 },
   backArrow: {
     width: 36,
     height: 36,

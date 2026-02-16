@@ -1,11 +1,15 @@
 import { Tabs, Redirect } from 'expo-router';
-import { Image, Pressable, StyleSheet, View } from 'react-native';
+import { Image, Platform, StyleSheet, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { useRouter, usePathname } from 'expo-router';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, MessagingIcon, NotificationsIcon } from '@/components/icons/CustomIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { HapticTab } from '@/components/haptic-tab';
+import PlatformPressable from '@/components/PlatformPressable';
 
 function TabIconBox({ children }: { children: React.ReactNode }) {
   return (
@@ -15,7 +19,16 @@ function TabIconBox({ children }: { children: React.ReactNode }) {
   );
 }
 
-function SolidTabBarBackground() {
+function TabBarBackground() {
+  if (Platform.OS === 'ios') {
+    return (
+      <BlurView
+        intensity={80}
+        tint="systemChromeMaterial"
+        style={[StyleSheet.absoluteFill, { borderRadius: 28, overflow: 'hidden' }]}
+      />
+    );
+  }
   return (
     <View
       style={[
@@ -38,15 +51,15 @@ function HeaderRight() {
   const isOnConversations = pathname === '/conversations';
   return (
     <View style={styles.headerPill}>
-      <Pressable onPress={() => router.push('/notifications')} style={styles.headerPillBtn}>
+      <PlatformPressable onPress={() => router.push('/notifications')} style={styles.headerPillBtn}>
         <NotificationsIcon size={34} color={isOnNotifications ? Colors.orange : Colors.black} />
         {hasUnreadNotifications && !isOnNotifications && <View style={styles.unreadBadge} />}
-      </Pressable>
-      <Pressable onPress={() => router.push('/conversations')} style={styles.headerPillBtn}>
+      </PlatformPressable>
+      <PlatformPressable onPress={() => router.push('/conversations')} style={styles.headerPillBtn}>
         <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} />
         {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
-      </Pressable>
-      <Pressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
+      </PlatformPressable>
+      <PlatformPressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
         {user?.image ? (
           <Image source={{ uri: user.image }} style={styles.profileImage} />
         ) : (
@@ -54,7 +67,7 @@ function HeaderRight() {
             <Ionicons name="person" size={20} color={Colors.black} />
           </View>
         )}
-      </Pressable>
+      </PlatformPressable>
     </View>
   );
 }
@@ -62,14 +75,15 @@ function HeaderRight() {
 function BackButton() {
   const router = useRouter();
   return (
-    <Pressable onPress={() => router.push('/')} style={styles.backBtn}>
+    <PlatformPressable onPress={() => router.push('/')} style={styles.backBtn}>
       <Ionicons name="chevron-back" size={20} color={Colors.black} />
-    </Pressable>
+    </PlatformPressable>
   );
 }
 
 export default function TabLayout() {
   const { session, isLoading } = useStore();
+  const insets = useSafeAreaInsets();
 
   if (isLoading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
@@ -88,11 +102,20 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.orange,
         tabBarInactiveTintColor: Colors.gray,
         tabBarShowLabel: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [styles.tabBar, { bottom: Math.max(16, insets.bottom) }],
         tabBarItemStyle: styles.tabBarItem,
+        tabBarButton: HapticTab,
         tabBarIconStyle: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-        tabBarBackground: () => <SolidTabBarBackground />,
-        headerStyle: { backgroundColor: Colors.white },
+        tabBarBackground: () => <TabBarBackground />,
+        ...(Platform.OS === 'ios' ? {
+          headerTransparent: true,
+          headerBackground: () => (
+            <BlurView intensity={80} tint="systemChromeMaterial" style={StyleSheet.absoluteFill} />
+          ),
+          headerStyle: { backgroundColor: 'transparent' },
+        } : {
+          headerStyle: { backgroundColor: Colors.white },
+        }),
         headerTintColor: Colors.black,
         headerShadowVisible: false,
         headerTitleAlign: 'left',

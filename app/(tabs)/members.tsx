@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TextInput, View } from 'react-native';
+import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,7 +91,7 @@ export default function MembersScreen() {
     const distance = getMemberDistance(item);
 
     return (
-      <Pressable
+      <PlatformPressable
         style={styles.row}
         onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
       >
@@ -109,7 +110,7 @@ export default function MembersScreen() {
             {distance != null ? ` · ${Math.round(distance)} mi` : ''}
           </Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -117,18 +118,18 @@ export default function MembersScreen() {
     <View style={styles.container}>
       <View style={styles.toolbar}>
         <View style={styles.sortToggle}>
-        <Pressable
+        <PlatformPressable
           style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
           onPress={() => setSortOrder('distance')}
         >
           <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
-        </Pressable>
-        <Pressable
+        </PlatformPressable>
+        <PlatformPressable
           style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
           onPress={() => setSortOrder('alpha')}
         >
           <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
-        </Pressable>
+        </PlatformPressable>
         </View>
       </View>
       <FlatList
@@ -155,9 +156,9 @@ export default function MembersScreen() {
           autoCorrect={false}
         />
         {search.length > 0 && (
-          <Pressable onPress={() => setSearch('')} style={{ padding: 4 }}>
+          <PlatformPressable onPress={() => setSearch('')} style={{ padding: 4 }}>
             <Ionicons name="close-circle" size={18} color={Colors.gray} />
-          </Pressable>
+          </PlatformPressable>
         )}
       </View>
     </View>

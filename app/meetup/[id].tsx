@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { MeetupMember } from '@/types';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import DetailHeader from '@/components/DetailHeader';
 
 function formatMeetupDate(iso: string): string {
   const d = new Date(iso);
@@ -51,14 +51,7 @@ export default function MeetupDetailScreen() {
   if (!meetup) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={20} color={Colors.black} />
-          </Pressable>
-          <View style={styles.topBarCenter}>
-            <LetterSpacedHeader text="MEETUP" size={32} />
-          </View>
-        </View>
+        <DetailHeader title="MEETUP" />
         <Text style={styles.emptyText}>Meetup not found</Text>
       </View>
     );
@@ -220,14 +213,7 @@ export default function MeetupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.topBarCenter}>
-          <LetterSpacedHeader text="MEETUP" size={32} />
-        </View>
-      </View>
+      <DetailHeader title="MEETUP" />
 
       <ScrollView contentContainerStyle={styles.content}>
         {/* Hero */}
@@ -377,31 +363,6 @@ export default function MeetupDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? 16 : 56,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-    backgroundColor: Colors.white,
-  },
-  backArrow: {
-    zIndex: 1,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarCenter: { marginLeft: 12 },
   manageRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginBottom: 16 },
   manageBtn: { backgroundColor: Colors.black, borderRadius: 20, paddingHorizontal: 20, paddingVertical: 8 },
   manageBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },

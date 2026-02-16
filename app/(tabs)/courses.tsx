@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -161,7 +162,7 @@ export default function CoursesScreen() {
   function renderMeetupCallout(meetup: Meetup) {
     const spots = meetup.total_slots - (meetup.member_count ?? 0);
     return (
-      <Pressable
+      <PlatformPressable
         style={styles.meetupCallout}
         onPress={() => router.push(`/meetup/${meetup.id}`)}
       >
@@ -176,7 +177,7 @@ export default function CoursesScreen() {
             {spots} spot{spots !== 1 ? 's' : ''} left
           </Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -187,7 +188,7 @@ export default function CoursesScreen() {
     const upcoming = getUpcomingMeetup(item.id);
 
     return (
-      <Pressable
+      <PlatformPressable
         style={styles.courseItem}
         onPress={() => router.push(`/course/${item.id}`)}
       >
@@ -220,7 +221,7 @@ export default function CoursesScreen() {
           )}
         </View>
         {upcoming && renderMeetupCallout(upcoming)}
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -228,43 +229,43 @@ export default function CoursesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.toolBar}>
-        <Pressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
+        <PlatformPressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
           <Text style={styles.filterBarText}>{showFilters ? 'CLOSE FILTERS' : 'OPEN FILTERS'}</Text>
           {activeFilterCount > 0 && (
             <View style={styles.filterCount}>
               <Text style={styles.filterCountText}>{activeFilterCount}</Text>
             </View>
           )}
-        </Pressable>
+        </PlatformPressable>
         <View style={styles.toolBarRight}>
           <View style={styles.viewToggle}>
-            <Pressable
+            <PlatformPressable
               style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
               onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
             >
               <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
-            </Pressable>
-            <Pressable
+            </PlatformPressable>
+            <PlatformPressable
               style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
               onPress={() => setViewMode('map')}
             >
               <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
-            </Pressable>
+            </PlatformPressable>
           </View>
           {viewMode === 'list' && (
             <View style={styles.sortToggle}>
-              <Pressable
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('alpha')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
-              </Pressable>
-              <Pressable
+              </PlatformPressable>
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('distance')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
-              </Pressable>
+              </PlatformPressable>
             </View>
           )}
         </View>
@@ -277,7 +278,7 @@ export default function CoursesScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.filterChips}>
                 {(['all', 'public', 'private'] as AccessFilter[]).map((val) => (
-                  <Pressable
+                  <PlatformPressable
                     key={val}
                     style={[styles.chip, accessFilter === val && styles.chipActive]}
                     onPress={() => setAccessFilter(val)}
@@ -285,7 +286,7 @@ export default function CoursesScreen() {
                     <Text style={[styles.chipText, accessFilter === val && styles.chipTextActive]}>
                       {val === 'all' ? 'ALL' : val.toUpperCase()}
                     </Text>
-                  </Pressable>
+                  </PlatformPressable>
                 ))}
               </View>
             </ScrollView>
@@ -301,7 +302,7 @@ export default function CoursesScreen() {
                   ['50', '< 50 MI'],
                   ['100', '< 100 MI'],
                 ] as [DistanceFilter, string][]).map(([val, label]) => (
-                  <Pressable
+                  <PlatformPressable
                     key={val}
                     style={[styles.chip, distanceFilter === val && styles.chipActive]}
                     onPress={() => setDistanceFilter(val)}
@@ -309,7 +310,7 @@ export default function CoursesScreen() {
                     <Text style={[styles.chipText, distanceFilter === val && styles.chipTextActive]}>
                       {label}
                     </Text>
-                  </Pressable>
+                  </PlatformPressable>
                 ))}
               </View>
             </ScrollView>
@@ -323,7 +324,7 @@ export default function CoursesScreen() {
                   ['all', 'ALL'],
                   ['has_writeups', 'HAS REVIEWS'],
                 ] as [WriteupFilter, string][]).map(([val, label]) => (
-                  <Pressable
+                  <PlatformPressable
                     key={val}
                     style={[styles.chip, writeupFilter === val && styles.chipActive]}
                     onPress={() => setWriteupFilter(val)}
@@ -331,7 +332,7 @@ export default function CoursesScreen() {
                     <Text style={[styles.chipText, writeupFilter === val && styles.chipTextActive]}>
                       {label}
                     </Text>
-                  </Pressable>
+                  </PlatformPressable>
                 ))}
               </View>
             </ScrollView>
@@ -345,7 +346,7 @@ export default function CoursesScreen() {
                   ['all', 'ALL'],
                   ['has_fe', 'HAS FE PROFILE'],
                 ] as [FEFilter, string][]).map(([val, label]) => (
-                  <Pressable
+                  <PlatformPressable
                     key={val}
                     style={[styles.chip, feFilter === val && styles.chipActive]}
                     onPress={() => setFEFilter(val)}
@@ -353,14 +354,14 @@ export default function CoursesScreen() {
                     <Text style={[styles.chipText, feFilter === val && styles.chipTextActive]}>
                       {label}
                     </Text>
-                  </Pressable>
+                  </PlatformPressable>
                 ))}
               </View>
             </ScrollView>
           </View>
 
           {activeFilterCount > 0 && (
-            <Pressable
+            <PlatformPressable
               style={styles.clearFilters}
               onPress={() => {
                 setAccessFilter('all');
@@ -370,7 +371,7 @@ export default function CoursesScreen() {
               }}
             >
               <Text style={styles.clearFiltersText}>Clear all filters</Text>
-            </Pressable>
+            </PlatformPressable>
           )}
         </View>
       )}
@@ -390,12 +391,12 @@ export default function CoursesScreen() {
             }
             ListFooterComponent={
               displayCount < filteredCourses.length ? (
-                <Pressable
+                <PlatformPressable
                   style={styles.loadMoreButton}
                   onPress={() => setDisplayCount(displayCount + 15)}
                 >
                   <Text style={styles.loadMoreText}>LOAD MORE ({filteredCourses.length - displayCount} remaining)</Text>
-                </Pressable>
+                </PlatformPressable>
               ) : null
             }
           />
@@ -411,9 +412,9 @@ export default function CoursesScreen() {
               autoCorrect={false}
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+              <PlatformPressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
                 <Ionicons name="close-circle" size={18} color={Colors.gray} />
-              </Pressable>
+              </PlatformPressable>
             )}
           </View>
         </>

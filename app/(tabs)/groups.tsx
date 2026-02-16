@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,7 +28,7 @@ function getDistanceMiles(
 
 function GroupRow({ item, onPress, distance }: { item: Group; onPress: () => void; distance?: number | null }) {
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <PlatformPressable style={styles.row} onPress={onPress}>
       {item.image ? (
         <Image source={{ uri: item.image }} style={styles.groupImage} />
       ) : (
@@ -44,7 +45,7 @@ function GroupRow({ item, onPress, distance }: { item: Group; onPress: () => voi
           {distance != null ? ` · ${Math.round(distance)} mi` : ''}
         </Text>
       </View>
-    </Pressable>
+    </PlatformPressable>
   );
 }
 
@@ -110,18 +111,18 @@ export default function GroupsScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.sortToggle}>
-              <Pressable
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'default' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('default')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'default' && styles.sortBtnTextActive]}>A-Z</Text>
-              </Pressable>
-              <Pressable
+              </PlatformPressable>
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('distance')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
-              </Pressable>
+              </PlatformPressable>
             </View>
 
             {myGroups.length > 0 && (
@@ -156,9 +157,9 @@ export default function GroupsScreen() {
         }
         contentContainerStyle={styles.list}
       />
-      <Pressable style={styles.fab} onPress={() => router.push('/create-group')}>
+      <PlatformPressable style={styles.fab} onPress={() => router.push('/create-group')}>
         <Ionicons name="add" size={28} color={Colors.black} />
-      </Pressable>
+      </PlatformPressable>
     </View>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
+import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
@@ -35,7 +36,7 @@ function formatMeetupDate(iso: string): string {
 function MeetupRow({ item, onPress, distance }: { item: Meetup; onPress: () => void; distance?: number | null }) {
   const slotsRemaining = item.total_slots - (item.member_count ?? 0);
   return (
-    <Pressable style={styles.row} onPress={onPress}>
+    <PlatformPressable style={styles.row} onPress={onPress}>
       {item.image ? (
         <Image source={{ uri: item.image }} style={styles.meetupImage} />
       ) : (
@@ -53,7 +54,7 @@ function MeetupRow({ item, onPress, distance }: { item: Meetup; onPress: () => v
           {distance != null ? ` · ${Math.round(distance)} mi` : ''}
         </Text>
       </View>
-    </Pressable>
+    </PlatformPressable>
   );
 }
 
@@ -120,18 +121,18 @@ export default function MeetupsScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.sortToggle}>
-              <Pressable
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'date' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('date')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'date' && styles.sortBtnTextActive]}>DATE</Text>
-              </Pressable>
-              <Pressable
+              </PlatformPressable>
+              <PlatformPressable
                 style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
                 onPress={() => setSortOrder('distance')}
               >
                 <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
-              </Pressable>
+              </PlatformPressable>
             </View>
 
             {myMeetups.length > 0 && (
@@ -175,9 +176,9 @@ export default function MeetupsScreen() {
         }
         contentContainerStyle={styles.list}
       />
-      <Pressable style={styles.fab} onPress={() => router.push('/create-meetup')}>
+      <PlatformPressable style={styles.fab} onPress={() => router.push('/create-meetup')}>
         <Ionicons name="add" size={28} color={Colors.black} />
-      </Pressable>
+      </PlatformPressable>
     </View>
   );
 }

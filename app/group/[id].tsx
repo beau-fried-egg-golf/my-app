@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { GroupMember } from '@/types';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import DetailHeader from '@/components/DetailHeader';
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,14 +31,7 @@ export default function GroupDetailScreen() {
   if (!group) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={20} color={Colors.black} />
-          </Pressable>
-          <View style={styles.topBarCenter}>
-            <LetterSpacedHeader text="GROUP" size={32} />
-          </View>
-        </View>
+        <DetailHeader title="GROUP" />
         <Text style={styles.emptyText}>Group not found</Text>
       </View>
     );
@@ -60,14 +53,7 @@ export default function GroupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.topBarCenter}>
-          <LetterSpacedHeader text="GROUP" size={32} />
-        </View>
-      </View>
+      <DetailHeader title="GROUP" />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Group Image & Info */}
@@ -215,31 +201,6 @@ export default function GroupDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? 16 : 56,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-    backgroundColor: Colors.white,
-  },
-  backArrow: {
-    zIndex: 1,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarCenter: { marginLeft: 12 },
   scrollContent: { padding: 24, paddingBottom: 40 },
   emptyText: {
     fontSize: 15,

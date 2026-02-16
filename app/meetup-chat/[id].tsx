@@ -11,6 +11,7 @@ import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
 import MentionAutocomplete from '@/components/chat/MentionAutocomplete';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MeetupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function MeetupChatScreen() {
     toggleMeetupMessageReaction, getMeetupMembers,
   } = useStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [messages, setMessages] = useState<MeetupMessage[]>([]);
   const [text, setText] = useState('');
@@ -159,10 +161,10 @@ export default function MeetupChatScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
             <Ionicons name="chevron-back" size={20} color={Colors.black} />
@@ -234,7 +236,7 @@ export default function MeetupChatScreen() {
       )}
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { paddingBottom: Math.max(10, insets.bottom) }]}>
         <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
           <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
         </Pressable>

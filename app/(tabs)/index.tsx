@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlatList, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -50,7 +51,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
       : '';
 
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -88,7 +89,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         {!isLinkPost && thumbnail && (
           <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
         )}
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -103,7 +104,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           : 'a post'
       : 'a post';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -117,7 +118,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           </View>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -125,7 +126,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const name = item.user_name ?? '';
     const writeupDisplayName = item.writeup_title ?? 'a review';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -140,7 +141,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -148,7 +149,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const name = item.user_name ?? '';
     const groupName = item.group_name ?? 'a group';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -164,7 +165,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           </View>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -172,7 +173,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const name = item.user_name ?? '';
     const meetupName = item.meetup_name ?? 'a meetup';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -194,7 +195,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -202,7 +203,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const name = item.user_name ?? '';
     const meetupName = item.meetup_name ?? 'a meetup';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -224,7 +225,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -232,7 +233,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
     const name = item.user_name ?? '';
     const writeup = item.writeup_id ? writeups.find(w => w.id === item.writeup_id) : null;
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -255,14 +256,14 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         {thumbnail && (
           <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
         )}
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
   if (item.type === 'played') {
     const name = item.user_name ?? '';
     return (
-      <Pressable style={styles.activityItem} onPress={onPress}>
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
           <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
         ) : (
@@ -276,7 +277,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
-      </Pressable>
+      </PlatformPressable>
     );
   }
 
@@ -284,7 +285,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
   const targetName = item.target_user_name ?? '';
 
   return (
-    <Pressable style={styles.activityItem} onPress={onPress}>
+    <PlatformPressable style={styles.activityItem} onPress={onPress}>
       {userProfile?.image ? (
         <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
       ) : (
@@ -302,7 +303,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
         <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
         <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
       </View>
-    </Pressable>
+    </PlatformPressable>
   );
 }
 
@@ -367,18 +368,18 @@ export default function FeedScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.filterRow}>
-        <Pressable
+        <PlatformPressable
           style={[styles.filterTab, feedFilter === 'ALL' && styles.filterTabActive]}
           onPress={() => setFeedFilter('ALL')}
         >
           <Text style={[styles.filterTabText, feedFilter === 'ALL' && styles.filterTabTextActive]}>ALL</Text>
-        </Pressable>
-        <Pressable
+        </PlatformPressable>
+        <PlatformPressable
           style={[styles.filterTab, feedFilter === 'FOLLOWING' && styles.filterTabActive]}
           onPress={() => setFeedFilter('FOLLOWING')}
         >
           <Text style={[styles.filterTabText, feedFilter === 'FOLLOWING' && styles.filterTabTextActive]}>FOLLOWING</Text>
-        </Pressable>
+        </PlatformPressable>
       </View>
       <FlatList
         data={filteredActivities}
@@ -404,13 +405,13 @@ export default function FeedScreen() {
           <View style={styles.ribbonContainer}>
             <View style={styles.ribbonHeader}>
               <Text style={styles.ribbonTitle}>Members to Follow</Text>
-              <Pressable onPress={dismissRibbon} hitSlop={8}>
+              <PlatformPressable onPress={dismissRibbon} hitSlop={8}>
                 <Ionicons name="close" size={20} color={Colors.gray} />
-              </Pressable>
+              </PlatformPressable>
             </View>
             <View style={styles.ribbonCards}>
               {recommendedMembers.map(member => (
-                <Pressable key={member.id} style={styles.ribbonCard} onPress={() => router.push(`/member/${member.id}`)}>
+                <PlatformPressable key={member.id} style={styles.ribbonCard} onPress={() => router.push(`/member/${member.id}`)}>
                   {member.image ? (
                     <Image source={{ uri: member.image }} style={styles.ribbonAvatar} />
                   ) : (
@@ -419,21 +420,21 @@ export default function FeedScreen() {
                     </View>
                   )}
                   <Text style={styles.ribbonName} numberOfLines={1}>{member.name}</Text>
-                  <Pressable
+                  <PlatformPressable
                     style={[styles.ribbonFollowBtn, isFollowing(member.id) && styles.ribbonFollowingBtn]}
                     onPress={() => toggleFollow(member.id)}
                   >
                     <Text style={[styles.ribbonFollowText, isFollowing(member.id) && styles.ribbonFollowingText]}>
                       {isFollowing(member.id) ? 'Following' : 'Follow'}
                     </Text>
-                  </Pressable>
-                </Pressable>
+                  </PlatformPressable>
+                </PlatformPressable>
               ))}
             </View>
-            <Pressable onPress={() => router.push('/members')} style={styles.ribbonSeeAll}>
+            <PlatformPressable onPress={() => router.push('/members')} style={styles.ribbonSeeAll}>
               <Text style={styles.ribbonSeeAllText}>See All Members</Text>
               <Ionicons name="arrow-forward" size={14} color={Colors.black} />
-            </Pressable>
+            </PlatformPressable>
           </View>
         ) : null}
         ListEmptyComponent={
@@ -447,12 +448,12 @@ export default function FeedScreen() {
         contentContainerStyle={filteredActivities.length === 0 ? styles.emptyContainer : styles.list}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
-      <Pressable
+      <PlatformPressable
         style={styles.fab}
         onPress={() => setShowFabMenu(true)}
       >
         <Ionicons name="add" size={28} color={Colors.black} />
-      </Pressable>
+      </PlatformPressable>
 
       <Modal
         visible={showFabMenu}
@@ -460,9 +461,9 @@ export default function FeedScreen() {
         animationType="fade"
         onRequestClose={() => setShowFabMenu(false)}
       >
-        <Pressable style={styles.modalBackdrop} onPress={() => setShowFabMenu(false)}>
+        <PlatformPressable style={styles.modalBackdrop} onPress={() => setShowFabMenu(false)}>
           <View style={styles.modalSheet}>
-            <Pressable
+            <PlatformPressable
               style={styles.modalOption}
               onPress={() => {
                 setShowFabMenu(false);
@@ -476,9 +477,9 @@ export default function FeedScreen() {
                 <Text style={styles.modalOptionTitle}>Review</Text>
                 <Text style={styles.modalOptionDesc}>Write a course review</Text>
               </View>
-            </Pressable>
+            </PlatformPressable>
             <View style={styles.modalSeparator} />
-            <Pressable
+            <PlatformPressable
               style={styles.modalOption}
               onPress={() => {
                 setShowFabMenu(false);
@@ -492,9 +493,9 @@ export default function FeedScreen() {
                 <Text style={styles.modalOptionTitle}>Post</Text>
                 <Text style={styles.modalOptionDesc}>Share an update with the club</Text>
               </View>
-            </Pressable>
+            </PlatformPressable>
           </View>
-        </Pressable>
+        </PlatformPressable>
       </Modal>
     </View>
   );

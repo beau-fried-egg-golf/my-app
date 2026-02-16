@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Pressable, View } from 'react-native';
+import { Image, Platform, Pressable, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 function BackArrow() {
   const router = useRouter();
@@ -73,12 +74,14 @@ export default function RootLayout() {
   }
 
   return (
+    <SafeAreaProvider>
     <StoreProvider>
       <PushNotificationRegistrar />
       <PasswordResetNavigator />
       <StatusBar style="dark" />
       <Stack
         screenOptions={{
+          animation: Platform.OS === 'android' ? 'fade_from_bottom' : 'default',
           headerStyle: { backgroundColor: Colors.white },
           headerTintColor: Colors.black,
           headerShadowVisible: false,
@@ -134,5 +137,6 @@ export default function RootLayout() {
         />
       </Stack>
     </StoreProvider>
+    </SafeAreaProvider>
   );
 }

@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
 import PassportStamp from '@/components/PassportStamp';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import DetailHeader from '@/components/DetailHeader';
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -33,14 +33,7 @@ export default function MemberProfileScreen() {
   if (!profile) {
     return (
       <View style={styles.container}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => router.back()} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={20} color={Colors.black} />
-          </Pressable>
-          <View style={styles.topBarCenter}>
-            <LetterSpacedHeader text="MEMBER" size={32} />
-          </View>
-        </View>
+        <DetailHeader title="MEMBER" />
         <Text style={styles.emptyText}>Member not found</Text>
       </View>
     );
@@ -60,14 +53,7 @@ export default function MemberProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.topBarCenter}>
-          <LetterSpacedHeader text="MEMBER" size={32} />
-        </View>
-      </View>
+      <DetailHeader title="MEMBER" />
       <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.avatarSection}>
         {profile.image ? (
@@ -209,31 +195,6 @@ export default function MemberProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'web' ? 16 : 56,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-    backgroundColor: Colors.white,
-  },
-  backArrow: {
-    zIndex: 1,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarCenter: { marginLeft: 12 },
   content: { padding: 24, paddingBottom: 40 },
   emptyText: { fontSize: 15, color: Colors.gray, textAlign: 'center', marginTop: 40, fontFamily: Fonts!.sans },
   avatarSection: { alignItems: 'center', marginBottom: 24 },
