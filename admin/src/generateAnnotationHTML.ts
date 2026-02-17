@@ -532,7 +532,9 @@ function generateScrollHTML(
     </div>`;
   }).join('');
 
-  return `<div class="hole-annotation-embed ha-scroll-embed">
+  const embedId = `ha-scroll-${annotation.id.slice(0, 8)}`;
+
+  return `<div id="${embedId}" class="hole-annotation-embed ha-scroll-embed">
 <style>
 ${OVERLAY_CARD_CSS}
 ${LIGHTBOX_CSS}
@@ -542,6 +544,12 @@ ${LIGHTBOX_CSS}
   margin: 0 auto;
   font-family: var(--card-font);
 }
+.ha-scroll-embed * { box-sizing: border-box; }
+.ha-scroll-embed h2, .ha-scroll-embed h3 { margin: 0; padding: 0; font-family: var(--card-font); }
+.ha-scroll-embed p { margin: 0; padding: 0; font-family: var(--card-font); }
+.ha-scroll-embed a { font-family: var(--card-font); }
+.ha-scroll-embed img { max-width: 100%; }
+.ha-scroll-embed button { font-family: var(--card-font); padding: 0; }
 .ha-scroll-wrap {
   position: relative;
 }
@@ -653,7 +661,7 @@ ${LIGHTBOX_HTML}
 ${SWAP_HERO_JS}
 ${LIGHTBOX_JS}
 (function() {
-  var embed = document.currentScript.closest('.ha-scroll-embed');
+  var embed = document.getElementById('${embedId}');
   if (!embed) return;
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
@@ -784,7 +792,9 @@ function generateInteractiveHTML(
     </div>`;
   }).join('');
 
-  return `<div class="hole-annotation-embed ha-interactive-embed">
+  const embedId = `ha-interactive-${annotation.id.slice(0, 8)}`;
+
+  return `<div id="${embedId}" class="hole-annotation-embed ha-interactive-embed">
 <style>
 ${OVERLAY_CARD_CSS}
 ${LIGHTBOX_CSS}
@@ -794,6 +804,12 @@ ${LIGHTBOX_CSS}
   margin: 0 auto;
   font-family: var(--card-font);
 }
+.ha-interactive-embed * { box-sizing: border-box; }
+.ha-interactive-embed h2, .ha-interactive-embed h3 { margin: 0; padding: 0; font-family: var(--card-font); }
+.ha-interactive-embed p { margin: 0; padding: 0; font-family: var(--card-font); }
+.ha-interactive-embed a { font-family: var(--card-font); }
+.ha-interactive-embed img { max-width: 100%; }
+.ha-interactive-embed button { font-family: var(--card-font); padding: 0; }
 .ha-interactive-container {
   position: relative;
   border-radius: 8px;
@@ -938,7 +954,7 @@ ${LIGHTBOX_HTML}
 ${SWAP_HERO_JS}
 ${LIGHTBOX_JS}
 (function() {
-  var embed = document.currentScript.closest('.ha-interactive-embed');
+  var embed = document.getElementById('${embedId}');
   if (!embed) return;
   var pins = embed.querySelectorAll('.ha-ipin');
   var panels = embed.querySelectorAll('.ha-ipanel');
