@@ -475,7 +475,7 @@ function generateScrollHTML(
 
     return `
     <div class="ha-scroll-section" data-pin-index="${index}" style="align-items:${ds.alignItems};justify-content:${ds.justifyContent};${ds.edgePadding}">
-      <div class="ha-scroll-card" style="transform:${ds.hiddenTransform}">
+      <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}">
         ${cardHtml}
       </div>
     </div>`;
@@ -551,25 +551,21 @@ ${LIGHTBOX_CSS}
   pointer-events: none;
 }
 .ha-scroll-section {
-  min-height: 60vh;
+  min-height: 100vh;
   display: flex;
   padding: 24px;
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
-  padding-top: 40vh;
+  padding-top: 50vh;
 }
 .ha-scroll-section:last-child {
-  padding-bottom: 20vh;
+  padding-bottom: 50vh;
 }
 .ha-scroll-card {
   pointer-events: auto;
   opacity: 0;
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-.ha-scroll-section.ha-section-visible .ha-scroll-card {
-  opacity: 1;
-  transform: translate(0, 0) !important;
+  will-change: transform, opacity;
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
@@ -597,27 +593,60 @@ ${LIGHTBOX_JS}
   var embed = document.currentScript.closest('.ha-scroll-embed');
   if (!embed) return;
   var sections = embed.querySelectorAll('.ha-scroll-section');
+  var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
+  var DIST = 60;
 
-  var observer = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) {
-      var idx = parseInt(entry.target.getAttribute('data-pin-index'), 10);
-      if (entry.isIntersecting) {
-        entry.target.classList.add('ha-section-visible');
-        for (var i = 0; i < pins.length; i++) {
-          pins[i].classList.remove('ha-pin-active');
-          if (i < idx) {
-            pins[i].classList.add('ha-pin-visited');
-          } else if (i === idx) {
-            pins[i].classList.add('ha-pin-active');
-            pins[i].classList.remove('ha-pin-visited');
-          }
-        }
+  function getOffset(dir, t) {
+    switch (dir) {
+      case 'top':    return 'translate(0,' + (-t * DIST) + 'px)';
+      case 'left':   return 'translate(' + (-t * DIST) + 'px,0)';
+      case 'right':  return 'translate(' + (t * DIST) + 'px,0)';
+      default:       return 'translate(0,' + (t * DIST) + 'px)';
+    }
+  }
+
+  function update() {
+    var vh = window.innerHeight;
+    var activeIdx = -1;
+    for (var i = 0; i < sections.length; i++) {
+      var rect = sections[i].getBoundingClientRect();
+      var card = cards[i];
+      var dir = card.getAttribute('data-direction') || 'bottom';
+
+      // progress: 0 = section top at viewport bottom, 1 = section bottom at viewport top
+      var progress = (vh - rect.top) / (vh + rect.height);
+      progress = Math.max(0, Math.min(1, progress));
+
+      // enter 0→0.25, hold 0.25→0.75, exit 0.75→1
+      var t, opacity;
+      if (progress <= 0.25) {
+        t = 1 - progress / 0.25;
+        opacity = progress / 0.25;
+      } else if (progress <= 0.75) {
+        t = 0;
+        opacity = 1;
+      } else {
+        t = (progress - 0.75) / 0.25;
+        opacity = 1 - (progress - 0.75) / 0.25;
       }
-    });
-  }, { threshold: 0.4 });
 
-  sections.forEach(function(s) { observer.observe(s); });
+      card.style.transform = getOffset(dir, t);
+      card.style.opacity = opacity;
+
+      if (opacity > 0.5) activeIdx = i;
+    }
+
+    // Update pin markers
+    for (var j = 0; j < pins.length; j++) {
+      pins[j].classList.remove('ha-pin-active', 'ha-pin-visited');
+      if (j < activeIdx) pins[j].classList.add('ha-pin-visited');
+      else if (j === activeIdx) pins[j].classList.add('ha-pin-active');
+    }
+
+    requestAnimationFrame(update);
+  }
+  requestAnimationFrame(update);
 
   // Lightbox close/nav buttons
   var lb = embed.querySelector('.ha-lightbox');
