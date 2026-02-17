@@ -18,8 +18,9 @@ export default function AnnotationList() {
     getAnnotations().then(setAnnotations);
   }, []);
 
-  async function handleCreate() {
-    const id = await createAnnotation({ title: 'Untitled' });
+  async function handleCreate(type: 'scroll' | 'interactive') {
+    const title = type === 'scroll' ? 'Untitled Hole' : 'Untitled Course';
+    const id = await createAnnotation({ title, annotation_type: type });
     navigate(`/hole-annotations/${id}/edit`);
   }
 
@@ -55,7 +56,10 @@ export default function AnnotationList() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Hole Annotations</h1>
-        <button className="btn btn-primary" onClick={handleCreate}>New Annotation</button>
+        <div className="btn-group">
+          <button className="btn btn-primary" onClick={() => handleCreate('scroll')}>New Scroll</button>
+          <button className="btn btn-primary" onClick={() => handleCreate('interactive')}>New Interactive</button>
+        </div>
       </div>
 
       {annotations.length === 0 ? (
@@ -67,8 +71,8 @@ export default function AnnotationList() {
               <tr>
                 <th>Image</th>
                 <th>Title</th>
+                <th>Type</th>
                 <th>Course</th>
-                <th>Hole</th>
                 <th>Pins</th>
                 <th>Created</th>
                 <th>Actions</th>
@@ -89,8 +93,12 @@ export default function AnnotationList() {
                     )}
                   </td>
                   <td>{a.title || 'Untitled'}</td>
+                  <td>
+                    <span className={`badge ${a.annotation_type === 'interactive' ? 'badge-public' : 'badge-private'}`}>
+                      {a.annotation_type === 'interactive' ? 'Interactive' : 'Scroll'}
+                    </span>
+                  </td>
                   <td>{a.course_name || '-'}</td>
-                  <td>{a.hole_number}</td>
                   <td>{a.pin_count ?? 0}</td>
                   <td>{new Date(a.created_at).toLocaleDateString()}</td>
                   <td>

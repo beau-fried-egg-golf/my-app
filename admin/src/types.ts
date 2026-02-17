@@ -205,6 +205,7 @@ export interface HoleAnnotation {
   course_name: string;
   hole_number: number;
   aerial_image_url: string | null;
+  annotation_type: 'scroll' | 'interactive';
   created_at: string;
   updated_at: string;
   pin_count?: number;

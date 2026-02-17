@@ -722,6 +722,7 @@ export async function createAnnotation(data: Partial<HoleAnnotation>): Promise<s
     course_name: data.course_name ?? '',
     hole_number: data.hole_number ?? 1,
     aerial_image_url: data.aerial_image_url ?? null,
+    annotation_type: data.annotation_type ?? 'scroll',
     created_at: now,
     updated_at: now,
   });
@@ -797,6 +798,7 @@ export async function duplicateAnnotation(id: string): Promise<string | null> {
     course_name: result.annotation.course_name,
     hole_number: result.annotation.hole_number,
     aerial_image_url: result.annotation.aerial_image_url,
+    annotation_type: result.annotation.annotation_type,
     created_at: now,
     updated_at: now,
   });

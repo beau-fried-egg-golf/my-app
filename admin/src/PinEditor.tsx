@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { uploadAnnotationImage } from './upload';
+import RichTextEditor from './RichTextEditor';
 import type { HoleAnnotation, AnnotationPin, PinPhoto } from './types';
 
 interface PinEditorProps {
@@ -37,6 +38,8 @@ export default function PinEditor({
   onImageUpload,
   onDeselectPin,
 }: PinEditorProps) {
+  const isInteractive = annotation.annotation_type === 'interactive';
+  const pinLabel = isInteractive ? 'hole' : 'pin';
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
   const selectedPin = pins.find(p => p.id === selectedPinId);
   const selectedPinPhotos = pinPhotos
@@ -56,17 +59,16 @@ export default function PinEditor({
             className="form-input"
             value={selectedPin.headline}
             onChange={(e) => onPinChange(selectedPin.id, 'headline', e.target.value)}
-            placeholder="Pin headline..."
+            placeholder={isInteractive ? 'Hole name...' : 'Pin headline...'}
           />
         </div>
 
         <div className="form-group">
-          <label className="form-label">Body Text</label>
-          <textarea
-            className="form-input form-textarea"
+          <label className="form-label">Body</label>
+          <RichTextEditor
             value={selectedPin.body_text}
-            onChange={(e) => onPinChange(selectedPin.id, 'body_text', e.target.value)}
-            placeholder="Pin description..."
+            onChange={(html) => onPinChange(selectedPin.id, 'body_text', html)}
+            placeholder="Write content..."
           />
         </div>
 
@@ -86,10 +88,10 @@ export default function PinEditor({
           <button
             className="btn btn-sm btn-danger"
             onClick={() => {
-              if (confirm('Delete this pin?')) onPinDelete(selectedPin.id);
+              if (confirm(`Delete this ${pinLabel}?`)) onPinDelete(selectedPin.id);
             }}
           >
-            Delete Pin
+            Delete {pinLabel.charAt(0).toUpperCase() + pinLabel.slice(1)}
           </button>
         </div>
       </div>
@@ -98,6 +100,24 @@ export default function PinEditor({
 
   return (
     <div className="ha-sidebar-panel">
+      <div className="form-group">
+        <label className="form-label">Type</label>
+        <div className="ha-type-toggle">
+          <button
+            className={`ha-type-btn${!isInteractive ? ' active' : ''}`}
+            onClick={() => onAnnotationChange('annotation_type', 'scroll')}
+          >
+            Scroll (Single Hole)
+          </button>
+          <button
+            className={`ha-type-btn${isInteractive ? ' active' : ''}`}
+            onClick={() => onAnnotationChange('annotation_type', 'interactive')}
+          >
+            Interactive (Course)
+          </button>
+        </div>
+      </div>
+
       <div className="form-group">
         <label className="form-label">Title</label>
         <input
@@ -116,17 +136,19 @@ export default function PinEditor({
             onChange={(e) => onAnnotationChange('course_name', e.target.value)}
           />
         </div>
-        <div className="form-group">
-          <label className="form-label">Hole #</label>
-          <input
-            className="form-input"
-            type="number"
-            min={1}
-            max={36}
-            value={annotation.hole_number}
-            onChange={(e) => onAnnotationChange('hole_number', parseInt(e.target.value) || 1)}
-          />
-        </div>
+        {!isInteractive && (
+          <div className="form-group">
+            <label className="form-label">Hole #</label>
+            <input
+              className="form-input"
+              type="number"
+              min={1}
+              max={36}
+              value={annotation.hole_number}
+              onChange={(e) => onAnnotationChange('hole_number', parseInt(e.target.value) || 1)}
+            />
+          </div>
+        )}
       </div>
 
       {annotation.aerial_image_url && (
@@ -137,9 +159,13 @@ export default function PinEditor({
       )}
 
       <div style={{ marginTop: 24 }}>
-        <label className="form-label">Pins ({sortedPins.length})</label>
+        <label className="form-label">
+          {isInteractive ? 'Holes' : 'Pins'} ({sortedPins.length})
+        </label>
         {sortedPins.length === 0 ? (
-          <p style={{ fontSize: 13, color: '#888' }}>Click on the aerial image to add pins</p>
+          <p style={{ fontSize: 13, color: '#888' }}>
+            Click on the aerial image to add {isInteractive ? 'holes' : 'pins'}
+          </p>
         ) : (
           <div>
             {sortedPins.map((pin, index) => (
@@ -149,7 +175,7 @@ export default function PinEditor({
                   className="ha-pin-list-headline"
                   onClick={() => onPinSelect(pin.id)}
                 >
-                  {pin.headline || 'Untitled pin'}
+                  {pin.headline || `Untitled ${pinLabel}`}
                 </span>
                 <div className="btn-group">
                   <button
