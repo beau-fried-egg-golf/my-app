@@ -458,8 +458,6 @@ function generateScrollHTML(
   pinPhotos: PinPhoto[],
 ): string {
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
-  const dir = annotation.scroll_direction || 'bottom';
-  const ds = getDirectionStyles(dir);
 
   const pinMarkersHtml = sortedPins.map((pin, index) => `
     <div class="ha-pin" data-pin-index="${index}" style="left:${pin.position_x}%;top:${pin.position_y}%">
@@ -473,10 +471,13 @@ function generateScrollHTML(
       .sort((a, b) => a.sort_order - b.sort_order);
 
     const cardHtml = buildOverlayCard(pin, photos, `ha-scroll-hero-${index}`);
+    const ds = getDirectionStyles(pin.scroll_direction || 'bottom');
 
     return `
-    <div class="ha-scroll-section" data-pin-index="${index}">
-      ${cardHtml}
+    <div class="ha-scroll-section" data-pin-index="${index}" style="align-items:${ds.alignItems};justify-content:${ds.justifyContent};${ds.edgePadding}">
+      <div class="ha-scroll-card" style="transform:${ds.hiddenTransform}">
+        ${cardHtml}
+      </div>
     </div>`;
   }).join('');
 
@@ -550,10 +551,7 @@ ${LIGHTBOX_CSS}
 .ha-scroll-section {
   min-height: 60vh;
   display: flex;
-  align-items: ${ds.alignItems};
-  justify-content: ${ds.justifyContent};
   padding: 24px;
-  ${ds.edgePadding};
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
@@ -562,21 +560,20 @@ ${LIGHTBOX_CSS}
 .ha-scroll-section:last-child {
   padding-bottom: 20vh;
 }
-.ha-scroll-section .overlay-card {
+.ha-scroll-card {
   pointer-events: auto;
   opacity: 0;
-  transform: ${ds.hiddenTransform};
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
-.ha-scroll-section.ha-section-visible .overlay-card {
+.ha-scroll-section.ha-section-visible .ha-scroll-card {
   opacity: 1;
-  transform: translate(0, 0);
+  transform: translate(0, 0) !important;
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
-  .ha-scroll-section { min-height: auto; padding: 16px; align-items: center; justify-content: center; }
+  .ha-scroll-section { min-height: auto; padding: 16px !important; align-items: center !important; justify-content: center !important; }
   .ha-scroll-section:first-child { padding-top: 16px; }
-  .ha-scroll-section .overlay-card { max-width: 100%; }
+  .ha-scroll-card { max-width: 100%; }
 }
 </style>
 <div class="ha-scroll-wrap">

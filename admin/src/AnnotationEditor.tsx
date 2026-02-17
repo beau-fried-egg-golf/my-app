@@ -119,6 +119,7 @@ export default function AnnotationEditor() {
       headline: '',
       body_text: '',
       link_url: '',
+      scroll_direction: 'bottom',
       created_at: new Date().toISOString(),
     };
     setPins(prev => [...prev, newPin]);

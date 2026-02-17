@@ -206,7 +206,6 @@ export interface HoleAnnotation {
   hole_number: number;
   aerial_image_url: string | null;
   annotation_type: 'scroll' | 'interactive';
-  scroll_direction: 'top' | 'bottom' | 'left' | 'right';
   created_at: string;
   updated_at: string;
   pin_count?: number;
@@ -221,6 +220,7 @@ export interface AnnotationPin {
   headline: string;
   body_text: string;
   link_url: string;
+  scroll_direction: 'top' | 'bottom' | 'left' | 'right';
   created_at: string;
 }
 
