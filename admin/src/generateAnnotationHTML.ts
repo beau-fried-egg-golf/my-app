@@ -465,21 +465,21 @@ function generateScrollHTML(
     </div>`
   ).join('');
 
-  const contentSectionsHtml = sortedPins.map((pin, index) => {
+  // Spacer sections just create scroll distance — cards are rendered separately as fixed overlays
+  const spacerSectionsHtml = sortedPins.map((_, index) => `
+    <div class="ha-scroll-section" data-pin-index="${index}"></div>`
+  ).join('');
+
+  const fixedCardsHtml = sortedPins.map((pin, index) => {
     const photos = pinPhotos
       .filter(p => p.pin_id === pin.id)
       .sort((a, b) => a.sort_order - b.sort_order);
 
     const cardHtml = buildOverlayCard(pin, photos, `ha-scroll-hero-${index}`);
-    const ds = getDirectionStyles(pin.scroll_direction || 'bottom');
 
     return `
-    <div class="ha-scroll-section" data-pin-index="${index}">
-      <div class="ha-scroll-anchor" style="align-items:${ds.alignItems};justify-content:${ds.justifyContent};${ds.edgePadding}">
-        <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}">
-          ${cardHtml}
-        </div>
-      </div>
+    <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}" data-card-index="${index}">
+      ${cardHtml}
     </div>`;
   }).join('');
 
@@ -553,25 +553,18 @@ ${LIGHTBOX_CSS}
   pointer-events: none;
 }
 .ha-scroll-section {
-  min-height: 250vh;
+  height: 150vh;
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
-  padding-top: 60vh;
+  margin-top: 40vh;
 }
 .ha-scroll-section:last-child {
-  padding-bottom: 60vh;
-}
-.ha-scroll-anchor {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  width: 100%;
-  display: flex;
-  pointer-events: none;
-  box-sizing: border-box;
+  margin-bottom: 40vh;
 }
 .ha-scroll-card {
+  position: fixed;
+  z-index: 100;
   pointer-events: auto;
   opacity: 0;
   will-change: transform, opacity;
@@ -579,11 +572,8 @@ ${LIGHTBOX_CSS}
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
-  .ha-scroll-section { min-height: auto; }
-  .ha-scroll-section:first-child { padding-top: 0; }
-  .ha-scroll-section:last-child { padding-bottom: 0; }
-  .ha-scroll-anchor { position: relative; height: auto; padding: 16px !important; align-items: center !important; justify-content: center !important; }
-  .ha-scroll-card { max-width: 100%; opacity: 1 !important; transform: none !important; }
+  .ha-scroll-section { height: auto; margin: 0; }
+  .ha-scroll-card { position: relative; max-width: 100%; opacity: 1 !important; transform: none !important; padding: 16px; }
 }
 </style>
 <div class="ha-scroll-wrap">
@@ -594,8 +584,9 @@ ${LIGHTBOX_CSS}
     </div>
   </div>
   <div class="ha-scroll-content">
-    ${contentSectionsHtml}
+    ${spacerSectionsHtml}
   </div>
+  ${fixedCardsHtml}
 </div>
 ${LIGHTBOX_HTML}
 <script>
@@ -607,15 +598,46 @@ ${LIGHTBOX_JS}
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
-  function getOffset(dir, t) {
+  var embedRect = embed.getBoundingClientRect();
+
+  function positionCard(card, dir, t, opacity) {
     var vh = window.innerHeight;
     var vw = window.innerWidth;
+    var ew = embed.offsetWidth;
+    var eleft = embed.getBoundingClientRect().left;
+    var cardW = card.offsetWidth;
+    var cardH = card.offsetHeight;
+    var pad = 24;
+    var slideX = 0, slideY = 0;
+    var cx, cy;
+
     switch (dir) {
-      case 'top':    return 'translateY(' + (-t * vh * 0.6) + 'px)';
-      case 'left':   return 'translateX(' + (-t * vw * 0.6) + 'px)';
-      case 'right':  return 'translateX(' + (t * vw * 0.6) + 'px)';
-      default:       return 'translateY(' + (t * vh * 0.6) + 'px)';
+      case 'bottom':
+        cx = eleft + (ew - cardW) / 2;
+        cy = vh - cardH - pad;
+        slideY = vh;
+        break;
+      case 'top':
+        cx = eleft + (ew - cardW) / 2;
+        cy = pad;
+        slideY = -vh;
+        break;
+      case 'left':
+        cx = eleft + pad;
+        cy = (vh - cardH) / 2;
+        slideX = -vw;
+        break;
+      case 'right':
+        cx = eleft + ew - cardW - pad;
+        cy = (vh - cardH) / 2;
+        slideX = vw;
+        break;
     }
+
+    card.style.left = cx + 'px';
+    card.style.top = cy + 'px';
+    card.style.transform = 'translate(' + (slideX * t) + 'px,' + (slideY * t) + 'px)';
+    card.style.opacity = opacity;
   }
 
   function update() {
@@ -630,21 +652,20 @@ ${LIGHTBOX_JS}
       var progress = (vh - rect.top) / (vh + rect.height);
       progress = Math.max(0, Math.min(1, progress));
 
-      // enter 0→0.25, hold 0.25→0.75, exit 0.75→1
+      // enter 0→0.2, hold 0.2→0.8, exit 0.8→1
       var t, opacity;
-      if (progress <= 0.25) {
-        t = 1 - progress / 0.25;
-        opacity = progress / 0.25;
-      } else if (progress <= 0.75) {
+      if (progress <= 0.2) {
+        t = 1 - progress / 0.2;
+        opacity = progress / 0.2;
+      } else if (progress <= 0.8) {
         t = 0;
         opacity = 1;
       } else {
-        t = (progress - 0.75) / 0.25;
-        opacity = 1 - (progress - 0.75) / 0.25;
+        t = (progress - 0.8) / 0.2;
+        opacity = 1 - (progress - 0.8) / 0.2;
       }
 
-      card.style.transform = getOffset(dir, t);
-      card.style.opacity = opacity;
+      positionCard(card, dir, t, opacity);
 
       if (opacity > 0.5) activeIdx = i;
     }
