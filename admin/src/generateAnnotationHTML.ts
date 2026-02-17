@@ -565,10 +565,20 @@ ${LIGHTBOX_CSS}
 .ha-scroll-card {
   position: fixed;
   z-index: 100;
-  pointer-events: auto;
+  pointer-events: none;
   opacity: 0;
   will-change: transform, opacity;
   max-width: var(--card-max-width);
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.ha-scroll-card[data-direction="bottom"] { transform: translateY(100vh); }
+.ha-scroll-card[data-direction="top"]    { transform: translateY(-100vh); }
+.ha-scroll-card[data-direction="left"]   { transform: translateX(-100vw); }
+.ha-scroll-card[data-direction="right"]  { transform: translateX(100vw); }
+.ha-scroll-card.ha-card-visible {
+  opacity: 1;
+  transform: translate(0, 0);
+  pointer-events: auto;
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
@@ -598,76 +608,56 @@ ${LIGHTBOX_JS}
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
-  var embedRect = embed.getBoundingClientRect();
 
-  function positionCard(card, dir, t, opacity) {
+  function update() {
     var vh = window.innerHeight;
     var vw = window.innerWidth;
     var ew = embed.offsetWidth;
     var eleft = embed.getBoundingClientRect().left;
-    var cardW = card.offsetWidth;
-    var cardH = card.offsetHeight;
     var pad = 24;
-    var slideX = 0, slideY = 0;
-    var cx, cy;
-
-    switch (dir) {
-      case 'bottom':
-        cx = eleft + (ew - cardW) / 2;
-        cy = vh - cardH - pad;
-        slideY = vh;
-        break;
-      case 'top':
-        cx = eleft + (ew - cardW) / 2;
-        cy = pad;
-        slideY = -vh;
-        break;
-      case 'left':
-        cx = eleft + pad;
-        cy = (vh - cardH) / 2;
-        slideX = -vw;
-        break;
-      case 'right':
-        cx = eleft + ew - cardW - pad;
-        cy = (vh - cardH) / 2;
-        slideX = vw;
-        break;
-    }
-
-    card.style.left = cx + 'px';
-    card.style.top = cy + 'px';
-    card.style.transform = 'translate(' + (slideX * t) + 'px,' + (slideY * t) + 'px)';
-    card.style.opacity = opacity;
-  }
-
-  function update() {
-    var vh = window.innerHeight;
     var activeIdx = -1;
+
     for (var i = 0; i < sections.length; i++) {
       var rect = sections[i].getBoundingClientRect();
       var card = cards[i];
       var dir = card.getAttribute('data-direction') || 'bottom';
+      var cardW = card.offsetWidth || 400;
+      var cardH = card.offsetHeight || 300;
+
+      // Set the card's home position (left/top, not transitioned)
+      switch (dir) {
+        case 'bottom':
+          card.style.left = (eleft + (ew - cardW) / 2) + 'px';
+          card.style.top = (vh - cardH - pad) + 'px';
+          break;
+        case 'top':
+          card.style.left = (eleft + (ew - cardW) / 2) + 'px';
+          card.style.top = pad + 'px';
+          break;
+        case 'left':
+          card.style.left = (eleft + pad) + 'px';
+          card.style.top = ((vh - cardH) / 2) + 'px';
+          break;
+        case 'right':
+          card.style.left = (eleft + ew - cardW - pad) + 'px';
+          card.style.top = ((vh - cardH) / 2) + 'px';
+          break;
+      }
 
       // progress: 0 = section top at viewport bottom, 1 = section bottom at viewport top
       var progress = (vh - rect.top) / (vh + rect.height);
       progress = Math.max(0, Math.min(1, progress));
 
-      // enter 0→0.2, hold 0.2→0.8, exit 0.8→1
-      var t, opacity;
-      if (progress <= 0.2) {
-        t = 1 - progress / 0.2;
-        opacity = progress / 0.2;
-      } else if (progress <= 0.8) {
-        t = 0;
-        opacity = 1;
-      } else {
-        t = (progress - 0.8) / 0.2;
-        opacity = 1 - (progress - 0.8) / 0.2;
+      // Show between 15% and 85% progress — CSS transition handles the animation
+      var shouldShow = progress > 0.15 && progress < 0.85;
+
+      if (shouldShow && !card.classList.contains('ha-card-visible')) {
+        card.classList.add('ha-card-visible');
+      } else if (!shouldShow && card.classList.contains('ha-card-visible')) {
+        card.classList.remove('ha-card-visible');
       }
 
-      positionCard(card, dir, t, opacity);
-
-      if (opacity > 0.5) activeIdx = i;
+      if (shouldShow) activeIdx = i;
     }
 
     // Update pin markers
