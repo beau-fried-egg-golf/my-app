@@ -418,6 +418,41 @@ function buildOverlayCard(
 }
 
 // ---------------------------------------------------------------------------
+// Compact horizontal card for interactive annotations
+// ---------------------------------------------------------------------------
+
+function buildCompactCard(
+  pin: AnnotationPin,
+  photos: PinPhoto[],
+): string {
+  let imageHtml = '';
+
+  if (photos.length > 0) {
+    const photosJson = escapeHtml(JSON.stringify(photos.map(p => ({ url: p.photo_url, caption: p.caption }))));
+    imageHtml = `
+    <div class="ha-compact-img card-gallery" data-photos="${photosJson}" data-active-index="0">
+      <img src="${escapeHtml(photos[0].photo_url)}"
+        alt="${escapeHtml(photos[0].caption || pin.headline)}" loading="lazy"
+        onclick="haLightboxOpen(this.closest('.card-gallery'))" />
+    </div>`;
+  }
+
+  const linkHtml = pin.link_url
+    ? `<a class="ha-compact-link" href="${escapeHtml(pin.link_url)}" target="_blank" rel="noopener">Find out more</a>`
+    : '';
+
+  return `
+  <div class="ha-compact-card">
+    ${imageHtml}
+    <div class="ha-compact-content">
+      <h3 class="ha-compact-title">${escapeHtml(pin.headline)}</h3>
+      <div class="ha-compact-body">${renderBodyHtml(pin.body_text)}</div>
+      ${linkHtml}
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -723,11 +758,10 @@ function generateInteractiveHTML(
       .filter(p => p.pin_id === pin.id)
       .sort((a, b) => a.sort_order - b.sort_order);
 
-    const cardHtml = buildOverlayCard(pin, photos, `ha-int-hero-${index}`);
+    const cardHtml = buildCompactCard(pin, photos);
 
     return `
     <div class="ha-ipanel" data-panel-index="${index}">
-      <button class="ha-ipanel-close">&times;</button>
       ${cardHtml}
     </div>`;
   }).join('');
@@ -799,41 +833,79 @@ ${LIGHTBOX_CSS}
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%) scale(0.9);
-  max-height: 85%;
-  overflow-y: auto;
+  transform: translate(-50%, -50%) scale(0.92);
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
   z-index: 6;
+  width: 90%;
+  max-width: 560px;
 }
 .ha-ipanel.ha-ipanel-visible {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
   pointer-events: auto;
 }
-.ha-ipanel .overlay-card {
-  position: relative;
+.ha-compact-card {
+  display: flex;
+  background: #ede8df;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  font-family: var(--card-font);
+  cursor: default;
 }
-.ha-ipanel-close {
-  position: absolute;
-  top: 8px;
-  right: 12px;
-  background: rgba(255,255,255,0.85);
-  border: none;
-  font-size: 20px;
+.ha-compact-img {
+  width: 140px;
+  min-height: 110px;
+  flex-shrink: 0;
+}
+.ha-compact-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
   cursor: pointer;
-  color: #555;
-  line-height: 1;
-  padding: 4px 8px;
-  border-radius: 4px;
-  z-index: 7;
-  transition: color 0.15s, background 0.15s;
 }
-.ha-ipanel-close:hover { color: #1a1a1a; background: #fff; }
+.ha-compact-content {
+  padding: 16px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.ha-compact-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+.ha-compact-body {
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: #3a3a3a;
+  line-height: 1.55;
+}
+.ha-compact-body p { margin: 0; }
+.ha-compact-body p + p { margin-top: 0.5em; }
+.ha-compact-link {
+  font-size: 0.84rem;
+  color: #1a1a1a;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  margin-top: 12px;
+  display: inline-block;
+  transition: color 0.2s;
+}
+.ha-compact-link:hover { color: #3a6a3a; }
 @media (max-width: 600px) {
-  .ha-ipanel { max-height: 90%; }
-  .ha-ipanel .overlay-card { max-width: none; }
+  .ha-ipanel { width: 94%; }
+  .ha-compact-img { width: 100px; min-height: 90px; }
+  .ha-compact-content { padding: 12px 14px; }
+  .ha-compact-title { font-size: 0.95rem; }
+  .ha-compact-body { font-size: 0.82rem; }
 }
 </style>
 <div class="ha-interactive-container">
@@ -876,13 +948,6 @@ ${LIGHTBOX_JS}
       e.stopPropagation();
       if (activeIdx === i) { closePanel(); return; }
       openPanel(i);
-    });
-  });
-
-  embed.querySelectorAll('.ha-ipanel-close').forEach(function(btn) {
-    btn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      closePanel();
     });
   });
 
