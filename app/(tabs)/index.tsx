@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlatList, Image, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { supabase } from '@/data/supabase';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -331,9 +332,13 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, profiles, posts, session, followingIds, toggleFollow, isFollowing, getFollowerCount } = useStore();
+  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount } = useStore();
   const router = useRouter();
   const [showFabMenu, setShowFabMenu] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteNote, setInviteNote] = useState('');
+  const [inviteSending, setInviteSending] = useState(false);
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'FOLLOWING'>('ALL');
   const [activityFilter, setActivityFilter] = useState<'all' | 'posts' | 'reviews'>('all');
   const [showFollowRibbon, setShowFollowRibbon] = useState(false);
@@ -457,7 +462,7 @@ export default function FeedScreen() {
                   <Text style={styles.ribbonName} numberOfLines={1}>{member.name}</Text>
                   <PlatformPressable
                     style={[styles.ribbonFollowBtn, isFollowing(member.id) && styles.ribbonFollowingBtn]}
-                    onPress={() => toggleFollow(member.id)}
+                    onPress={(e) => { e.stopPropagation(); toggleFollow(member.id); }}
                   >
                     <Text style={[styles.ribbonFollowText, isFollowing(member.id) && styles.ribbonFollowingText]}>
                       {isFollowing(member.id) ? 'Following' : 'Follow'}
@@ -529,8 +534,105 @@ export default function FeedScreen() {
                 <Text style={styles.modalOptionDesc}>Share an update with the club</Text>
               </View>
             </PlatformPressable>
+            <View style={styles.modalSeparator} />
+            <PlatformPressable
+              style={styles.modalOption}
+              onPress={() => {
+                setShowFabMenu(false);
+                setShowInvite(true);
+              }}
+            >
+              <View style={[styles.modalIconBox, { backgroundColor: Colors.orange }]}>
+                <Ionicons name="person-add-outline" size={20} color={Colors.white} />
+              </View>
+              <View>
+                <Text style={styles.modalOptionTitle}>Invite a Friend</Text>
+                <Text style={styles.modalOptionDesc}>Inviting friends makes FEGC better</Text>
+              </View>
+            </PlatformPressable>
           </View>
         </PlatformPressable>
+      </Modal>
+
+      <Modal
+        visible={showInvite}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowInvite(false)}
+      >
+        <Pressable style={styles.inviteBackdrop} onPress={() => setShowInvite(false)}>
+          <Pressable style={styles.inviteModal} onPress={(e) => e.stopPropagation()}>
+            <Text style={styles.inviteTitle}>Invite a Friend</Text>
+            <Text style={styles.inviteSubtitle}>Inviting friends makes FEGC better for everyone.</Text>
+            <TextInput
+              style={styles.inviteInput}
+              placeholder="Friend's email address"
+              placeholderTextColor={Colors.gray}
+              value={inviteEmail}
+              onChangeText={setInviteEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TextInput
+              style={[styles.inviteInput, { minHeight: 80 }]}
+              placeholder="Add a personal note (optional)"
+              placeholderTextColor={Colors.gray}
+              value={inviteNote}
+              onChangeText={setInviteNote}
+              multiline
+              textAlignVertical="top"
+            />
+            <View style={styles.inviteActions}>
+              <Pressable
+                style={styles.inviteCancelBtn}
+                onPress={() => {
+                  setShowInvite(false);
+                  setInviteEmail('');
+                  setInviteNote('');
+                }}
+              >
+                <Text style={styles.inviteCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.inviteSendBtn, (!inviteEmail.trim() || inviteSending) && { opacity: 0.4 }]}
+                disabled={!inviteEmail.trim() || inviteSending}
+                onPress={async () => {
+                  setInviteSending(true);
+                  try {
+                    const { error } = await supabase.functions.invoke('send-invite', {
+                      body: {
+                        to_email: inviteEmail.trim(),
+                        sender_name: user?.name ?? 'A fellow golfer',
+                        note: inviteNote.trim() || null,
+                      },
+                    });
+                    if (error) throw error;
+                    setShowInvite(false);
+                    setInviteEmail('');
+                    setInviteNote('');
+                    if (Platform.OS === 'web') {
+                      window.alert('Invite sent!');
+                    } else {
+                      Alert.alert('Invite Sent', 'Your friend will receive an email invitation.');
+                    }
+                  } catch (e) {
+                    console.error('Failed to send invite:', e);
+                    if (Platform.OS === 'web') {
+                      window.alert('Failed to send invite. Please try again.');
+                    } else {
+                      Alert.alert('Error', 'Failed to send invite. Please try again.');
+                    }
+                  } finally {
+                    setInviteSending(false);
+                  }
+                }}
+              >
+                <Text style={styles.inviteSendText}>{inviteSending ? 'Sending...' : 'Send Invite'}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </View>
   );
@@ -767,6 +869,72 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: Colors.lightGray,
     marginLeft: 58,
+  },
+  inviteBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  inviteModal: {
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  inviteTitle: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    marginBottom: 4,
+  },
+  inviteSubtitle: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginBottom: 16,
+  },
+  inviteInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+    marginBottom: 12,
+  },
+  inviteActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 4,
+  },
+  inviteCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  inviteCancelText: {
+    fontSize: 15,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.gray,
+  },
+  inviteSendBtn: {
+    backgroundColor: Colors.black,
+    borderRadius: 6,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  inviteSendText: {
+    fontSize: 15,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.white,
   },
   ribbonContainer: {
     paddingHorizontal: 16,
