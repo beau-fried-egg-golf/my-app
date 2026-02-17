@@ -474,9 +474,11 @@ function generateScrollHTML(
     const ds = getDirectionStyles(pin.scroll_direction || 'bottom');
 
     return `
-    <div class="ha-scroll-section" data-pin-index="${index}" style="align-items:${ds.alignItems};justify-content:${ds.justifyContent};${ds.edgePadding}">
-      <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}">
-        ${cardHtml}
+    <div class="ha-scroll-section" data-pin-index="${index}">
+      <div class="ha-scroll-anchor" style="align-items:${ds.alignItems};justify-content:${ds.justifyContent};${ds.edgePadding}">
+        <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}">
+          ${cardHtml}
+        </div>
       </div>
     </div>`;
   }).join('');
@@ -489,6 +491,7 @@ ${LIGHTBOX_CSS}
 .ha-scroll-embed {
   max-width: 900px;
   margin: 0 auto;
+  overflow: clip;
 }
 .ha-scroll-wrap {
   position: relative;
@@ -552,8 +555,6 @@ ${LIGHTBOX_CSS}
 }
 .ha-scroll-section {
   min-height: 100vh;
-  display: flex;
-  padding: 24px;
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
@@ -562,16 +563,28 @@ ${LIGHTBOX_CSS}
 .ha-scroll-section:last-child {
   padding-bottom: 50vh;
 }
+.ha-scroll-anchor {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  pointer-events: none;
+  box-sizing: border-box;
+}
 .ha-scroll-card {
   pointer-events: auto;
   opacity: 0;
   will-change: transform, opacity;
+  max-width: var(--card-max-width);
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
-  .ha-scroll-section { min-height: auto; padding: 16px !important; align-items: center !important; justify-content: center !important; }
-  .ha-scroll-section:first-child { padding-top: 16px; }
-  .ha-scroll-card { max-width: 100%; }
+  .ha-scroll-section { min-height: auto; }
+  .ha-scroll-section:first-child { padding-top: 0; }
+  .ha-scroll-section:last-child { padding-bottom: 0; }
+  .ha-scroll-anchor { position: relative; height: auto; padding: 16px !important; align-items: center !important; justify-content: center !important; }
+  .ha-scroll-card { max-width: 100%; opacity: 1 !important; transform: none !important; }
 }
 </style>
 <div class="ha-scroll-wrap">
@@ -595,14 +608,14 @@ ${LIGHTBOX_JS}
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
-  var DIST = 60;
-
   function getOffset(dir, t) {
+    var vh = window.innerHeight;
+    var vw = window.innerWidth;
     switch (dir) {
-      case 'top':    return 'translate(0,' + (-t * DIST) + 'px)';
-      case 'left':   return 'translate(' + (-t * DIST) + 'px,0)';
-      case 'right':  return 'translate(' + (t * DIST) + 'px,0)';
-      default:       return 'translate(0,' + (t * DIST) + 'px)';
+      case 'top':    return 'translateY(' + (-t * vh * 0.6) + 'px)';
+      case 'left':   return 'translateX(' + (-t * vw * 0.6) + 'px)';
+      case 'right':  return 'translateX(' + (t * vw * 0.6) + 'px)';
+      default:       return 'translateY(' + (t * vh * 0.6) + 'px)';
     }
   }
 
