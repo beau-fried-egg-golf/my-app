@@ -506,12 +506,14 @@ ${LIGHTBOX_CSS}
 }
 .ha-scroll-aerial-inner {
   position: relative;
-  width: 100%;
+  max-width: 100%;
 }
 .ha-scroll-aerial img.ha-aerial-img {
-  width: 100%;
-  height: auto;
   display: block;
+  max-width: 100%;
+  max-height: 100vh;
+  width: auto;
+  height: auto;
 }
 .ha-pin {
   position: absolute;
