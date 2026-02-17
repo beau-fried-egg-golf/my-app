@@ -613,7 +613,8 @@ ${LIGHTBOX_JS}
   var showTimer = null;
 
   function requestShow(idx) {
-    if (idx === visibleCard || idx === pendingCard) return;
+    if (idx >= 0 && (idx === visibleCard || idx === pendingCard)) return;
+    if (idx === -1 && visibleCard === -1 && pendingCard === -1) return;
     if (showTimer) { clearTimeout(showTimer); showTimer = null; pendingCard = -1; }
 
     // Hide current card
