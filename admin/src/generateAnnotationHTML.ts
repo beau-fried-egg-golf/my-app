@@ -491,7 +491,6 @@ ${LIGHTBOX_CSS}
 .ha-scroll-embed {
   max-width: 900px;
   margin: 0 auto;
-  overflow: clip;
 }
 .ha-scroll-wrap {
   position: relative;
@@ -554,14 +553,14 @@ ${LIGHTBOX_CSS}
   pointer-events: none;
 }
 .ha-scroll-section {
-  min-height: 100vh;
+  min-height: 250vh;
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
-  padding-top: 50vh;
+  padding-top: 60vh;
 }
 .ha-scroll-section:last-child {
-  padding-bottom: 50vh;
+  padding-bottom: 60vh;
 }
 .ha-scroll-anchor {
   position: sticky;
