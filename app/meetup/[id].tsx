@@ -22,12 +22,13 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup } = useStore();
+  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const meetup = meetups.find(m => m.id === id);
   const currentUserId = session?.user?.id;
@@ -37,7 +38,7 @@ export default function MeetupDetailScreen() {
   const slotsRemaining = meetup ? meetup.total_slots - (meetup.member_count ?? 0) : 0;
   const isFull = slotsRemaining <= 0;
 
-  const isFeMeetupWithPayment = meetup?.is_fe_coordinated && meetup?.stripe_payment_url;
+  const isFeMeetupWithPayment = meetup?.is_fe_coordinated && ((meetup?.cost_cents != null && meetup.cost_cents > 0) || meetup?.stripe_payment_url);
   const currentUserMember = members.find(m => m.user_id === currentUserId);
   const currentPaymentStatus = currentUserMember?.payment_status;
 
@@ -70,9 +71,16 @@ export default function MeetupDetailScreen() {
     );
   }
 
-  const openStripeWithMemberId = (memberId: string) => {
-    const url = `${meetup.stripe_payment_url}?client_reference_id=${memberId}`;
-    Linking.openURL(url);
+  const openCheckout = async (memberId: string) => {
+    if (meetup.cost_cents != null && meetup.cost_cents > 0) {
+      setCheckoutLoading(true);
+      const url = await createCheckoutSession(memberId, meetup.cost_cents, meetup.name, meetup.id);
+      setCheckoutLoading(false);
+      if (url) Linking.openURL(url);
+    } else if (meetup.stripe_payment_url) {
+      // Backward compat for old meetups with payment links
+      Linking.openURL(`${meetup.stripe_payment_url}?client_reference_id=${memberId}`);
+    }
   };
 
   const handleJoin = async () => {
@@ -80,7 +88,7 @@ export default function MeetupDetailScreen() {
     const m = await getMeetupMembers(meetup.id);
     setMembers(m);
     if (memberId && isFeMeetupWithPayment) {
-      openStripeWithMemberId(memberId);
+      await openCheckout(memberId);
     }
   };
 
@@ -103,8 +111,8 @@ export default function MeetupDetailScreen() {
           );
         }
         return (
-          <Pressable style={styles.stripeBtn} onPress={handleJoin}>
-            <Text style={styles.stripeBtnText}>Reserve & Pay</Text>
+          <Pressable style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]} disabled={checkoutLoading} onPress={handleJoin}>
+            <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Reserve & Pay'}</Text>
           </Pressable>
         );
       }
@@ -178,10 +186,11 @@ export default function MeetupDetailScreen() {
             <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
           </Pressable>
           <Pressable
-            style={styles.stripeBtn}
-            onPress={() => currentUserMember && openStripeWithMemberId(currentUserMember.id)}
+            style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]}
+            disabled={checkoutLoading}
+            onPress={() => currentUserMember && openCheckout(currentUserMember.id)}
           >
-            <Text style={styles.stripeBtnText}>Pay Now</Text>
+            <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Pay Now'}</Text>
           </Pressable>
           {!isHost && (
             <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>

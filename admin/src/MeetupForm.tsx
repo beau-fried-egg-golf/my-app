@@ -18,6 +18,7 @@ interface MeetupFormData {
   image: string | null;
   is_fe_coordinated: boolean;
   stripe_payment_url: string | null;
+  cost_cents: number | null;
 }
 
 const EMPTY_FORM: MeetupFormData = {
@@ -33,6 +34,7 @@ const EMPTY_FORM: MeetupFormData = {
   image: null,
   is_fe_coordinated: false,
   stripe_payment_url: null,
+  cost_cents: null,
 };
 
 export default function MeetupForm() {
@@ -67,6 +69,7 @@ export default function MeetupForm() {
             image: existing.image,
             is_fe_coordinated: existing.is_fe_coordinated,
             stripe_payment_url: existing.stripe_payment_url,
+            cost_cents: existing.cost_cents ?? null,
           });
         }
       });
@@ -97,6 +100,11 @@ export default function MeetupForm() {
     const now = new Date().toISOString();
     const meetupId = isEditing ? id! : crypto.randomUUID();
 
+    const costCents = form.is_fe_coordinated && form.cost_cents != null && form.cost_cents > 0 ? form.cost_cents : null;
+    const costDisplay = costCents != null
+      ? `$${(costCents / 100).toFixed(2)}`
+      : form.cost;
+
     const meetup: Meetup = {
       id: meetupId,
       name: form.name,
@@ -105,12 +113,13 @@ export default function MeetupForm() {
       course_id: form.course_id || null,
       location_name: form.location_name,
       meetup_date: form.meetup_date ? new Date(form.meetup_date).toISOString() : now,
-      cost: form.cost,
+      cost: costDisplay,
       total_slots: form.total_slots,
       host_takes_slot: form.host_takes_slot,
       image: form.image || null,
       is_fe_coordinated: form.is_fe_coordinated,
-      stripe_payment_url: form.is_fe_coordinated ? (form.stripe_payment_url || null) : null,
+      stripe_payment_url: null,
+      cost_cents: costCents,
       created_at: isEditing ? '' : now,
       updated_at: now,
     };
@@ -211,8 +220,8 @@ export default function MeetupForm() {
 
         {form.is_fe_coordinated && (
           <div className="form-group">
-            <label className="form-label">Stripe Payment URL</label>
-            <input className="form-input" value={form.stripe_payment_url ?? ''} onChange={(e) => handleChange('stripe_payment_url', e.target.value || null)} placeholder="https://buy.stripe.com/..." />
+            <label className="form-label">Price (cents)</label>
+            <input className="form-input" type="number" min="0" value={form.cost_cents ?? ''} onChange={(e) => handleChange('cost_cents', e.target.value ? parseInt(e.target.value) : null)} placeholder="e.g. 5000 for $50.00" />
           </div>
         )}
 

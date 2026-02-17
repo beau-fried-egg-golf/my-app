@@ -1,0 +1,1 @@
+ALTER TABLE meetups ADD COLUMN IF NOT EXISTS cost_cents integer DEFAULT NULL;

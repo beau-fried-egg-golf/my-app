@@ -82,12 +82,9 @@ export default function MeetupDetail() {
           )}
         </div>
 
-        {meetup.stripe_payment_url && (
+        {meetup.cost_cents != null && meetup.cost_cents > 0 && (
           <div style={{ fontSize: 13, marginBottom: 16 }}>
-            <strong>Stripe URL:</strong>{' '}
-            <a href={meetup.stripe_payment_url} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
-              {meetup.stripe_payment_url}
-            </a>
+            <strong>Stripe Checkout Price:</strong> ${(meetup.cost_cents / 100).toFixed(2)}
           </div>
         )}
 

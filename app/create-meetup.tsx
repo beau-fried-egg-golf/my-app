@@ -46,7 +46,7 @@ export default function CreateMeetupScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [isFeCoordinated, setIsFeCoordinated] = useState(false);
-  const [stripePaymentUrl, setStripePaymentUrl] = useState('');
+  const [costCents, setCostCents] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
@@ -74,7 +74,7 @@ export default function CreateMeetupScreen() {
     setHostTakesSlot(existing.host_takes_slot ?? true);
     setExistingImageUrl(existing.image);
     setIsFeCoordinated(existing.is_fe_coordinated ?? false);
-    setStripePaymentUrl(existing.stripe_payment_url ?? '');
+    setCostCents(existing.cost_cents != null ? String(existing.cost_cents) : '');
   }, [meetupId]);
 
   useEffect(() => {
@@ -142,18 +142,24 @@ export default function CreateMeetupScreen() {
         imageUrl = await uploadPhoto(imageUri, user!.id);
       }
 
+      const parsedCents = parseInt(costCents, 10) || 0;
+      const costDisplay = isFeCoordinated && parsedCents > 0
+        ? `$${(parsedCents / 100).toFixed(2)}`
+        : cost.trim() || 'Free';
+
       const meetupPayload = {
         name: name.trim(),
         description: description.trim(),
         course_id: courseId,
         location_name: selectedCourse.short_name,
         meetup_date: new Date(meetupDate).toISOString(),
-        cost: cost.trim() || 'Free',
+        cost: costDisplay,
         total_slots: parseInt(totalSlots, 10) || 4,
         host_takes_slot: isFeCoordinated ? false : hostTakesSlot,
         image: imageUrl,
         is_fe_coordinated: isFeCoordinated,
-        stripe_payment_url: isFeCoordinated && stripePaymentUrl.trim() ? stripePaymentUrl.trim() : null,
+        stripe_payment_url: null,
+        cost_cents: isFeCoordinated && parsedCents > 0 ? parsedCents : null,
       };
 
       if (isEditing) {
@@ -435,16 +441,14 @@ export default function CreateMeetupScreen() {
 
         {isFeCoordinated && (
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Stripe Payment URL</Text>
+            <Text style={styles.fieldLabel}>Price (cents)</Text>
             <TextInput
               style={styles.textInput}
-              value={stripePaymentUrl}
-              onChangeText={setStripePaymentUrl}
-              placeholder="https://buy.stripe.com/..."
+              value={costCents}
+              onChangeText={setCostCents}
+              placeholder="e.g. 5000 for $50.00"
               placeholderTextColor={Colors.gray}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
+              keyboardType="number-pad"
             />
           </View>
         )}

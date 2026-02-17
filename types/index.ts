@@ -328,6 +328,7 @@ export interface Meetup {
   image: string | null;
   is_fe_coordinated: boolean;
   stripe_payment_url: string | null;
+  cost_cents?: number | null;
   created_at: string;
   updated_at: string;
   host_name?: string;

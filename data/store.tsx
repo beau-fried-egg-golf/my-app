@@ -106,8 +106,9 @@ interface StoreContextType {
   // Meetups
   meetups: Meetup[];
   loadMeetups: () => Promise<void>;
-  createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; host_id?: string | null }) => Promise<Meetup>;
-  updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => Promise<void>;
+  createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null; host_id?: string | null }) => Promise<Meetup>;
+  updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null }) => Promise<void>;
+  createCheckoutSession: (memberId: string, amountCents: number, meetupName: string, meetupId: string) => Promise<string | null>;
   deleteMeetup: (meetupId: string) => Promise<void>;
   joinMeetup: (meetupId: string) => Promise<string | undefined>;
   addMeetupMember: (meetupId: string, userId: string) => Promise<void>;
@@ -2284,7 +2285,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [session]);
 
   const createMeetup = useCallback(
-    async (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; host_id?: string | null }): Promise<Meetup> => {
+    async (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null; host_id?: string | null }): Promise<Meetup> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
       const hostId = data.host_id === undefined ? userId : data.host_id;
@@ -2304,6 +2305,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           image: data.image,
           is_fe_coordinated: data.is_fe_coordinated ?? false,
           stripe_payment_url: data.stripe_payment_url ?? null,
+          cost_cents: data.cost_cents ?? null,
         })
         .select()
         .single();
@@ -2355,7 +2357,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const updateMeetup = useCallback(
-    async (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => {
+    async (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null }) => {
       if (!session) return;
 
       const { error } = await supabase
@@ -2372,6 +2374,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           image: data.image,
           is_fe_coordinated: data.is_fe_coordinated ?? false,
           stripe_payment_url: data.stripe_payment_url ?? null,
+          cost_cents: data.cost_cents ?? null,
         })
         .eq('id', meetupId);
 
@@ -2379,7 +2382,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       setMeetups(prev => prev.map(m =>
         m.id === meetupId
-          ? { ...m, ...data, is_fe_coordinated: data.is_fe_coordinated ?? false, stripe_payment_url: data.stripe_payment_url ?? null }
+          ? { ...m, ...data, is_fe_coordinated: data.is_fe_coordinated ?? false, stripe_payment_url: data.stripe_payment_url ?? null, cost_cents: data.cost_cents ?? null }
           : m
       ));
 
@@ -2529,6 +2532,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return true;
     },
     [session],
+  );
+
+  const createCheckoutSession = useCallback(
+    async (memberId: string, amountCents: number, meetupName: string, meetupId: string): Promise<string | null> => {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { member_id: memberId, amount_cents: amountCents, meetup_name: meetupName, meetup_id: meetupId },
+      });
+
+      if (error || !data?.url) {
+        console.error('createCheckoutSession failed:', error);
+        return null;
+      }
+
+      return data.url;
+    },
+    [],
   );
 
   const getMeetupMembers = useCallback(
@@ -2879,6 +2898,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addMeetupMember,
         leaveMeetup,
         withdrawAndRefund,
+        createCheckoutSession,
         getMeetupMembers,
         getMeetupMessages,
         sendMeetupMessage,
