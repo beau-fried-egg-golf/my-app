@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { ConversationListItem } from '@/types';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -160,6 +161,15 @@ export default function ConversationsScreen() {
           ItemSeparatorComponent={() => <View style={styles.separator} />}
         />
       )}
+
+      <TutorialPopup
+        storageKey="tutorial_messaging"
+        title="Messages"
+        paragraphs={[
+          'This is where your direct messages and group/meetup chats live.',
+          'You can block a user from their profile page if needed.',
+        ]}
+      />
     </View>
   );
 }

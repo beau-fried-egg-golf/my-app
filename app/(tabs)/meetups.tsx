@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Meetup } from '@/types';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function getDistanceMiles(
   lat1: number,
@@ -179,6 +180,17 @@ export default function MeetupsScreen() {
       <PlatformPressable style={styles.fab} onPress={() => router.push('/create-meetup')}>
         <Ionicons name="add" size={28} color={Colors.black} />
       </PlatformPressable>
+
+      <TutorialPopup
+        storageKey="tutorial_meetups"
+        title="Meetups"
+        paragraphs={[
+          'Meetups let you organize play with other FEGC members.',
+          'Creating a meetup does NOT book a tee time — you still need to handle that separately.',
+          'Reselling tee times at a premium through meetups is strictly prohibited and is grounds for removal from the club.',
+          'Creating meetups in bad faith is also grounds for removal. Keep it fun and fair for everyone.',
+        ]}
+      />
     </View>
   );
 }

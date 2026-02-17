@@ -20,6 +20,7 @@ import { uploadPhoto } from '@/utils/photo';
 import { supabase } from '@/data/supabase';
 import LinkPreview from '@/components/LinkPreview';
 import DetailHeader from '@/components/DetailHeader';
+import TutorialPopup from '@/components/TutorialPopup';
 
 interface PhotoDraft {
   uri: string;
@@ -274,6 +275,15 @@ export default function CreatePostScreen() {
         </View>
 
       </ScrollView>
+
+      <TutorialPopup
+        storageKey="tutorial_create_post"
+        title="Posting"
+        paragraphs={[
+          'Posts are for sharing updates, links, photos, and questions with the club.',
+          'Joking around is welcome, but harassment of any kind will not be tolerated.',
+        ]}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -11,6 +11,7 @@ import { Activity, Profile, Writeup, Post } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
 import LinkPreview from '@/components/LinkPreview';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function decodeEntities(str: string): string {
   return str
@@ -634,6 +635,16 @@ export default function FeedScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <TutorialPopup
+        storageKey="tutorial_welcome"
+        title="Welcome to FEGC"
+        paragraphs={[
+          'Welcome to the Fried Egg Golf Club! FEGC is a community of golfers who share a love for the game and the courses we play.',
+          'Here you can write course reviews, share posts, organize meetups, and connect with fellow golfers.',
+          'We encourage you to participate, share your experiences, and be respectful of other members. Enjoy the club!',
+        ]}
+      />
     </View>
   );
 }

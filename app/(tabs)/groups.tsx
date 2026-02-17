@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Group } from '@/types';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function getDistanceMiles(
   lat1: number,
@@ -160,6 +161,15 @@ export default function GroupsScreen() {
       <PlatformPressable style={styles.fab} onPress={() => router.push('/create-group')}>
         <Ionicons name="add" size={28} color={Colors.black} />
       </PlatformPressable>
+
+      <TutorialPopup
+        storageKey="tutorial_groups"
+        title="Groups"
+        paragraphs={[
+          'Groups let you organize around shared interests, home courses, or regions.',
+          'Join an existing group or create your own. Each group has its own chat so members can stay connected.',
+        ]}
+      />
     </View>
   );
 }

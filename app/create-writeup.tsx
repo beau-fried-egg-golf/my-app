@@ -20,6 +20,7 @@ import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import DetailHeader from '@/components/DetailHeader';
 import WordHighlight from '@/components/WordHighlight';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -272,6 +273,16 @@ export default function CreateWriteupScreen() {
         </View>
 
       </ScrollView>
+
+      <TutorialPopup
+        storageKey="tutorial_create_review"
+        title="Writing a Review"
+        paragraphs={[
+          'Reviews are the backbone of FEGC. Your detailed, honest takes help fellow members discover great courses.',
+          'Be descriptive about your experience — conditions, layout, standout holes, and overall vibe all help.',
+          'Upvote reviews you find helpful so the best ones rise to the top. Harassment will not be tolerated.',
+        ]}
+      />
     </KeyboardAvoidingView>
   );
 }
