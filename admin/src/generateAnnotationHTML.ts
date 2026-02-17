@@ -439,12 +439,27 @@ export function generateAnnotationHTML(
 // SCROLL TYPE — pins + overlay cards on top of sticky aerial image
 // =============================================================================
 
+function getDirectionStyles(dir: string) {
+  switch (dir) {
+    case 'top':
+      return { alignItems: 'flex-start', justifyContent: 'center', edgePadding: 'padding-top: 5vh', hiddenTransform: 'translateY(-30px)' };
+    case 'left':
+      return { alignItems: 'center', justifyContent: 'flex-start', edgePadding: 'padding-left: 5vw', hiddenTransform: 'translateX(-30px)' };
+    case 'right':
+      return { alignItems: 'center', justifyContent: 'flex-end', edgePadding: 'padding-right: 5vw', hiddenTransform: 'translateX(30px)' };
+    default: // bottom
+      return { alignItems: 'flex-end', justifyContent: 'center', edgePadding: 'padding-bottom: 5vh', hiddenTransform: 'translateY(30px)' };
+  }
+}
+
 function generateScrollHTML(
   annotation: HoleAnnotation,
   pins: AnnotationPin[],
   pinPhotos: PinPhoto[],
 ): string {
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
+  const dir = annotation.scroll_direction || 'bottom';
+  const ds = getDirectionStyles(dir);
 
   const pinMarkersHtml = sortedPins.map((pin, index) => `
     <div class="ha-pin" data-pin-index="${index}" style="left:${pin.position_x}%;top:${pin.position_y}%">
@@ -480,7 +495,11 @@ ${LIGHTBOX_CSS}
 .ha-scroll-aerial {
   position: sticky;
   top: 0;
+  height: 100vh;
   z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
   overflow: hidden;
 }
@@ -531,8 +550,10 @@ ${LIGHTBOX_CSS}
 .ha-scroll-section {
   min-height: 60vh;
   display: flex;
-  align-items: flex-end;
+  align-items: ${ds.alignItems};
+  justify-content: ${ds.justifyContent};
   padding: 24px;
+  ${ds.edgePadding};
   pointer-events: none;
 }
 .ha-scroll-section:first-child {
@@ -544,16 +565,16 @@ ${LIGHTBOX_CSS}
 .ha-scroll-section .overlay-card {
   pointer-events: auto;
   opacity: 0;
-  transform: translateY(20px);
+  transform: ${ds.hiddenTransform};
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
 .ha-scroll-section.ha-section-visible .overlay-card {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate(0, 0);
 }
 @media (max-width: 600px) {
-  .ha-scroll-aerial { position: relative; }
-  .ha-scroll-section { min-height: auto; padding: 16px; }
+  .ha-scroll-aerial { position: relative; height: auto; }
+  .ha-scroll-section { min-height: auto; padding: 16px; align-items: center; justify-content: center; }
   .ha-scroll-section:first-child { padding-top: 16px; }
   .ha-scroll-section .overlay-card { max-width: 100%; }
 }

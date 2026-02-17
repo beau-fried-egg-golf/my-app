@@ -128,6 +128,28 @@ export default function PinEditor({
         </div>
       </div>
 
+      {!isInteractive && (
+        <div className="form-group">
+          <label className="form-label">Scroll Direction</label>
+          <div className="ha-type-toggle">
+            {([
+              ['bottom', '\u2193 Bottom'],
+              ['top', '\u2191 Top'],
+              ['left', '\u2190 Left'],
+              ['right', '\u2192 Right'],
+            ] as const).map(([dir, label]) => (
+              <button
+                key={dir}
+                className={`ha-type-btn${annotation.scroll_direction === dir ? ' active' : ''}`}
+                onClick={() => onAnnotationChange('scroll_direction', dir)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="form-group">
         <label className="form-label">Title</label>
         <input
