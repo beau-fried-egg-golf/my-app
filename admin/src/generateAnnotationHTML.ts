@@ -608,15 +608,40 @@ ${LIGHTBOX_JS}
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
+  var visibleCard = -1;
+  var pendingCard = -1;
+  var showTimer = null;
+
+  function requestShow(idx) {
+    if (idx === visibleCard || idx === pendingCard) return;
+    if (showTimer) { clearTimeout(showTimer); showTimer = null; pendingCard = -1; }
+
+    // Hide current card
+    if (visibleCard >= 0) {
+      cards[visibleCard].classList.remove('ha-card-visible');
+    }
+    var hadVisible = visibleCard >= 0;
+    visibleCard = -1;
+
+    if (idx >= 0) {
+      pendingCard = idx;
+      showTimer = setTimeout(function() {
+        cards[idx].classList.add('ha-card-visible');
+        visibleCard = idx;
+        pendingCard = -1;
+        showTimer = null;
+      }, hadVisible ? 800 : 0);
+    }
+  }
 
   function update() {
     var vh = window.innerHeight;
-    var vw = window.innerWidth;
     var ew = embed.offsetWidth;
     var eleft = embed.getBoundingClientRect().left;
     var pad = 24;
-    var activeIdx = -1;
 
+    // Position all cards at their home spots and find the best one to show
+    var bestIdx = -1;
     for (var i = 0; i < sections.length; i++) {
       var rect = sections[i].getBoundingClientRect();
       var card = cards[i];
@@ -624,7 +649,6 @@ ${LIGHTBOX_JS}
       var cardW = card.offsetWidth || 400;
       var cardH = card.offsetHeight || 300;
 
-      // Set the card's home position (left/top, not transitioned)
       switch (dir) {
         case 'bottom':
           card.style.left = (eleft + (ew - cardW) / 2) + 'px';
@@ -644,20 +668,17 @@ ${LIGHTBOX_JS}
           break;
       }
 
-      // progress: 0 = section top at viewport bottom, 1 = section bottom at viewport top
       var progress = (vh - rect.top) / (vh + rect.height);
       progress = Math.max(0, Math.min(1, progress));
 
-      // Show between 15% and 85% progress — CSS transition handles the animation
-      var shouldShow = progress > 0.15 && progress < 0.85;
-
-      if (shouldShow && !card.classList.contains('ha-card-visible')) {
-        card.classList.add('ha-card-visible');
-      } else if (!shouldShow && card.classList.contains('ha-card-visible')) {
-        card.classList.remove('ha-card-visible');
+      if (progress > 0.3 && progress < 0.7) {
+        bestIdx = i;
       }
+    }
 
-      if (shouldShow) activeIdx = i;
+    requestShow(bestIdx);
+
+    var activeIdx = visibleCard >= 0 ? visibleCard : pendingCard;
     }
 
     // Update pin markers
