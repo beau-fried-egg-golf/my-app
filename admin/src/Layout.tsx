@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { to: '/groups', label: 'Groups' },
   { to: '/flags', label: 'Flagged' },
   { to: '/email-templates', label: 'Emails' },
-  { to: '/hole-annotations', label: 'Annotations' },
 ];
 
 export default function Layout() {
