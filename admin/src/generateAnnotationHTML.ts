@@ -21,7 +21,24 @@ function renderBodyHtml(bodyText: string): string {
 const OVERLAY_CARD_CSS = `
 @font-face {
   font-family: 'Grey LL';
-  src: local('Grey LL');
+  src: url('/fonts/GreyLLTT-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Grey LL';
+  src: url('/fonts/GreyLLTT-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Grey LL';
+  src: url('/fonts/GreyLLTT-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
 }
 
 :root {
@@ -29,7 +46,7 @@ const OVERLAY_CARD_CSS = `
   --card-radius: 6px;
   --card-bg: #ffffff;
   --card-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
-  --card-font: 'Grey LL', 'Georgia', serif;
+  --card-font: 'Grey LL', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --card-color-text: #1a1a1a;
   --card-color-link: #1a1a1a;
   --card-color-link-hover: #3a6a3a;
@@ -523,6 +540,7 @@ ${LIGHTBOX_CSS}
 .ha-scroll-embed {
   max-width: 900px;
   margin: 0 auto;
+  font-family: var(--card-font);
 }
 .ha-scroll-wrap {
   position: relative;
@@ -774,6 +792,7 @@ ${LIGHTBOX_CSS}
 .ha-interactive-embed {
   max-width: 900px;
   margin: 0 auto;
+  font-family: var(--card-font);
 }
 .ha-interactive-container {
   position: relative;
