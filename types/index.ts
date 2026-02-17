@@ -164,6 +164,7 @@ export interface CoursePlayed {
   user_id: string;
   course_id: string;
   created_at: string;
+  date_played: string | null;
 }
 
 export interface PostPhoto {

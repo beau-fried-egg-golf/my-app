@@ -5,7 +5,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { EditIcon, SignOutIcon } from '@/components/icons/CustomIcons';
-import PassportStamp from '@/components/PassportStamp';
+import PassportBook from '@/components/PassportBook';
 
 export default function ProfileScreen() {
   const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, updatePushPreferences } = useStore();
@@ -21,10 +21,7 @@ export default function ProfileScreen() {
     .filter(cp => cp.user_id === user.id)
     .map(cp => cp.course_id);
   const writeupCourseIds = new Set(userWriteups.map(w => w.course_id));
-  const passportCourses = courses
-    .filter(c => playedCourseIds.includes(c.id) || writeupCourseIds.has(c.id))
-    .sort((a, b) => a.short_name.localeCompare(b.short_name));
-  const coursesPlayedCount = passportCourses.length;
+  const coursesPlayedCount = new Set([...playedCourseIds, ...writeupCourseIds]).size;
 
   async function handleSignOut() {
     router.dismissAll();
@@ -176,28 +173,16 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {passportCourses.length > 0 && (
+      {coursesPlayedCount > 0 && (
         <View style={styles.passportSection}>
           <Text style={styles.passportTitle}>Course Passport</Text>
-          <View style={styles.stampGrid}>
-            {passportCourses.map(c => {
-              const playedRecord = coursesPlayed.find(cp => cp.user_id === user.id && cp.course_id === c.id);
-              const courseWriteups = userWriteups.filter(w => w.course_id === c.id);
-              const datePlayed = playedRecord?.created_at
-                ?? courseWriteups.sort((a, b) => a.created_at.localeCompare(b.created_at))[0]?.created_at
-                ?? new Date().toISOString();
-              return (
-                <PassportStamp
-                  key={c.id}
-                  courseId={c.id}
-                  courseName={c.short_name}
-                  state={c.state}
-                  datePlayed={datePlayed}
-                  onPress={() => router.push(`/course/${c.id}`)}
-                />
-              );
-            })}
-          </View>
+          <PassportBook
+            userId={user.id}
+            coursesPlayed={coursesPlayed}
+            courses={courses}
+            writeups={writeups}
+            onStampPress={(courseId) => router.push(`/course/${courseId}`)}
+          />
         </View>
       )}
 
@@ -401,11 +386,5 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
     marginBottom: 12,
-  },
-  stampGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
   },
 });

@@ -17,12 +17,14 @@ interface PassportStampProps {
   courseId: string;
   courseName: string;
   state: string;
-  datePlayed: string;
+  datePlayed: string | null;
   onPress: () => void;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null): string | null {
+  if (!iso) return null;
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   const yyyy = d.getFullYear();
@@ -171,7 +173,9 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
           <View style={[styles.content, { top: zone.top, left: zone.left, right: zone.right, bottom: zone.bottom }]}>
             <Text style={styles.rectName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>{courseName.toUpperCase()}</Text>
             <Text style={styles.smallText}>{state}</Text>
-            <Text style={styles.rectDate}>{'\u2605'}  {dateStr}  {'\u2605'}</Text>
+            {dateStr ? (
+              <Text style={styles.rectDate}>{'\u2605'}  {dateStr}  {'\u2605'}</Text>
+            ) : null}
             <View style={styles.brandRow}>
               <CluckersIcon size={18} />
               <Text style={styles.brandText}>Fried Egg Golf Club</Text>
@@ -181,7 +185,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
         {shape === 'circle' && (
           <View style={[styles.content, { top: zone.top, left: zone.left, right: zone.right, bottom: zone.bottom }]}>
             <CluckersIcon size={20} />
-            <Text style={styles.smallText}>{dateStr}</Text>
+            {dateStr ? <Text style={styles.smallText}>{dateStr}</Text> : null}
             <Text style={styles.circleName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>{courseName}</Text>
             <Text style={styles.smallText}>{state}</Text>
           </View>
@@ -190,7 +194,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
           <View style={[styles.content, { top: zone.top, left: zone.left, right: zone.right, bottom: zone.bottom }]}>
             <Text style={styles.pentName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>{courseName}</Text>
             <Text style={styles.smallText}>{state}</Text>
-            <Text style={styles.smallText}>{dateStr}</Text>
+            {dateStr ? <Text style={styles.smallText}>{dateStr}</Text> : null}
             <Text style={styles.brandText}>Fried Egg Golf Club</Text>
             <CluckersIcon size={18} />
           </View>
@@ -198,7 +202,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
         {shape === 'triangle' && (
           <View style={[styles.content, { top: zone.top, left: zone.left, right: zone.right, bottom: zone.bottom }]}>
             <CluckersIcon size={18} />
-            <Text style={styles.smallText}>{dateStr}</Text>
+            {dateStr ? <Text style={styles.smallText}>{dateStr}</Text> : null}
             <Text style={styles.triName} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.7}>{courseName}</Text>
             <Text style={styles.smallText}>{state}</Text>
           </View>
@@ -210,7 +214,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
 
 const styles = StyleSheet.create({
   wrapper: {
-    width: '30%',
+    width: '46%',
   },
   stampContainer: {
     width: '100%',

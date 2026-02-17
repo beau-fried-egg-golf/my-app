@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
-import PassportStamp from '@/components/PassportStamp';
+import PassportBook from '@/components/PassportBook';
 import DetailHeader from '@/components/DetailHeader';
 import VerifiedBadge from '@/components/VerifiedBadge';
 
@@ -47,10 +47,7 @@ export default function MemberProfileScreen() {
     .filter(cp => cp.user_id === profile.id)
     .map(cp => cp.course_id);
   const writeupCourseIds = new Set(memberWriteups.map(w => w.course_id));
-  const passportCourses = courses
-    .filter(c => playedCourseIds.includes(c.id) || writeupCourseIds.has(c.id))
-    .sort((a, b) => a.short_name.localeCompare(b.short_name));
-  const coursesPlayedCount = passportCourses.length;
+  const coursesPlayedCount = new Set([...playedCourseIds, ...writeupCourseIds]).size;
 
   return (
     <View style={styles.container}>
@@ -168,28 +165,16 @@ export default function MemberProfileScreen() {
         </View>
       )}
 
-      {passportCourses.length > 0 && (
+      {coursesPlayedCount > 0 && (
         <View style={styles.passportSection}>
           <Text style={styles.passportTitle}>Course Passport</Text>
-          <View style={styles.stampGrid}>
-            {passportCourses.map(c => {
-              const playedRecord = coursesPlayed.find(cp => cp.user_id === profile.id && cp.course_id === c.id);
-              const courseWriteups = memberWriteups.filter(w => w.course_id === c.id);
-              const datePlayed = playedRecord?.created_at
-                ?? courseWriteups.sort((a, b) => a.created_at.localeCompare(b.created_at))[0]?.created_at
-                ?? new Date().toISOString();
-              return (
-                <PassportStamp
-                  key={c.id}
-                  courseId={c.id}
-                  courseName={c.short_name}
-                  state={c.state}
-                  datePlayed={datePlayed}
-                  onPress={() => router.push(`/course/${c.id}`)}
-                />
-              );
-            })}
-          </View>
+          <PassportBook
+            userId={profile.id}
+            coursesPlayed={coursesPlayed}
+            courses={courses}
+            writeups={writeups}
+            onStampPress={(courseId) => router.push(`/course/${courseId}`)}
+          />
         </View>
       )}
       </ScrollView>
@@ -214,9 +199,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black, borderRadius: 20,
     paddingHorizontal: 20, paddingVertical: 8,
   },
-  actionBtnActive: { backgroundColor: Colors.black },
+  actionBtnActive: { backgroundColor: Colors.lightGray },
   actionBtnText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
-  actionBtnTextActive: { color: Colors.white },
+  actionBtnTextActive: { color: Colors.black },
   stats: {
     flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
     marginBottom: 24, paddingVertical: 16,
@@ -240,5 +225,4 @@ const styles = StyleSheet.create({
   groupMemberCount: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 1 },
   passportSection: { marginTop: 24 },
   passportTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
-  stampGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 },
 });
