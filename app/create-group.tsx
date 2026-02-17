@@ -18,7 +18,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import DetailHeader from '@/components/DetailHeader';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -141,22 +141,18 @@ export default function CreateGroupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <LetterSpacedHeader text={isEditing ? 'EDIT GROUP' : 'NEW GROUP'} size={32} />
-          ),
-          headerTitleAlign: 'center',
-          headerRight: () => (
-            <Pressable
-              style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-            >
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-            </Pressable>
-          ),
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <DetailHeader
+        title=""
+        right={
+          <Pressable
+            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+          </Pressable>
+        }
       />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.imageSection} onPress={pickImage}>
@@ -397,5 +393,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
     color: Colors.black,
   },
-  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
+  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });

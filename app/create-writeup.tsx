@@ -18,7 +18,8 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
-import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import DetailHeader from '@/components/DetailHeader';
+import WordHighlight from '@/components/WordHighlight';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -138,29 +139,27 @@ export default function CreateWriteupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <Stack.Screen
-        options={{
-          headerTitle: () => (
-            <LetterSpacedHeader text="NEW REVIEW" size={32} />
-          ),
-          headerTitleAlign: 'center',
-          headerRight: () => (
-            <Pressable
-              style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-            >
-              <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-            </Pressable>
-          ),
-        }}
+      <Stack.Screen options={{ headerShown: false }} />
+      <DetailHeader
+        title=""
+        right={
+          <Pressable
+            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+          </Pressable>
+        }
       />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
-          <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
-            {selectedCourse ? selectedCourse.short_name : 'Select a course'}
-          </Text>
-          <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+          {selectedCourse ? (
+            <WordHighlight words={selectedCourse.short_name.split(' ')} size={14} />
+          ) : (
+            <Text style={styles.placeholder}>Select a course</Text>
+          )}
+          <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray} />
         </Pressable>
 
         {showPicker && (
@@ -310,5 +309,5 @@ const styles = StyleSheet.create({
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },
   chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
-  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', marginRight: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
+  headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });
