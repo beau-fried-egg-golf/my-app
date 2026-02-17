@@ -271,10 +271,7 @@ const LIGHTBOX_HTML = `
       BACK
     </button>
     <span class="ha-lightbox-counter">01 / 01</span>
-    <button class="ha-lightbox-btn ha-lb-share">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-      SHARE
-    </button>
+    <span></span>
   </div>
   <div class="ha-lightbox-img-wrap">
     <button class="ha-lightbox-nav ha-lightbox-prev">
@@ -698,7 +695,6 @@ ${LIGHTBOX_JS}
     lb.querySelector('.ha-lb-close').addEventListener('click', function() { haLbClose(lb); });
     lb.querySelector('.ha-lightbox-prev').addEventListener('click', function() { haLbNav(lb, -1); });
     lb.querySelector('.ha-lightbox-next').addEventListener('click', function() { haLbNav(lb, 1); });
-    lb.querySelector('.ha-lb-share').addEventListener('click', function() { haLbShare(lb); });
   }
 })();
 </script>
@@ -898,7 +894,6 @@ ${LIGHTBOX_JS}
     lb.querySelector('.ha-lb-close').addEventListener('click', function() { haLbClose(lb); });
     lb.querySelector('.ha-lightbox-prev').addEventListener('click', function() { haLbNav(lb, -1); });
     lb.querySelector('.ha-lightbox-next').addEventListener('click', function() { haLbNav(lb, 1); });
-    lb.querySelector('.ha-lb-share').addEventListener('click', function() { haLbShare(lb); });
   }
 })();
 </script>
