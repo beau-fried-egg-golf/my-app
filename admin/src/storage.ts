@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -651,4 +651,182 @@ export async function updateEmailTemplate(
       }),
     }
   );
+}
+
+// ---- Hole Annotations ----
+
+export async function getAnnotations(): Promise<HoleAnnotation[]> {
+  const { data: annotations } = await supabase
+    .from('hole_annotations')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!annotations || annotations.length === 0) return [];
+
+  const annotationIds = annotations.map(a => a.id);
+  const { data: pins } = await supabase
+    .from('annotation_pins')
+    .select('annotation_id')
+    .in('annotation_id', annotationIds);
+
+  const pinCountMap = new Map<string, number>();
+  for (const p of pins ?? []) {
+    pinCountMap.set(p.annotation_id, (pinCountMap.get(p.annotation_id) ?? 0) + 1);
+  }
+
+  return annotations.map(a => ({
+    ...a,
+    pin_count: pinCountMap.get(a.id) ?? 0,
+  }));
+}
+
+export async function getAnnotation(id: string): Promise<{
+  annotation: HoleAnnotation;
+  pins: AnnotationPin[];
+  pinPhotos: PinPhoto[];
+} | null> {
+  const { data: annotation } = await supabase
+    .from('hole_annotations')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (!annotation) return null;
+
+  const { data: pins } = await supabase
+    .from('annotation_pins')
+    .select('*')
+    .eq('annotation_id', id)
+    .order('sort_order');
+
+  const pinIds = (pins ?? []).map(p => p.id);
+  let pinPhotos: PinPhoto[] = [];
+  if (pinIds.length > 0) {
+    const { data } = await supabase
+      .from('pin_photos')
+      .select('*')
+      .in('pin_id', pinIds)
+      .order('sort_order');
+    pinPhotos = data ?? [];
+  }
+
+  return { annotation, pins: pins ?? [], pinPhotos };
+}
+
+export async function createAnnotation(data: Partial<HoleAnnotation>): Promise<string> {
+  const id = crypto.randomUUID();
+  const now = new Date().toISOString();
+  await supabase.from('hole_annotations').insert({
+    id,
+    title: data.title ?? 'Untitled',
+    course_name: data.course_name ?? '',
+    hole_number: data.hole_number ?? 1,
+    aerial_image_url: data.aerial_image_url ?? null,
+    created_at: now,
+    updated_at: now,
+  });
+  return id;
+}
+
+export async function saveAnnotation(
+  annotation: HoleAnnotation,
+  pins: AnnotationPin[],
+  pinPhotos: PinPhoto[],
+): Promise<void> {
+  const { pin_count, ...annotationData } = annotation;
+  annotationData.updated_at = new Date().toISOString();
+  await supabase.from('hole_annotations').upsert(annotationData);
+
+  // Get existing pins to diff
+  const { data: existingPins } = await supabase
+    .from('annotation_pins')
+    .select('id')
+    .eq('annotation_id', annotation.id);
+  const existingPinIds = new Set((existingPins ?? []).map(p => p.id));
+  const currentPinIds = new Set(pins.map(p => p.id));
+
+  // Delete removed pins
+  const removedPinIds = [...existingPinIds].filter(id => !currentPinIds.has(id));
+  if (removedPinIds.length > 0) {
+    await supabase.from('annotation_pins').delete().in('id', removedPinIds);
+  }
+
+  // Upsert current pins
+  if (pins.length > 0) {
+    await supabase.from('annotation_pins').upsert(pins);
+  }
+
+  // Get existing photos to diff
+  const currentPinIdsArray = [...currentPinIds];
+  let existingPhotoIds = new Set<string>();
+  if (currentPinIdsArray.length > 0) {
+    const { data: existingPhotos } = await supabase
+      .from('pin_photos')
+      .select('id')
+      .in('pin_id', currentPinIdsArray);
+    existingPhotoIds = new Set((existingPhotos ?? []).map(p => p.id));
+  }
+  const currentPhotoIds = new Set(pinPhotos.map(p => p.id));
+
+  // Delete removed photos
+  const removedPhotoIds = [...existingPhotoIds].filter(id => !currentPhotoIds.has(id));
+  if (removedPhotoIds.length > 0) {
+    await supabase.from('pin_photos').delete().in('id', removedPhotoIds);
+  }
+
+  // Upsert current photos
+  if (pinPhotos.length > 0) {
+    await supabase.from('pin_photos').upsert(pinPhotos);
+  }
+}
+
+export async function deleteAnnotation(id: string): Promise<void> {
+  await supabase.from('hole_annotations').delete().eq('id', id);
+}
+
+export async function duplicateAnnotation(id: string): Promise<string | null> {
+  const result = await getAnnotation(id);
+  if (!result) return null;
+
+  const newId = crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  await supabase.from('hole_annotations').insert({
+    id: newId,
+    title: result.annotation.title + ' (copy)',
+    course_name: result.annotation.course_name,
+    hole_number: result.annotation.hole_number,
+    aerial_image_url: result.annotation.aerial_image_url,
+    created_at: now,
+    updated_at: now,
+  });
+
+  // Deep copy pins + photos with new UUIDs
+  for (const pin of result.pins) {
+    const newPinId = crypto.randomUUID();
+    await supabase.from('annotation_pins').insert({
+      id: newPinId,
+      annotation_id: newId,
+      position_x: pin.position_x,
+      position_y: pin.position_y,
+      sort_order: pin.sort_order,
+      headline: pin.headline,
+      body_text: pin.body_text,
+      created_at: now,
+    });
+
+    const pinPhotos = result.pinPhotos.filter(p => p.pin_id === pin.id);
+    for (const photo of pinPhotos) {
+      await supabase.from('pin_photos').insert({
+        id: crypto.randomUUID(),
+        pin_id: newPinId,
+        photo_url: photo.photo_url,
+        sort_order: photo.sort_order,
+        caption: photo.caption,
+        created_at: now,
+      });
+    }
+  }
+
+  return newId;
 }

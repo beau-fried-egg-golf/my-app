@@ -23,6 +23,8 @@ import FEPostForm from './FEPostForm';
 import EmailTemplates from './EmailTemplates';
 import TeamList from './TeamList';
 import GroupList from './GroupList';
+import AnnotationList from './AnnotationList';
+import AnnotationEditor from './AnnotationEditor';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -104,6 +106,8 @@ export default function App() {
         <Route path="email-templates" element={<EmailTemplates />} />
         <Route path="team" element={<TeamList />} />
         <Route path="groups" element={<GroupList />} />
+        <Route path="hole-annotations" element={<AnnotationList />} />
+        <Route path="hole-annotations/:id/edit" element={<AnnotationEditor />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

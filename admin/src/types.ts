@@ -198,3 +198,34 @@ export interface ContentFlag {
   reason?: string;
   course_name?: string;
 }
+
+export interface HoleAnnotation {
+  id: string;
+  title: string;
+  course_name: string;
+  hole_number: number;
+  aerial_image_url: string | null;
+  created_at: string;
+  updated_at: string;
+  pin_count?: number;
+}
+
+export interface AnnotationPin {
+  id: string;
+  annotation_id: string;
+  position_x: number;
+  position_y: number;
+  sort_order: number;
+  headline: string;
+  body_text: string;
+  created_at: string;
+}
+
+export interface PinPhoto {
+  id: string;
+  pin_id: string;
+  photo_url: string;
+  sort_order: number;
+  caption: string;
+  created_at: string;
+}
