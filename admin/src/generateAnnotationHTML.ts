@@ -680,7 +680,6 @@ ${LIGHTBOX_JS}
     requestShow(bestIdx);
 
     var activeIdx = visibleCard >= 0 ? visibleCard : pendingCard;
-    }
 
     // Update pin markers
     for (var j = 0; j < pins.length; j++) {
