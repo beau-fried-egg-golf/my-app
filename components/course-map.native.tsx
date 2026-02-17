@@ -78,8 +78,8 @@ export default function CourseMap({
         styleURL={styleURL}
         onPress={handleMapPress}
         onRegionDidChange={handleRegionChange}
-        attributionPosition={{ top: 8, right: 8 }}
-        logoPosition={{ top: 8, left: 8 }}
+        attributionPosition={{ bottom: 8, right: 8 }}
+        logoPosition={{ bottom: 8, left: 8 }}
       >
         <MapboxGL.Camera
           ref={cameraRef}
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   controlsColumn: {
     position: 'absolute',
-    bottom: 16,
+    bottom: 100,
     right: 10,
     gap: 6,
   },

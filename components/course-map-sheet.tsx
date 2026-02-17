@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { Course, Meetup } from '@/types';
 import WordHighlight from '@/components/WordHighlight';
@@ -15,9 +16,11 @@ interface CourseMapSheetProps {
 
 export default function CourseMapSheet({ course, writeupCount, distance, upcomingMeetup, onClose }: CourseMapSheetProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = Math.max(16, insets.bottom) + 56 + 12;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { bottom: tabBarHeight }]}>
       <Pressable style={styles.closeBtn} onPress={onClose}>
         <Text style={styles.closeText}>x</Text>
       </Pressable>
@@ -86,7 +89,7 @@ export default function CourseMapSheet({ course, writeupCount, distance, upcomin
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 0,
     left: 16,
     right: 16,
     backgroundColor: Colors.white,

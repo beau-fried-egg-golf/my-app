@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { FlatList, Image, Modal, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -335,6 +335,7 @@ export default function FeedScreen() {
   const router = useRouter();
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'FOLLOWING'>('ALL');
+  const [activityFilter, setActivityFilter] = useState<'all' | 'posts' | 'reviews'>('all');
   const [showFollowRibbon, setShowFollowRibbon] = useState(false);
 
   useEffect(() => {
@@ -373,9 +374,16 @@ export default function FeedScreen() {
 
   if (!session) return null;
 
-  const filteredActivities = feedFilter === 'FOLLOWING'
-    ? activities.filter(a => followingIds.has(a.user_id))
-    : activities;
+  const ACTIVITY_TYPE_MAP: Record<string, string[]> = {
+    posts: ['post', 'post_reply'],
+    reviews: ['writeup'],
+  };
+
+  const filteredActivities = activities.filter(a => {
+    if (feedFilter === 'FOLLOWING' && !followingIds.has(a.user_id)) return false;
+    if (activityFilter !== 'all' && !ACTIVITY_TYPE_MAP[activityFilter]?.includes(a.type)) return false;
+    return true;
+  });
 
   return (
     <View style={styles.container}>
@@ -393,6 +401,21 @@ export default function FeedScreen() {
           <Text style={[styles.filterTabText, feedFilter === 'FOLLOWING' && styles.filterTabTextActive]}>FOLLOWING</Text>
         </PlatformPressable>
       </View>
+      {/* Activity type filter chips — hidden for now, revisit later
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeFilterRow} contentContainerStyle={styles.typeFilterContent}>
+        {([['all', 'ALL'], ['posts', 'POSTS ONLY'], ['reviews', 'REVIEWS ONLY']] as const).map(([val, label]) => (
+          <PlatformPressable
+            key={val}
+            style={[styles.typeChip, activityFilter === val && styles.typeChipActive]}
+            onPress={() => setActivityFilter(val)}
+          >
+            <Text style={[styles.typeChipText, activityFilter === val && styles.typeChipTextActive]}>
+              {label}
+            </Text>
+          </PlatformPressable>
+        ))}
+      </ScrollView>
+      */}
       <FlatList
         data={filteredActivities}
         keyExtractor={(item) => item.id}
@@ -540,6 +563,32 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   filterTabTextActive: {
+    color: Colors.black,
+  },
+  typeFilterRow: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  typeFilterContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  typeChip: {
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  typeChipActive: {
+    backgroundColor: Colors.orange,
+  },
+  typeChipText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.gray,
+    letterSpacing: 0.5,
+  },
+  typeChipTextActive: {
     color: Colors.black,
   },
   list: {

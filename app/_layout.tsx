@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Platform, Pressable, View } from 'react-native';
+import { Image, Platform, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
@@ -9,30 +9,6 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-function BackArrow() {
-  const router = useRouter();
-  return (
-    <Pressable
-      onPress={() => router.back()}
-      style={{
-        marginLeft: 8,
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFFFFF',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.12,
-        shadowRadius: 4,
-        elevation: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Ionicons name="chevron-back" size={20} color={Colors.black} />
-    </Pressable>
-  );
-}
 
 function PushNotificationRegistrar() {
   const { session } = useStore();
@@ -104,11 +80,11 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="create-writeup"
-          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen
           name="create-post"
-          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
@@ -117,13 +93,13 @@ export default function RootLayout() {
         <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-group"
-          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="group-chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-meetup"
-          options={{ title: '', presentation: 'modal', headerLeft: () => <BackArrow /> }}
+          options={{ headerShown: false, presentation: 'modal' }}
         />
         <Stack.Screen name="meetup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="meetup-chat/[id]" options={{ headerShown: false }} />
