@@ -73,6 +73,16 @@ export default function PinEditor({
         </div>
 
         <div className="form-group">
+          <label className="form-label">Link URL</label>
+          <input
+            className="form-input"
+            value={selectedPin.link_url}
+            onChange={(e) => onPinChange(selectedPin.id, 'link_url', e.target.value)}
+            placeholder="https://... (optional 'Find out more' link)"
+          />
+        </div>
+
+        <div className="form-group">
           <label className="form-label">Photos (max 4)</label>
           <PinPhotoGrid
             photos={selectedPinPhotos}

@@ -118,6 +118,7 @@ export default function AnnotationEditor() {
       sort_order: pins.length,
       headline: '',
       body_text: '',
+      link_url: '',
       created_at: new Date().toISOString(),
     };
     setPins(prev => [...prev, newPin]);

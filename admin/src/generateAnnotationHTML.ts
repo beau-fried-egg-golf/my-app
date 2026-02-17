@@ -10,23 +10,222 @@ function escapeHtml(str: string): string {
 }
 
 function renderBodyHtml(bodyText: string): string {
-  // If it already contains HTML tags (from rich text editor), use as-is
-  if (/<[a-z][\s\S]*>/i.test(bodyText)) {
-    return bodyText;
-  }
-  // Otherwise convert plain text paragraphs
+  if (/<[a-z][\s\S]*>/i.test(bodyText)) return bodyText;
   return bodyText.split('\n').filter(l => l.trim()).map(p => `<p>${escapeHtml(p)}</p>`).join('');
 }
 
-function buildPhotoGrid(photos: PinPhoto[]): string {
-  if (photos.length === 0) return '';
-  return `<div class="ha-photo-grid">${photos.map(p =>
-    `<figure class="ha-photo-figure">
-      <img src="${escapeHtml(p.photo_url)}" alt="${escapeHtml(p.caption)}" loading="lazy" />
-      ${p.caption ? `<figcaption>${escapeHtml(p.caption)}</figcaption>` : ''}
-    </figure>`
-  ).join('')}</div>`;
+// ---------------------------------------------------------------------------
+// Shared overlay card CSS + JS (used by both scroll and interactive exports)
+// ---------------------------------------------------------------------------
+
+const OVERLAY_CARD_CSS = `
+@font-face {
+  font-family: 'Grey LL';
+  src: local('Grey LL');
 }
+
+:root {
+  --card-max-width: 520px;
+  --card-radius: 6px;
+  --card-bg: #ffffff;
+  --card-shadow: 0 8px 40px rgba(0,0,0,0.25), 0 2px 8px rgba(0,0,0,0.12);
+  --card-font: 'Grey LL', 'Georgia', serif;
+  --card-color-text: #1a1a1a;
+  --card-color-link: #1a1a1a;
+  --card-color-link-hover: #3a6a3a;
+  --card-thumb-size: 64px;
+  --card-hero-aspect: 16 / 10;
+}
+
+.overlay-card {
+  max-width: var(--card-max-width);
+  width: 100%;
+  background: var(--card-bg);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+
+.card-gallery {
+  position: relative;
+  width: 100%;
+  background: #e8e5df;
+}
+
+.card-hero {
+  width: 100%;
+  aspect-ratio: var(--card-hero-aspect);
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.3s ease;
+}
+
+.card-thumbnails {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 5px;
+}
+
+.card-thumb {
+  width: var(--card-thumb-size);
+  height: var(--card-thumb-size);
+  object-fit: cover;
+  border-radius: 4px;
+  border: 2px solid rgba(255,255,255,0.5);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+}
+
+.card-thumb:hover {
+  opacity: 1;
+  border-color: rgba(255,255,255,0.9);
+  transform: scale(1.03);
+}
+
+.card-thumb.active {
+  opacity: 1;
+  border-color: #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.15);
+}
+
+.card-content {
+  padding: 22px 24px 4px 24px;
+}
+
+.overlay-card:not(:has(.card-gallery)) .card-content {
+  padding-top: 28px;
+}
+
+.card-title {
+  font-family: var(--card-font);
+  font-size: 1.5rem;
+  font-weight: 400;
+  color: var(--card-color-text);
+  line-height: 1.25;
+  margin-bottom: 14px;
+  letter-spacing: -0.01em;
+}
+
+.card-body {
+  font-family: var(--card-font);
+  font-size: 0.97rem;
+  font-weight: 400;
+  color: var(--card-color-text);
+  line-height: 1.65;
+}
+
+.card-body a {
+  color: var(--card-color-link);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.2s ease;
+}
+.card-body a:hover { color: var(--card-color-link-hover); }
+.card-body p + p { margin-top: 0.75em; }
+.card-body strong { font-weight: 600; }
+.card-body em { font-style: italic; }
+.card-body ul, .card-body ol { margin: 0.5em 0 0.5em 1.2em; }
+.card-body li { margin-bottom: 0.25em; }
+
+.card-footer {
+  padding: 10px 24px 24px 24px;
+}
+
+.card-link {
+  font-family: var(--card-font);
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--card-color-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: color 0.2s ease;
+}
+.card-link:hover { color: var(--card-color-link-hover); }
+
+@media (max-width: 480px) {
+  .overlay-card { border-radius: 4px; }
+  .card-title { font-size: 1.3rem; }
+  .card-body { font-size: 0.9rem; }
+  .card-content { padding: 18px 18px 4px 18px; }
+  .card-footer { padding: 8px 18px 20px 18px; }
+  .card-thumbnails { bottom: 8px; right: 8px; gap: 4px; }
+  .card-thumb { width: 52px; height: 52px; }
+}
+`;
+
+const SWAP_HERO_JS = `
+function swapHero(heroId, thumbEl) {
+  var hero = document.getElementById(heroId);
+  if (!hero) return;
+  var fullSrc = thumbEl.getAttribute('data-full');
+  hero.style.opacity = '0';
+  setTimeout(function() {
+    hero.src = fullSrc;
+    hero.onload = function() { hero.style.opacity = '1'; };
+  }, 200);
+  var siblings = thumbEl.parentElement.querySelectorAll('.card-thumb');
+  siblings.forEach(function(t) { t.classList.remove('active'); });
+  thumbEl.classList.add('active');
+}
+`;
+
+// ---------------------------------------------------------------------------
+// Build a single overlay card HTML from pin data
+// ---------------------------------------------------------------------------
+
+function buildOverlayCard(
+  pin: AnnotationPin,
+  photos: PinPhoto[],
+  heroId: string,
+): string {
+  let galleryHtml = '';
+
+  if (photos.length > 0) {
+    const heroPhoto = photos[0];
+    let thumbsHtml = '';
+
+    if (photos.length > 1) {
+      thumbsHtml = `<div class="card-thumbnails">${photos.map((p, i) =>
+        `<img class="card-thumb${i === 0 ? ' active' : ''}"
+          src="${escapeHtml(p.photo_url)}"
+          data-full="${escapeHtml(p.photo_url)}"
+          alt="${escapeHtml(p.caption || `View ${i + 1}`)}" loading="lazy"
+          onclick="swapHero('${heroId}', this)" />`
+      ).join('')}</div>`;
+    }
+
+    galleryHtml = `
+    <div class="card-gallery">
+      <img class="card-hero" id="${heroId}"
+        src="${escapeHtml(heroPhoto.photo_url)}"
+        alt="${escapeHtml(heroPhoto.caption || pin.headline)}" loading="lazy" />
+      ${thumbsHtml}
+    </div>`;
+  }
+
+  const footerHtml = pin.link_url
+    ? `<div class="card-footer"><a class="card-link" href="${escapeHtml(pin.link_url)}" target="_blank" rel="noopener">Find out more</a></div>`
+    : '';
+
+  return `
+  <div class="overlay-card">
+    ${galleryHtml}
+    <div class="card-content">
+      <h2 class="card-title">${escapeHtml(pin.headline)}</h2>
+      <div class="card-body">${renderBodyHtml(pin.body_text)}</div>
+    </div>
+    ${footerHtml}
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
 
 export function generateAnnotationHTML(
   annotation: HoleAnnotation,
@@ -40,7 +239,7 @@ export function generateAnnotationHTML(
 }
 
 // =============================================================================
-// SCROLL TYPE — pins + content overlay on top of sticky aerial image
+// SCROLL TYPE — pins + overlay cards on top of sticky aerial image
 // =============================================================================
 
 function generateScrollHTML(
@@ -61,23 +260,19 @@ function generateScrollHTML(
       .filter(p => p.pin_id === pin.id)
       .sort((a, b) => a.sort_order - b.sort_order);
 
+    const cardHtml = buildOverlayCard(pin, photos, `ha-scroll-hero-${index}`);
+
     return `
     <div class="ha-scroll-section" data-pin-index="${index}">
-      <div class="ha-scroll-card">
-        <div class="ha-scroll-card-number">${index + 1}</div>
-        <h3 class="ha-scroll-card-headline">${escapeHtml(pin.headline)}</h3>
-        <div class="ha-scroll-card-body">${renderBodyHtml(pin.body_text)}</div>
-        ${buildPhotoGrid(photos)}
-      </div>
+      ${cardHtml}
     </div>`;
   }).join('');
 
   return `<div class="hole-annotation-embed ha-scroll-embed">
 <style>
+${OVERLAY_CARD_CSS}
+
 .ha-scroll-embed {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  line-height: 1.6;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -95,7 +290,7 @@ function generateScrollHTML(
   position: relative;
   width: 100%;
 }
-.ha-scroll-aerial img {
+.ha-scroll-aerial img.ha-aerial-img {
   width: 100%;
   height: auto;
   display: block;
@@ -108,6 +303,7 @@ function generateScrollHTML(
   border-radius: 50%;
   background: rgba(26, 26, 26, 0.85);
   color: #fff;
+  font-family: var(--card-font);
   font-size: 13px;
   font-weight: 700;
   display: flex;
@@ -147,83 +343,27 @@ function generateScrollHTML(
 .ha-scroll-section:last-child {
   padding-bottom: 20vh;
 }
-.ha-scroll-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border-radius: 10px;
-  padding: 24px;
-  max-width: 420px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+.ha-scroll-section .overlay-card {
+  pointer-events: auto;
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.5s ease, transform 0.5s ease;
-  pointer-events: auto;
 }
-.ha-scroll-section.ha-section-visible .ha-scroll-card {
+.ha-scroll-section.ha-section-visible .overlay-card {
   opacity: 1;
   transform: translateY(0);
-}
-.ha-scroll-card-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-.ha-scroll-card-headline {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.ha-scroll-card-body p {
-  font-size: 14px;
-  color: #333;
-  margin-bottom: 8px;
-}
-.ha-scroll-card-body a {
-  color: #1a1a1a;
-  text-decoration: underline;
-}
-.ha-photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-.ha-photo-figure {
-  margin: 0;
-}
-.ha-photo-figure img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  display: block;
-}
-.ha-photo-figure figcaption {
-  font-size: 11px;
-  color: #888;
-  margin-top: 3px;
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; }
   .ha-scroll-section { min-height: auto; padding: 16px; }
   .ha-scroll-section:first-child { padding-top: 16px; }
-  .ha-scroll-card { max-width: 100%; }
-  .ha-photo-grid { grid-template-columns: 1fr 1fr; }
+  .ha-scroll-section .overlay-card { max-width: 100%; }
 }
 </style>
 <div class="ha-scroll-wrap">
   <div class="ha-scroll-aerial">
     <div class="ha-scroll-aerial-inner">
-      <img src="${escapeHtml(annotation.aerial_image_url ?? '')}" alt="${escapeHtml(annotation.title)}" />
+      <img class="ha-aerial-img" src="${escapeHtml(annotation.aerial_image_url ?? '')}" alt="${escapeHtml(annotation.title)}" />
       ${pinMarkersHtml}
     </div>
   </div>
@@ -232,19 +372,18 @@ function generateScrollHTML(
   </div>
 </div>
 <script>
+${SWAP_HERO_JS}
 (function() {
   var embed = document.currentScript.closest('.ha-scroll-embed');
   if (!embed) return;
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var pins = embed.querySelectorAll('.ha-pin');
-  var currentActive = -1;
 
   var observer = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) {
       var idx = parseInt(entry.target.getAttribute('data-pin-index'), 10);
       if (entry.isIntersecting) {
         entry.target.classList.add('ha-section-visible');
-        // Update pin states
         for (var i = 0; i < pins.length; i++) {
           pins[i].classList.remove('ha-pin-active');
           if (i < idx) {
@@ -254,7 +393,6 @@ function generateScrollHTML(
             pins[i].classList.remove('ha-pin-visited');
           }
         }
-        currentActive = idx;
       }
     });
   }, { threshold: 0.4 });
@@ -266,7 +404,7 @@ function generateScrollHTML(
 }
 
 // =============================================================================
-// INTERACTIVE TYPE — all pins visible, click to reveal overlay content
+// INTERACTIVE TYPE — all pins visible, click to reveal overlay card
 // =============================================================================
 
 function generateInteractiveHTML(
@@ -287,22 +425,20 @@ function generateInteractiveHTML(
       .filter(p => p.pin_id === pin.id)
       .sort((a, b) => a.sort_order - b.sort_order);
 
+    const cardHtml = buildOverlayCard(pin, photos, `ha-int-hero-${index}`);
+
     return `
     <div class="ha-ipanel" data-panel-index="${index}">
       <button class="ha-ipanel-close">&times;</button>
-      <div class="ha-ipanel-number">${index + 1}</div>
-      <h3 class="ha-ipanel-headline">${escapeHtml(pin.headline)}</h3>
-      <div class="ha-ipanel-body">${renderBodyHtml(pin.body_text)}</div>
-      ${buildPhotoGrid(photos)}
+      ${cardHtml}
     </div>`;
   }).join('');
 
   return `<div class="hole-annotation-embed ha-interactive-embed">
 <style>
+${OVERLAY_CARD_CSS}
+
 .ha-interactive-embed {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #1a1a1a;
-  line-height: 1.6;
   max-width: 900px;
   margin: 0 auto;
 }
@@ -324,6 +460,7 @@ function generateInteractiveHTML(
   border-radius: 50%;
   background: rgba(26, 26, 26, 0.85);
   color: #fff;
+  font-family: var(--card-font);
   font-size: 14px;
   font-weight: 700;
   display: flex;
@@ -364,16 +501,8 @@ function generateInteractiveHTML(
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.9);
-  background: rgba(255, 255, 255, 0.97);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-radius: 12px;
-  padding: 28px;
-  max-width: 440px;
-  width: 85%;
-  max-height: 80%;
+  max-height: 85%;
   overflow-y: auto;
-  box-shadow: 0 8px 40px rgba(0,0,0,0.2);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -384,68 +513,28 @@ function generateInteractiveHTML(
   transform: translate(-50%, -50%) scale(1);
   pointer-events: auto;
 }
+.ha-ipanel .overlay-card {
+  position: relative;
+}
 .ha-ipanel-close {
   position: absolute;
-  top: 12px;
-  right: 16px;
-  background: none;
+  top: 8px;
+  right: 12px;
+  background: rgba(255,255,255,0.85);
   border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #888;
-  line-height: 1;
-  padding: 4px;
-}
-.ha-ipanel-close:hover { color: #1a1a1a; }
-.ha-ipanel-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #1a1a1a;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-.ha-ipanel-headline {
   font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 10px;
+  cursor: pointer;
+  color: #555;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 7;
+  transition: color 0.15s, background 0.15s;
 }
-.ha-ipanel-body p {
-  font-size: 15px;
-  color: #333;
-  margin-bottom: 10px;
-}
-.ha-ipanel-body a {
-  color: #1a1a1a;
-  text-decoration: underline;
-}
-.ha-photo-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
-  margin-top: 12px;
-}
-.ha-photo-figure { margin: 0; }
-.ha-photo-figure img {
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-  border-radius: 6px;
-  display: block;
-}
-.ha-photo-figure figcaption {
-  font-size: 11px;
-  color: #888;
-  margin-top: 3px;
-}
+.ha-ipanel-close:hover { color: #1a1a1a; background: #fff; }
 @media (max-width: 600px) {
-  .ha-ipanel { width: 92%; max-width: none; padding: 20px; }
-  .ha-photo-grid { grid-template-columns: 1fr 1fr; }
+  .ha-ipanel { max-height: 90%; }
+  .ha-ipanel .overlay-card { max-width: none; }
 }
 </style>
 <div class="ha-interactive-container">
@@ -455,10 +544,10 @@ function generateInteractiveHTML(
   ${pinPanelsHtml}
 </div>
 <script>
+${SWAP_HERO_JS}
 (function() {
   var embed = document.currentScript.closest('.ha-interactive-embed');
   if (!embed) return;
-  var container = embed.querySelector('.ha-interactive-container');
   var pins = embed.querySelectorAll('.ha-ipin');
   var panels = embed.querySelectorAll('.ha-ipanel');
   var overlay = embed.querySelector('.ha-overlay');

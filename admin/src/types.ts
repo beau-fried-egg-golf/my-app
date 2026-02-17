@@ -219,6 +219,7 @@ export interface AnnotationPin {
   sort_order: number;
   headline: string;
   body_text: string;
+  link_url: string;
   created_at: string;
 }
 
