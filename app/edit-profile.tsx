@@ -212,7 +212,7 @@ export default function EditProfileScreen() {
               <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
                 {selectedCourse ? selectedCourse.short_name : 'Select Home Course'}
               </Text>
-              <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+              <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray} />
             </Pressable>
 
             {showPicker && (
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   },
   coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
   placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
-  chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
+
   pickerToolbar: {
     flexDirection: 'row',
     alignItems: 'center',

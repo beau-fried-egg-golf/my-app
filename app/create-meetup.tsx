@@ -16,7 +16,7 @@ import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { Course } from '@/types';
+import { Course, Profile } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import DetailHeader from '@/components/DetailHeader';
 
@@ -34,7 +34,7 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 export default function CreateMeetupScreen() {
   const router = useRouter();
   const { meetupId } = useLocalSearchParams<{ meetupId?: string }>();
-  const { user, courses, meetups, createMeetup, updateMeetup } = useStore();
+  const { user, courses, meetups, profiles, createMeetup, updateMeetup, addMeetupMember } = useStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [courseId, setCourseId] = useState<string | null>(null);
@@ -50,6 +50,9 @@ export default function CreateMeetupScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
+  const [selectedMembers, setSelectedMembers] = useState<Profile[]>([]);
+  const [showMemberPicker, setShowMemberPicker] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
 
   const isEditing = !!meetupId;
@@ -103,6 +106,16 @@ export default function CreateMeetupScreen() {
     return result;
   }, [courses, courseSearch, courseSortOrder, userLocation]);
 
+  const filteredMembers = useMemo(() => {
+    const selectedIds = new Set(selectedMembers.map(m => m.id));
+    let result = profiles.filter(p => p.id !== user?.id && !selectedIds.has(p.id));
+    if (memberSearch.trim()) {
+      const q = memberSearch.trim().toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(q));
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [profiles, user?.id, selectedMembers, memberSearch]);
+
   if (!user) return null;
 
   const selectedCourse = courseId ? courses.find(c => c.id === courseId) : null;
@@ -146,10 +159,13 @@ export default function CreateMeetupScreen() {
       if (isEditing) {
         await updateMeetup(meetupId!, meetupPayload);
       } else {
-        await createMeetup({
+        const newMeetup = await createMeetup({
           ...meetupPayload,
           host_id: isFeCoordinated ? null : undefined,
         });
+        for (const member of selectedMembers) {
+          await addMeetupMember(newMeetup.id, member.id);
+        }
       }
       router.back();
     } catch (e) {
@@ -217,7 +233,7 @@ export default function CreateMeetupScreen() {
             <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
               {selectedCourse ? selectedCourse.short_name : 'Select a course'}
             </Text>
-            <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+            <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray} />
           </Pressable>
         </View>
 
@@ -343,6 +359,67 @@ export default function CreateMeetupScreen() {
           </View>
         )}
 
+        {!isEditing && (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Add Attendees</Text>
+            {selectedMembers.length > 0 && (
+              <View style={styles.memberChips}>
+                {selectedMembers.map(m => (
+                  <Pressable
+                    key={m.id}
+                    style={styles.memberChip}
+                    onPress={() => setSelectedMembers(prev => prev.filter(p => p.id !== m.id))}
+                  >
+                    <Text style={styles.memberChipText}>{m.name}</Text>
+                    <Ionicons name="close" size={14} color={Colors.gray} />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <Pressable style={styles.coursePicker} onPress={() => setShowMemberPicker(!showMemberPicker)}>
+              <Text style={styles.placeholder}>
+                {selectedMembers.length > 0 ? `${selectedMembers.length} selected` : 'Search members...'}
+              </Text>
+              <Ionicons name={showMemberPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray} />
+            </Pressable>
+            {showMemberPicker && (
+              <>
+                <TextInput
+                  style={[styles.courseSearchInput, { marginTop: 6 }]}
+                  value={memberSearch}
+                  onChangeText={setMemberSearch}
+                  placeholder="Search by name..."
+                  placeholderTextColor={Colors.gray}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+                <ScrollView style={styles.courseList} nestedScrollEnabled>
+                  {filteredMembers.map(p => (
+                    <Pressable
+                      key={p.id}
+                      style={styles.courseOption}
+                      onPress={() => {
+                        setSelectedMembers(prev => [...prev, p]);
+                        setMemberSearch('');
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.courseOptionText}>{p.name}</Text>
+                        <Text style={styles.courseOptionCity}>{p.city}{p.state ? `, ${p.state}` : ''}</Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                  {filteredMembers.length === 0 && (
+                    <View style={{ padding: 14, alignItems: 'center' }}>
+                      <Text style={styles.courseOptionCity}>No members found</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
+          </View>
+        )}
+
         <View style={styles.toggleRow}>
           <Text style={styles.toggleLabel}>FE Coordinated</Text>
           <Pressable
@@ -451,7 +528,7 @@ const styles = StyleSheet.create({
   },
   coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
   placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
-  chevronText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray },
+
   pickerToolbar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -542,4 +619,15 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
+  memberChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 },
+  memberChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.lightGray,
+    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 4,
+  },
+  memberChipText: { fontSize: 13, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
 });

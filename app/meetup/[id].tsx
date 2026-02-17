@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -22,10 +22,12 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, joinMeetup, leaveMeetup, withdrawAndRefund, getMeetupMembers, loadMeetups, deleteMeetup } = useStore();
+  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [addMemberSearch, setAddMemberSearch] = useState('');
 
   const meetup = meetups.find(m => m.id === id);
   const currentUserId = session?.user?.id;
@@ -38,6 +40,17 @@ export default function MeetupDetailScreen() {
   const isFeMeetupWithPayment = meetup?.is_fe_coordinated && meetup?.stripe_payment_url;
   const currentUserMember = members.find(m => m.user_id === currentUserId);
   const currentPaymentStatus = currentUserMember?.payment_status;
+
+  const memberUserIds = useMemo(() => new Set(members.map(m => m.user_id)), [members]);
+
+  const filteredAddMembers = useMemo(() => {
+    let result = profiles.filter(p => !memberUserIds.has(p.id));
+    if (addMemberSearch.trim()) {
+      const q = addMemberSearch.trim().toLowerCase();
+      result = result.filter(p => p.name.toLowerCase().includes(q));
+    }
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [profiles, memberUserIds, addMemberSearch]);
 
   useEffect(() => {
     if (!id) return;
@@ -320,7 +333,56 @@ export default function MeetupDetailScreen() {
 
         {/* Member Roster */}
         <View style={styles.rosterSection}>
-          <Text style={styles.rosterTitle}>Attendees</Text>
+          <View style={styles.rosterHeader}>
+            <Text style={styles.rosterTitle}>Attendees</Text>
+            {canManage && !isFull && (
+              <Pressable
+                style={styles.addMemberBtn}
+                onPress={() => { setShowAddMember(!showAddMember); setAddMemberSearch(''); }}
+              >
+                <Ionicons name={showAddMember ? 'close' : 'person-add'} size={16} color={Colors.orange} />
+                <Text style={styles.addMemberBtnText}>{showAddMember ? 'Close' : 'Add Member'}</Text>
+              </Pressable>
+            )}
+          </View>
+          {showAddMember && (
+            <View style={styles.addMemberSection}>
+              <TextInput
+                style={styles.addMemberSearch}
+                value={addMemberSearch}
+                onChangeText={setAddMemberSearch}
+                placeholder="Search by name..."
+                placeholderTextColor={Colors.gray}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <ScrollView style={styles.addMemberList} nestedScrollEnabled>
+                {filteredAddMembers.map(p => (
+                  <Pressable
+                    key={p.id}
+                    style={styles.addMemberRow}
+                    onPress={async () => {
+                      await addMeetupMember(meetup.id, p.id);
+                      const m = await getMeetupMembers(meetup.id);
+                      setMembers(m);
+                      setAddMemberSearch('');
+                    }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.addMemberName}>{p.name}</Text>
+                      <Text style={styles.addMemberLocation}>{p.city}{p.state ? `, ${p.state}` : ''}</Text>
+                    </View>
+                    <Ionicons name="add-circle-outline" size={22} color={Colors.orange} />
+                  </Pressable>
+                ))}
+                {filteredAddMembers.length === 0 && (
+                  <View style={{ padding: 14, alignItems: 'center' }}>
+                    <Text style={styles.addMemberLocation}>No members found</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          )}
           {members.map(m => (
             <Pressable
               key={m.id}
@@ -508,13 +570,38 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   rosterSection: { marginTop: 24 },
+  rosterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   rosterTitle: {
     fontSize: 16,
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     color: Colors.black,
-    marginBottom: 12,
   },
+  addMemberBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  addMemberBtnText: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange },
+  addMemberSection: { marginBottom: 12 },
+  addMemberSearch: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 15,
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+    marginBottom: 6,
+  },
+  addMemberList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, maxHeight: 200 },
+  addMemberRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  addMemberName: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
+  addMemberLocation: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',

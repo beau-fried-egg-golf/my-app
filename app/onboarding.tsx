@@ -194,7 +194,7 @@ export default function OnboardingScreen() {
               <Text style={[styles.coursePickerText, !selectedCourse && styles.placeholder]}>
                 {selectedCourse ? selectedCourse.short_name : 'Select Home Course'}
               </Text>
-              <Text style={styles.chevronText}>{showPicker ? '^' : 'v'}</Text>
+              <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.gray} />
             </Pressable>
 
             {showPicker && (
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
   },
   coursePickerText: { fontSize: 16, color: Colors.black },
   placeholder: { color: Colors.gray },
-  chevronText: { fontSize: 18, fontWeight: '700', color: Colors.gray },
+
   pickerToolbar: {
     flexDirection: 'row',
     alignItems: 'center',

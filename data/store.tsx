@@ -1,8 +1,18 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, MessageReaction, ConversationListItem, Notification, profileToUser } from '@/types';
+
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return generateId();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
 
 async function updateBadgeCount(
   notifications: Notification[],
@@ -42,7 +52,7 @@ interface StoreContextType {
   getCourseName: (courseId: string) => string;
   getUserName: (userId: string) => string;
   isUserVerified: (userId: string) => boolean;
-  markCoursePlayed: (courseId: string) => Promise<void>;
+  markCoursePlayed: (courseId: string, datePlayed?: string) => Promise<void>;
   unmarkCoursePlayed: (courseId: string) => Promise<void>;
   posts: Post[];
   addPost: (data: { content: string; photos: { url: string; caption: string }[] }) => Promise<Post>;
@@ -100,6 +110,7 @@ interface StoreContextType {
   updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null }) => Promise<void>;
   deleteMeetup: (meetupId: string) => Promise<void>;
   joinMeetup: (meetupId: string) => Promise<string | undefined>;
+  addMeetupMember: (meetupId: string, userId: string) => Promise<void>;
   leaveMeetup: (meetupId: string) => Promise<void>;
   withdrawAndRefund: (meetupId: string, memberId: string) => Promise<boolean>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
@@ -1098,22 +1109,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const markCoursePlayed = useCallback(
-    async (courseId: string) => {
+    async (courseId: string, datePlayed?: string) => {
       if (!session) return;
       const userId = session.user.id;
 
+      const dateValue = datePlayed || null;
+
       // Optimistic update
       const optimistic: CoursePlayed = {
-        id: crypto.randomUUID(),
+        id: generateId(),
         user_id: userId,
         course_id: courseId,
         created_at: new Date().toISOString(),
+        date_played: dateValue,
       };
       setCoursesPlayed(prev => [...prev, optimistic]);
 
       const { data } = await supabase
         .from('courses_played')
-        .insert({ user_id: userId, course_id: courseId })
+        .insert({ user_id: userId, course_id: courseId, date_played: dateValue })
         .select()
         .single();
 
@@ -1485,31 +1499,43 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // ---- Follow methods ----
   const toggleFollow = useCallback(
     async (targetUserId: string) => {
-      if (!session) return;
-      const userId = session.user.id;
-      const existing = follows.find(f => f.follower_id === userId && f.following_id === targetUserId);
+      try {
+        if (!session) return;
+        const userId = session.user.id;
+        const existing = follows.find(f => f.follower_id === userId && f.following_id === targetUserId);
 
-      if (existing) {
-        // Optimistic remove
-        setFollows(prev => prev.filter(f => f.id !== existing.id));
-        await supabase.from('follows').delete().eq('id', existing.id);
-      } else {
-        // Optimistic add
-        const optimistic: Follow = {
-          id: crypto.randomUUID(),
-          follower_id: userId,
-          following_id: targetUserId,
-          created_at: new Date().toISOString(),
-        };
-        setFollows(prev => [...prev, optimistic]);
-        const { data } = await supabase
-          .from('follows')
-          .insert({ follower_id: userId, following_id: targetUserId })
-          .select()
-          .single();
-        if (data) {
-          setFollows(prev => prev.map(f => f.id === optimistic.id ? data : f));
+        if (existing) {
+          // Optimistic remove
+          setFollows(prev => prev.filter(f => f.id !== existing.id));
+          const { error } = await supabase.from('follows').delete().eq('id', existing.id);
+          if (error) {
+            console.error('Unfollow failed:', error);
+            setFollows(prev => [...prev, existing]); // rollback
+          }
+        } else {
+          // Optimistic add
+          const optimistic: Follow = {
+            id: generateId(),
+            follower_id: userId,
+            following_id: targetUserId,
+            created_at: new Date().toISOString(),
+          };
+          setFollows(prev => [...prev, optimistic]);
+          const { data, error } = await supabase
+            .from('follows')
+            .insert({ follower_id: userId, following_id: targetUserId })
+            .select()
+            .single();
+          if (error) {
+            console.error('Follow failed:', error);
+            setFollows(prev => prev.filter(f => f.id !== optimistic.id)); // rollback
+          } else if (data) {
+            setFollows(prev => prev.map(f => f.id === optimistic.id ? data : f));
+          }
         }
+      } catch (err) {
+        console.error('toggleFollow error:', err);
+        if (__DEV__) Alert.alert('Follow Error', String(err));
       }
     },
     [session, follows],
@@ -2437,6 +2463,28 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  const addMeetupMember = useCallback(
+    async (meetupId: string, userId: string) => {
+      // Optimistic update
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, member_count: (m.member_count ?? 0) + 1 } : m
+      ));
+
+      const { error } = await supabase
+        .from('meetup_members')
+        .insert({ meetup_id: meetupId, user_id: userId });
+
+      if (error) {
+        console.error('addMeetupMember failed:', error);
+        // Revert on error
+        setMeetups(prev => prev.map(m =>
+          m.id === meetupId ? { ...m, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
+        ));
+      }
+    },
+    [],
+  );
+
   const leaveMeetup = useCallback(
     async (meetupId: string) => {
       if (!session) return;
@@ -2828,6 +2876,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updateMeetup,
         deleteMeetup,
         joinMeetup,
+        addMeetupMember,
         leaveMeetup,
         withdrawAndRefund,
         getMeetupMembers,
