@@ -16,6 +16,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Course, Meetup, Photo, Writeup } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
@@ -112,6 +113,8 @@ export default function CourseDetailScreen() {
   const [reportReason, setReportReason] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [showAllRecent, setShowAllRecent] = useState(false);
+  const [markPlayedVisible, setMarkPlayedVisible] = useState(false);
+  const [markPlayedDate, setMarkPlayedDate] = useState('');
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const insets = useSafeAreaInsets();
@@ -234,7 +237,14 @@ export default function CourseDetailScreen() {
                 <Text style={styles.playedButtonActiveText}>Played</Text>
               </Pressable>
             ) : (
-              <Pressable style={styles.playedButton} onPress={() => markCoursePlayed(course.id)}>
+              <Pressable style={styles.playedButton} onPress={() => {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                setMarkPlayedDate(`${yyyy}-${mm}-${dd}`);
+                setMarkPlayedVisible(true);
+              }}>
                 <Text style={styles.playedButtonText}>Mark Played</Text>
               </Pressable>
             )
@@ -443,6 +453,72 @@ export default function CourseDetailScreen() {
         </>
       )}
 
+      <Modal visible={markPlayedVisible} transparent animationType="fade">
+        <View style={styles.reportOverlay}>
+          <View style={styles.reportModal}>
+            <Text style={styles.reportTitle}>When did you play?</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={markPlayedDate}
+                onChange={(e: any) => setMarkPlayedDate(e.target.value)}
+                style={{
+                  fontSize: 16,
+                  fontFamily: 'inherit',
+                  padding: 12,
+                  borderRadius: 8,
+                  border: `1px solid ${Colors.lightGray}`,
+                  outline: 'none',
+                  width: '100%',
+                  boxSizing: 'border-box' as any,
+                }}
+              />
+            ) : (
+              <DateTimePicker
+                value={markPlayedDate ? new Date(markPlayedDate + 'T12:00:00') : new Date()}
+                mode="date"
+                display="spinner"
+                maximumDate={new Date()}
+                onChange={(_event: any, selectedDate?: Date) => {
+                  if (selectedDate) {
+                    const yyyy = selectedDate.getFullYear();
+                    const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(selectedDate.getDate()).padStart(2, '0');
+                    setMarkPlayedDate(`${yyyy}-${mm}-${dd}`);
+                  }
+                }}
+              />
+            )}
+            <View style={styles.markPlayedFooter}>
+              <Text style={styles.markPlayedHint}>Optional — defaults to today</Text>
+              <View style={[styles.reportActions, { marginTop: 0 }]}>
+                <Pressable
+                  style={styles.reportCancelBtn}
+                  onPress={() => {
+                    setMarkPlayedVisible(false);
+                    setMarkPlayedDate('');
+                  }}
+                >
+                  <Text style={styles.reportCancelText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.reportSubmitBtn}
+                  onPress={async () => {
+                    const dateStr = markPlayedDate.trim();
+                    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : undefined;
+                    await markCoursePlayed(course.id, validDate);
+                    setMarkPlayedVisible(false);
+                    setMarkPlayedDate('');
+                  }}
+                >
+                  <Text style={styles.reportSubmitText}>Save</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={reportVisible} transparent animationType="fade">
         <View style={styles.reportOverlay}>
           <View style={styles.reportModal}>
@@ -634,6 +710,8 @@ const styles = StyleSheet.create({
   reportOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
   reportModal: { backgroundColor: Colors.white, borderRadius: 12, padding: 24, width: '100%', maxWidth: 400 },
   reportTitle: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 16 },
+  markPlayedFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
+  markPlayedHint: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray },
   reportInput: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 12, fontSize: 16, fontFamily: Fonts!.sans, minHeight: 100, textAlignVertical: 'top', outlineStyle: 'none' } as any,
   reportActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 16 },
   reportCancelBtn: { paddingHorizontal: 16, paddingVertical: 10 },
