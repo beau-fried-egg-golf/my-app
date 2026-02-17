@@ -52,15 +52,9 @@ export default function Layout() {
               title="Hole Annotations"
               onClick={() => navigate('/hole-annotations')}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="6" y="3" width="12" height="14" rx="1" />
-                <line x1="3" y1="21" x2="5" y2="13" />
-                <line x1="1" y1="21" x2="5" y2="21" />
-                <path d="M5 13L2.5 11.5" />
-                <path d="M5 13L5.5 10" />
-                <line x1="21" y1="21" x2="19" y2="13" />
-                <line x1="23" y1="21" x2="19" y2="21" />
-                <path d="M19 13c1.5-1.5 2.5-2 2.5-3.5a2.5 2.5 0 0 0-5 0c0 1.5 1 2 2.5 3.5z" />
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
               </svg>
             </button>
             <button
