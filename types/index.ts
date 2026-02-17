@@ -310,6 +310,7 @@ export interface ConversationListItem {
   group_id?: string;
   meetup_id?: string;
   member_count?: number;
+  meetup_date?: string;
 }
 
 export interface Meetup {

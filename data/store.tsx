@@ -7,15 +7,11 @@ import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, Po
 async function updateBadgeCount(
   notifications: Notification[],
   conversations: Conversation[],
-  groups: Group[],
-  meetups: Meetup[],
 ) {
   if (Platform.OS === 'web') return;
   const count =
     notifications.filter(n => !n.is_read).length +
-    conversations.filter(c => c.unread).length +
-    groups.filter(g => g._has_unread).length +
-    meetups.filter(m => m._has_unread).length;
+    conversations.filter(c => c.unread).length;
   const Notifications = await import('expo-notifications');
   Notifications.setBadgeCountAsync(count);
 }
@@ -220,6 +216,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         unread: m._has_unread ?? false,
         meetup_id: m.id,
         member_count: m.member_count,
+        meetup_date: m.meetup_date,
       }));
 
     return [...dmItems, ...groupItems, ...meetupItems].sort((a, b) => {
@@ -774,7 +771,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Optimistic update
       const updated = notificationsRef.current.map(n => n.id === id ? { ...n, is_read: true } : n);
       setNotifications(updated);
-      updateBadgeCount(updated, conversationsRef.current, groupsRef.current, meetupsRef.current);
+      updateBadgeCount(updated, conversationsRef.current);
       await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     },
     [],
@@ -789,7 +786,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // Optimistic update
       const updated = notificationsRef.current.map(n => ({ ...n, is_read: true }));
       setNotifications(updated);
-      updateBadgeCount(updated, conversationsRef.current, groupsRef.current, meetupsRef.current);
+      updateBadgeCount(updated, conversationsRef.current);
       await supabase.from('notifications').update({ is_read: true }).eq('user_id', session.user.id).eq('is_read', false);
     },
     [session],
@@ -1734,7 +1731,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         c.id === conversationId ? { ...c, unread: false, [field]: now } : c
       );
       setConversations(updatedConvos);
-      updateBadgeCount(notificationsRef.current, updatedConvos, groupsRef.current, meetupsRef.current);
+      updateBadgeCount(notificationsRef.current, updatedConvos);
 
       await supabase
         .from('conversations')
@@ -2107,9 +2104,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           : g
       ));
 
+      // Send push notifications for @mentions
+      const mentions = content.match(/@[\w\s]+/g);
+      if (mentions && mentions.length > 0) {
+        const group = groups.find(g => g.id === groupId);
+        const { data: members } = await supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId);
+        if (members) {
+          const memberIds = members.map(m => m.user_id).filter(id => id !== userId);
+          const { data: memberProfiles } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .in('id', memberIds);
+          if (memberProfiles) {
+            const mentionNames = mentions.map(m => m.slice(1).trim().toLowerCase());
+            for (const profile of memberProfiles) {
+              if (mentionNames.some(name => profile.name.toLowerCase().startsWith(name))) {
+                sendPush({
+                  recipient_id: profile.id,
+                  title: group?.name ?? 'Group Chat',
+                  body: `@${profile.name}: ${content.slice(0, 100)}`,
+                  data: { type: 'group_mention', group_id: groupId },
+                  push_type: 'mention',
+                });
+              }
+            }
+          }
+        }
+      }
+
       return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
     },
-    [session, user],
+    [session, user, groups],
   );
 
   const toggleGroupMessageReaction = useCallback(
@@ -2145,8 +2173,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         g.id === groupId ? { ...g, _has_unread: false, _member_last_read_at: now } : g
       );
       setGroups(updatedGroups);
-      updateBadgeCount(notificationsRef.current, conversationsRef.current, updatedGroups, meetupsRef.current);
-
       await supabase
         .from('group_members')
         .update({ last_read_at: now })
@@ -2556,9 +2582,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           : m
       ));
 
+      // Send push notifications for @mentions
+      const mentions = content.match(/@[\w\s]+/g);
+      if (mentions && mentions.length > 0) {
+        const meetup = meetups.find(m => m.id === meetupId);
+        const { data: members } = await supabase
+          .from('meetup_members')
+          .select('user_id')
+          .eq('meetup_id', meetupId);
+        if (members) {
+          const memberIds = members.map(m => m.user_id).filter(id => id !== userId);
+          const { data: memberProfiles } = await supabase
+            .from('profiles')
+            .select('id, name')
+            .in('id', memberIds);
+          if (memberProfiles) {
+            const mentionNames = mentions.map(m => m.slice(1).trim().toLowerCase());
+            for (const profile of memberProfiles) {
+              if (mentionNames.some(name => profile.name.toLowerCase().startsWith(name))) {
+                sendPush({
+                  recipient_id: profile.id,
+                  title: meetup?.name ?? 'Meetup Chat',
+                  body: `@${profile.name}: ${content.slice(0, 100)}`,
+                  data: { type: 'meetup_mention', meetup_id: meetupId },
+                  push_type: 'mention',
+                });
+              }
+            }
+          }
+        }
+      }
+
       return { ...data, sender_name: user?.name ?? 'Member', sender_image: user?.image ?? null };
     },
-    [session, user],
+    [session, user, meetups],
   );
 
   const toggleMeetupMessageReaction = useCallback(
@@ -2594,8 +2651,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         m.id === meetupId ? { ...m, _has_unread: false, _member_last_read_at: now } : m
       );
       setMeetups(updatedMeetups);
-      updateBadgeCount(notificationsRef.current, conversationsRef.current, groupsRef.current, updatedMeetups);
-
       await supabase
         .from('meetup_members')
         .update({ last_read_at: now })
@@ -2633,7 +2688,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ---- Push notification helpers ----
-  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' }) {
+  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' }) {
     supabase.functions.invoke('send-push', { body: params }).catch(() => {});
   }
 

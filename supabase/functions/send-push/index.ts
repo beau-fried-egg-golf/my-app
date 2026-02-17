@@ -48,6 +48,7 @@ serve(async (req: Request) => {
     dm: profile.push_dm_enabled ?? true,
     notification: profile.push_notifications_enabled ?? true,
     nearby_meetup: profile.push_nearby_enabled ?? true,
+    mention: profile.push_notifications_enabled ?? true,
   };
 
   if (!prefMap[push_type]) {

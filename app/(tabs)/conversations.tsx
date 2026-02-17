@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, Image, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -78,6 +78,41 @@ export default function ConversationsScreen() {
     return item.type === 'meetup';
   });
 
+  const meetupSections = useMemo(() => {
+    if (activeTab !== 'meetups') return [];
+    const now = new Date();
+    const upcoming = filteredItems.filter(i => i.meetup_date && new Date(i.meetup_date) > now);
+    const past = filteredItems.filter(i => !i.meetup_date || new Date(i.meetup_date) <= now);
+    const sections: { title: string; data: ConversationListItem[] }[] = [];
+    if (upcoming.length > 0) sections.push({ title: 'UPCOMING', data: upcoming });
+    if (past.length > 0) sections.push({ title: 'PAST', data: past });
+    return sections;
+  }, [activeTab, filteredItems]);
+
+  const handlePress = (item: ConversationListItem) => {
+    if (item.type === 'group') {
+      router.push(`/group-chat/${item.group_id ?? item.id}`);
+    } else if (item.type === 'meetup') {
+      router.push(`/meetup-chat/${item.meetup_id ?? item.id}`);
+    } else {
+      router.push(`/conversation/${item.id}`);
+    }
+  };
+
+  const emptyComponent = (
+    <View style={styles.empty}>
+      <Ionicons name="chatbubbles-outline" size={48} color={Colors.lightGray} />
+      <Text style={styles.emptyTitle}>No conversations yet</Text>
+      <Text style={styles.emptyText}>
+        {activeTab === 'dms'
+          ? "Visit a member's profile and tap Message to start chatting"
+          : activeTab === 'groups'
+            ? 'Join a group to start chatting'
+            : 'Join a meetup to start chatting'}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.tabBar}>
@@ -96,39 +131,35 @@ export default function ConversationsScreen() {
           </Pressable>
         ))}
       </View>
-      <FlatList
-        data={filteredItems}
-        keyExtractor={(item) => `${item.type}-${item.id}`}
-        renderItem={({ item }) => (
-          <ConversationRow
-            item={item}
-            onPress={() => {
-              if (item.type === 'group') {
-                router.push(`/group-chat/${item.group_id ?? item.id}`);
-              } else if (item.type === 'meetup') {
-                router.push(`/meetup-chat/${item.meetup_id ?? item.id}`);
-              } else {
-                router.push(`/conversation/${item.id}`);
-              }
-            }}
-          />
-        )}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="chatbubbles-outline" size={48} color={Colors.lightGray} />
-            <Text style={styles.emptyTitle}>No conversations yet</Text>
-            <Text style={styles.emptyText}>
-              {activeTab === 'dms'
-                ? "Visit a member's profile and tap Message to start chatting"
-                : activeTab === 'groups'
-                  ? 'Join a group to start chatting'
-                  : 'Join a meetup to start chatting'}
-            </Text>
-          </View>
-        }
-        contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : undefined}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      {activeTab === 'meetups' ? (
+        <SectionList
+          sections={meetupSections}
+          keyExtractor={(item) => `meetup-${item.id}`}
+          renderSectionHeader={({ section }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{section.title}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => (
+            <ConversationRow item={item} onPress={() => handlePress(item)} />
+          )}
+          ListEmptyComponent={emptyComponent}
+          contentContainerStyle={meetupSections.length === 0 ? styles.emptyContainer : undefined}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          stickySectionHeadersEnabled={false}
+        />
+      ) : (
+        <FlatList
+          data={filteredItems}
+          keyExtractor={(item) => `${item.type}-${item.id}`}
+          renderItem={({ item }) => (
+            <ConversationRow item={item} onPress={() => handlePress(item)} />
+          )}
+          ListEmptyComponent={emptyComponent}
+          contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : undefined}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      )}
     </View>
   );
 }
@@ -230,6 +261,19 @@ const styles = StyleSheet.create({
     color: Colors.orange,
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
+  },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 6,
+    backgroundColor: Colors.white,
+  },
+  sectionHeaderText: {
+    fontSize: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.gray,
+    letterSpacing: 1,
   },
   separator: {
     height: 1,
