@@ -24,7 +24,7 @@ export default function FlagQueue() {
 
   async function handleRepublish(flag: ContentFlag) {
     if (!window.confirm('Republish this content and clear all flags?')) return;
-    await republishContent(flag.content_type, flag.content_id);
+    await republishContent(flag.content_type as 'post' | 'writeup', flag.content_id);
     setFlags(prev => prev.filter(f => f.content_id !== flag.content_id));
   }
 
