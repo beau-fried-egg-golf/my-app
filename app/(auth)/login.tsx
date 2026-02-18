@@ -46,7 +46,7 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <LetterSpacedHeader text="Welcome Back" size={28} />
+          <LetterSpacedHeader text="Welcome to The Fried Egg Golf Club" size={28} />
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 

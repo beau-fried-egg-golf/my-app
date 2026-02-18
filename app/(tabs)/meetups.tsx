@@ -46,7 +46,12 @@ function MeetupRow({ item, onPress, distance }: { item: Meetup; onPress: () => v
         </View>
       )}
       <View style={styles.rowInfo}>
-        <Text style={styles.meetupName}>{item.name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.meetupName}>{item.name}</Text>
+          {item.is_fe_coordinated && (
+            <Image source={require('@/assets/images/fe-icon.png')} style={styles.feIcon} />
+          )}
+        </View>
         <Text style={styles.meetupMeta}>
           {formatMeetupDate(item.meetup_date)}
         </Text>
@@ -110,10 +115,6 @@ export default function MeetupsScreen() {
     return upcoming;
   }, [meetups, sortOrder, userLocation, courses]);
 
-  const pastMeetups = useMemo(() => {
-    return meetups.filter(m => new Date(m.meetup_date) <= now);
-  }, [meetups]);
-
   return (
     <View style={styles.container}>
       <FlatList
@@ -150,15 +151,6 @@ export default function MeetupsScreen() {
               <>
                 <Text style={styles.sectionTitle}>UPCOMING</Text>
                 {upcomingMeetups.map(m => (
-                  <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} distance={getMeetupDistance(m)} />
-                ))}
-              </>
-            )}
-
-            {pastMeetups.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>PAST MEETUPS</Text>
-                {pastMeetups.map(m => (
                   <MeetupRow key={m.id} item={m} onPress={() => router.push(`/meetup/${m.id}`)} distance={getMeetupDistance(m)} />
                 ))}
               </>
@@ -271,6 +263,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   rowInfo: { flex: 1, marginLeft: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  feIcon: { width: 18, height: 18, borderRadius: 9 },
   meetupName: {
     fontSize: 16,
     fontFamily: Fonts!.sansBold,

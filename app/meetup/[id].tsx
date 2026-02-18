@@ -372,15 +372,8 @@ export default function MeetupDetailScreen() {
           <Text style={styles.meetupName}>{meetup.name}</Text>
           {meetup.is_fe_coordinated && (
             <View style={styles.feBadge}>
-              <Text style={styles.feBadgeText}>FE COORDINATED</Text>
-            </View>
-          )}
-          {isFeMeetupWithPayment && (
-            <View style={styles.policyNotice}>
-              <Ionicons name="information-circle" size={16} color="#856404" />
-              <Text style={styles.policyNoticeText}>
-                Cancellation Policy: Full refunds are automatic more than 7 days before the event. Within 7 days, cancellations require approval from FE coordinators.
-              </Text>
+              <Image source={require('@/assets/images/fe-icon.png')} style={styles.feBadgeIcon} />
+              <Text style={styles.feBadgeText}>COORDINATED</Text>
             </View>
           )}
           <Text style={styles.meetupDateHero}>{formatMeetupDate(meetup.meetup_date)}</Text>
@@ -416,6 +409,15 @@ export default function MeetupDetailScreen() {
         <View style={styles.actionRow}>
           {renderActionButtons()}
         </View>
+
+        {isFeMeetupWithPayment && (
+          <View style={styles.policyNotice}>
+            <Ionicons name="information-circle" size={16} color="#856404" />
+            <Text style={styles.policyNoticeText}>
+              Cancellation Policy: Full refunds are automatic more than 7 days before the event. Within 7 days, cancellations require approval from FE coordinators.
+            </Text>
+          </View>
+        )}
 
         {/* Cancellation Request Form */}
         {showCancellationForm && currentUserMember && (
@@ -591,7 +593,7 @@ export default function MeetupDetailScreen() {
                   <Text style={styles.roleBadgeText}>Host</Text>
                 </View>
               )}
-              {isFeMeetupWithPayment && m.payment_status && PAYMENT_BADGE_COLORS[m.payment_status] && (
+              {isFeMeetupWithPayment && m.payment_status && PAYMENT_BADGE_COLORS[m.payment_status] && m.user_id !== meetup.host_id && (
                 <View style={[styles.paymentBadge, { backgroundColor: PAYMENT_BADGE_COLORS[m.payment_status].bg }]}>
                   <Text style={[styles.paymentBadgeText, { color: PAYMENT_BADGE_COLORS[m.payment_status].text }]}>
                     {m.payment_status === 'paid' ? 'Paid' : m.payment_status === 'waived' ? 'Waived' : 'Pending'}
@@ -667,14 +669,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   feBadge: {
-    backgroundColor: '#FFEE54',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     marginTop: 6,
   },
+  feBadgeIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
   feBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
     color: Colors.black,
@@ -871,10 +877,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF3CD',
     borderRadius: 8,
     padding: 10,
-    marginTop: 10,
+    marginBottom: 16,
     gap: 8,
     alignItems: 'flex-start',
-    maxWidth: 340,
   },
   policyNoticeText: {
     flex: 1,
