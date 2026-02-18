@@ -22,6 +22,10 @@ interface ExperienceStoreContextType {
     courses: any[];
   } | null>;
 
+  // Courses
+  experienceCourses: any[];
+  loadExperienceCourses: () => Promise<void>;
+
   // Availability
   checkLodgingAvailability: (
     locationId: string,
@@ -71,6 +75,7 @@ export function useExperienceStore() {
 export function ExperienceStoreProvider({ children }: { children: React.ReactNode }) {
   const { session } = useStore();
   const [locations, setLocations] = useState<ExperienceLocation[]>([]);
+  const [experienceCourses, setExperienceCourses] = useState<any[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [myReservations, setMyReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,6 +125,25 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
       roomTypes: (roomTypes as RoomType[]) || [],
       courses: courses || [],
     };
+  }, []);
+
+  // ── Experience Courses ──
+
+  const loadExperienceCourses = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('courses')
+      .select('*, experience_locations(name, hero_image)')
+      .eq('is_experience_course', true)
+      .order('name');
+    if (error) throw error;
+    setExperienceCourses(
+      (data || []).map((c: any) => ({
+        ...c,
+        location_name: c.experience_locations?.name,
+        location_hero_image: c.experience_locations?.hero_image,
+        experience_locations: undefined,
+      })),
+    );
   }, []);
 
   // ── Availability ──
@@ -388,6 +412,8 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
     locations,
     loadLocations,
     getLocation,
+    experienceCourses,
+    loadExperienceCourses,
     checkLodgingAvailability,
     checkTeeTimeAvailability,
     packages,

@@ -14,7 +14,7 @@ import TeeTimeRow from '@/components/experiences/TeeTimeRow';
 type Tab = 'lodging' | 'tee_times' | 'packages';
 
 export default function LocationDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>();
   const router = useRouter();
   const goBack = useGoBack();
   const insets = useSafeAreaInsets();
@@ -23,7 +23,8 @@ export default function LocationDetail() {
   const [location, setLocation] = useState<ExperienceLocation | null>(null);
   const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [activeTab, setActiveTab] = useState<Tab>('lodging');
+  const initialTab = (tab === 'tee_times' || tab === 'packages') ? tab : 'lodging';
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   // Lodging availability
   const [lodgingAvailability, setLodgingAvailability] = useState<any[]>([]);

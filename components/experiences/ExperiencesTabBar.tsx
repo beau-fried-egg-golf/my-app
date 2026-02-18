@@ -38,6 +38,9 @@ export default function ExperiencesTabBar() {
 
   const isExperiencesHome = pathname === '/' || pathname === '';
   const isReservations = pathname === '/reservations';
+  const showBar = isExperiencesHome || isReservations;
+
+  if (!showBar) return null;
 
   return (
     <>

@@ -124,19 +124,27 @@ export default function ExperiencesHome() {
         )}
 
         {/* Browse by Type */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Browse</Text>
-          <View style={styles.browseGrid}>
-            <Pressable style={styles.browseTile}>
-              <Ionicons name="bed-outline" size={28} color={Colors.black} />
-              <Text style={styles.browseTileLabel}>Lodging</Text>
-            </Pressable>
-            <Pressable style={styles.browseTile}>
-              <Ionicons name="golf-outline" size={28} color={Colors.black} />
-              <Text style={styles.browseTileLabel}>Tee Times</Text>
-            </Pressable>
+        {locations.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Browse</Text>
+            <View style={styles.browseGrid}>
+              <Pressable
+                style={styles.browseTile}
+                onPress={() => router.push(`/(experiences)/location/${locations[0].id}?tab=lodging`)}
+              >
+                <Ionicons name="bed-outline" size={28} color={Colors.black} />
+                <Text style={styles.browseTileLabel}>Lodging</Text>
+              </Pressable>
+              <Pressable
+                style={styles.browseTile}
+                onPress={() => router.push('/(experiences)/tee-times')}
+              >
+                <Ionicons name="golf-outline" size={28} color={Colors.black} />
+                <Text style={styles.browseTileLabel}>Tee Times</Text>
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Locations */}
         {locations.length > 0 && (

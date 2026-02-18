@@ -33,6 +33,10 @@ export default function ExperiencesLayout() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="tee-times"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="book-lodging"
           options={{ headerShown: false }}
         />
