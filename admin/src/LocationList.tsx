@@ -51,10 +51,10 @@ export default function LocationList() {
                 <td><strong>{loc.name}</strong></td>
                 <td>
                   <span className="badge" style={{
-                    background: loc.type === 'resort' ? '#dbeafe' : loc.type === 'lodge' ? '#dcfce7' : '#f3f4f6',
-                    color: loc.type === 'resort' ? '#1e40af' : loc.type === 'lodge' ? '#166534' : '#4b5563',
+                    background: loc.type === 'resort' ? '#dbeafe' : loc.type === 'lodge' ? '#dcfce7' : loc.type === 'private_club' ? '#fef3c7' : loc.type === 'public_course' ? '#e0e7ff' : '#f3f4f6',
+                    color: loc.type === 'resort' ? '#1e40af' : loc.type === 'lodge' ? '#166534' : loc.type === 'private_club' ? '#92400e' : loc.type === 'public_course' ? '#3730a3' : '#4b5563',
                   }}>
-                    {loc.type}
+                    {loc.type.replace('_', ' ')}
                   </span>
                 </td>
                 <td>{loc.city}{loc.state ? `, ${loc.state}` : ''}</td>

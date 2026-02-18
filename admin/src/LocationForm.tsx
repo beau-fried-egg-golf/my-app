@@ -115,8 +115,11 @@ export default function LocationForm() {
             <label className="form-label">Type</label>
             <select className="form-input" value={form.type} onChange={e => handleChange('type', e.target.value)}>
               <option value="lodge">Lodge</option>
-              <option value="course">Course</option>
               <option value="resort">Resort</option>
+              <option value="private_club">Private Club</option>
+              <option value="public_course">Public Course</option>
+              <option value="destination">Destination</option>
+              <option value="course">Course</option>
             </select>
           </div>
         </div>

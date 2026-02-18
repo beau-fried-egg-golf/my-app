@@ -265,7 +265,7 @@ export interface ExperienceLocation {
   id: string;
   name: string;
   slug: string;
-  type: 'lodge' | 'course' | 'resort';
+  type: 'lodge' | 'course' | 'resort' | 'private_club' | 'public_course' | 'destination';
   description: string | null;
   short_description: string | null;
   address_line1: string | null;

@@ -129,8 +129,8 @@ export default function LocationDetail() {
                     nightlyRate={rt.base_price_per_night}
                     availableUnits={99} // TODO: Wire up date selection
                     onSelect={() => router.push({
-                      pathname: '/(experiences)/book-lodging',
-                      params: { locationId: id, roomTypeId: rt.id },
+                      pathname: '/(experiences)/room/[id]',
+                      params: { id: rt.id, locationId: id },
                     })}
                   />
                 ))}

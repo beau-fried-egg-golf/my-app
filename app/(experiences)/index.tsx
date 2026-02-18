@@ -130,16 +130,26 @@ export default function ExperiencesHome() {
             <View style={styles.browseGrid}>
               <Pressable
                 style={styles.browseTile}
-                onPress={() => router.push(`/(experiences)/location/${locations[0].id}?tab=lodging`)}
+                onPress={() => router.push('/(experiences)/lodging')}
               >
-                <Ionicons name="bed-outline" size={28} color={Colors.black} />
+                <Image
+                  source={{ uri: 'https://maylqohoflkarvgadttn.supabase.co/storage/v1/object/public/experiences/broomsedge/interior.png' }}
+                  style={styles.browseTileImage}
+                />
+                <View style={styles.browseTileOverlay} />
+                <Ionicons name="bed-outline" size={28} color={Colors.white} />
                 <Text style={styles.browseTileLabel}>Lodging</Text>
               </Pressable>
               <Pressable
                 style={styles.browseTile}
                 onPress={() => router.push('/(experiences)/tee-times')}
               >
-                <Ionicons name="golf-outline" size={28} color={Colors.black} />
+                <Image
+                  source={{ uri: 'https://maylqohoflkarvgadttn.supabase.co/storage/v1/object/public/experiences/bandon/bandon-trails.jpg' }}
+                  style={styles.browseTileImage}
+                />
+                <View style={styles.browseTileOverlay} />
+                <Ionicons name="golf-outline" size={28} color={Colors.white} />
                 <Text style={styles.browseTileLabel}>Tee Times</Text>
               </Pressable>
             </View>
@@ -382,17 +392,28 @@ const styles = StyleSheet.create({
   },
   browseTile: {
     flex: 1,
-    backgroundColor: Colors.lightGray,
     borderRadius: 12,
-    paddingVertical: 20,
+    height: 100,
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 6,
+    overflow: 'hidden',
+  },
+  browseTileImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  } as any,
+  browseTileOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
   browseTileLabel: {
     fontSize: 14,
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
-    color: Colors.black,
+    color: Colors.white,
   },
 
   // Locations
