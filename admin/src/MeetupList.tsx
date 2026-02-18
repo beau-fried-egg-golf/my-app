@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMeetups, deleteMeetup } from './storage';
+import { getMeetups, deleteMeetup, suspendMeetup } from './storage';
 import type { Meetup } from './types';
 
 type FEFilter = 'all' | 'yes' | 'no';
@@ -36,6 +36,11 @@ export default function MeetupList() {
     await deleteMeetup(id);
     setMeetups(meetups.filter(m => m.id !== id));
     setDeleteId(null);
+  }
+
+  async function handleSuspendToggle(id: string, currentlySuspended: boolean) {
+    await suspendMeetup(id, !currentlySuspended);
+    setMeetups(meetups.map(m => m.id === id ? { ...m, suspended: !currentlySuspended } : m));
   }
 
   return (
@@ -83,8 +88,15 @@ export default function MeetupList() {
           </thead>
           <tbody>
             {filtered.map((m) => (
-              <tr key={m.id}>
-                <td><Link to={`/meetups/${m.id}`} className="link"><strong>{m.name}</strong></Link></td>
+              <tr key={m.id} style={m.suspended ? { opacity: 0.5 } : undefined}>
+                <td>
+                  <Link to={`/meetups/${m.id}`} className="link"><strong>{m.name}</strong></Link>
+                  {m.suspended && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, backgroundColor: '#fecaca', color: '#991b1b' }}>
+                      SUSPENDED
+                    </span>
+                  )}
+                </td>
                 <td>{m.host_name ?? 'Member'}</td>
                 <td>{formatDate(m.meetup_date)}</td>
                 <td>{m.location_name}</td>
@@ -98,6 +110,13 @@ export default function MeetupList() {
                 <td>
                   <div className="btn-group">
                     <Link to={`/meetups/${m.id}/edit`} className="btn btn-sm">Edit</Link>
+                    <button
+                      className="btn btn-sm"
+                      style={m.suspended ? { backgroundColor: '#d1fae5', color: '#065f46' } : { backgroundColor: '#fef3c7', color: '#92400e' }}
+                      onClick={() => handleSuspendToggle(m.id, !!m.suspended)}
+                    >
+                      {m.suspended ? 'Unsuspend' : 'Suspend'}
+                    </button>
                     {deleteId === m.id ? (
                       <>
                         <button className="btn btn-sm btn-danger" onClick={() => handleDelete(m.id)}>

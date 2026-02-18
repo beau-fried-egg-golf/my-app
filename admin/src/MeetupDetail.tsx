@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getMeetups, getMeetupMembers, updateMeetupMemberPayment } from './storage';
-import type { Meetup, MeetupMember } from './types';
+import { getMeetups, getMeetupMembers, updateMeetupMemberPayment, suspendMeetup, getWaitlistEntries, removeFromWaitlist } from './storage';
+import type { Meetup, MeetupMember, WaitlistEntry } from './types';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -27,6 +27,7 @@ export default function MeetupDetail() {
   const { id } = useParams<{ id: string }>();
   const [meetup, setMeetup] = useState<Meetup | null>(null);
   const [members, setMembers] = useState<MeetupMember[]>([]);
+  const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -34,6 +35,7 @@ export default function MeetupDetail() {
       setMeetup(meetups.find(m => m.id === id) ?? null);
     });
     getMeetupMembers(id).then(setMembers);
+    getWaitlistEntries(id).then(setWaitlist);
   }, [id]);
 
   async function handlePaymentChange(memberId: string, status: string) {
@@ -58,13 +60,30 @@ export default function MeetupDetail() {
       <div className="detail-container">
         <div className="detail-header">
           <div>
-            <div className="detail-title">{meetup.name}</div>
+            <div className="detail-title">
+              {meetup.name}
+              {meetup.suspended && (
+                <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 600, padding: '2px 8px', borderRadius: 4, backgroundColor: '#fecaca', color: '#991b1b', verticalAlign: 'middle' }}>
+                  SUSPENDED
+                </span>
+              )}
+            </div>
             <div className="detail-meta">
               {meetup.host_name ?? 'Member'} &middot; {formatDate(meetup.meetup_date)} &middot; {meetup.location_name}
             </div>
           </div>
           <div className="btn-group">
             <Link to={`/meetups/${meetup.id}/edit`} className="btn btn-sm">Edit</Link>
+            <button
+              className="btn btn-sm"
+              style={meetup.suspended ? { backgroundColor: '#d1fae5', color: '#065f46' } : { backgroundColor: '#fef3c7', color: '#92400e' }}
+              onClick={async () => {
+                await suspendMeetup(meetup.id, !meetup.suspended);
+                setMeetup({ ...meetup, suspended: !meetup.suspended });
+              }}
+            >
+              {meetup.suspended ? 'Unsuspend' : 'Suspend'}
+            </button>
           </div>
         </div>
 
@@ -168,6 +187,52 @@ export default function MeetupDetail() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {waitlist.length > 0 && (
+          <>
+            <h3 className="section-title" style={{ marginTop: 24 }}>
+              Waitlist ({waitlist.length})
+            </h3>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Joined</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {waitlist.map((entry) => (
+                    <tr key={entry.id}>
+                      <td>{entry.position}</td>
+                      <td>
+                        <Link to={`/users/${entry.user_id}`} className="link">
+                          {entry.user_name ?? 'Member'}
+                        </Link>
+                      </td>
+                      <td>{formatShortDate(entry.created_at)}</td>
+                      <td>
+                        <button
+                          className="btn btn-sm"
+                          style={{ fontSize: 11, padding: '1px 6px' }}
+                          onClick={async () => {
+                            if (!window.confirm(`Remove ${entry.user_name ?? 'this user'} from the waitlist?`)) return;
+                            await removeFromWaitlist(entry.id);
+                            setWaitlist(prev => prev.filter(e => e.id !== entry.id));
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>

@@ -25,6 +25,7 @@ import TeamList from './TeamList';
 import GroupList from './GroupList';
 import AnnotationList from './AnnotationList';
 import AnnotationEditor from './AnnotationEditor';
+import CancellationQueue from './CancellationQueue';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -103,6 +104,7 @@ export default function App() {
         <Route path="meetups/:id" element={<MeetupDetail />} />
         <Route path="meetups/:id/edit" element={<MeetupForm />} />
         <Route path="flags" element={<FlagQueue />} />
+        <Route path="cancellations" element={<CancellationQueue />} />
         <Route path="email-templates" element={<EmailTemplates />} />
         <Route path="team" element={<TeamList />} />
         <Route path="groups" element={<GroupList />} />

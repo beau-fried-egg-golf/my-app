@@ -136,12 +136,37 @@ export interface Meetup {
   host_takes_slot: boolean;
   image: string | null;
   is_fe_coordinated: boolean;
+  suspended?: boolean;
   stripe_payment_url: string | null;
   cost_cents?: number | null;
   created_at: string;
   updated_at: string;
   host_name?: string;
   member_count?: number;
+}
+
+export interface CancellationRequest {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  member_id: string;
+  note: string;
+  status: 'pending' | 'approved' | 'denied';
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  user_name?: string;
+  meetup_name?: string;
+  meetup_date?: string;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  position: number;
+  created_at: string;
+  user_name?: string;
 }
 
 export interface AdminUser {

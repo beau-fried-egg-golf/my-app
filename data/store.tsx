@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { Alert, Platform } from 'react-native';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, MessageReaction, ConversationListItem, Notification, profileToUser } from '@/types';
+import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, MessageReaction, ConversationListItem, Notification, CancellationRequest, WaitlistEntry, profileToUser } from '@/types';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -119,6 +119,13 @@ interface StoreContextType {
   sendMeetupMessage: (meetupId: string, content: string, replyToId?: string) => Promise<MeetupMessage>;
   toggleMeetupMessageReaction: (messageId: string, meetupId: string, reaction: string) => Promise<void>;
   markMeetupRead: (meetupId: string) => Promise<void>;
+  // Cancellations & Waitlist
+  requestCancellation: (meetupId: string, memberId: string, note: string) => Promise<void>;
+  getUserCancellationRequest: (meetupId: string) => Promise<CancellationRequest | null>;
+  joinWaitlist: (meetupId: string) => Promise<void>;
+  leaveWaitlist: (meetupId: string) => Promise<void>;
+  getWaitlistPosition: (meetupId: string) => Promise<number | null>;
+  getWaitlistEntries: (meetupId: string) => Promise<WaitlistEntry[]>;
   // Notifications
   notifications: Notification[];
   hasUnreadNotifications: boolean;
@@ -547,12 +554,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const { data: meetupData } = meetupIds.length > 0
       ? await supabase
           .from('meetups')
-          .select('id, name')
+          .select('id, name, suspended')
           .in('id', meetupIds)
       : { data: [] };
-    const meetupMap = new Map((meetupData ?? []).map(m => [m.id, m.name]));
+    const meetupMap = new Map((meetupData ?? []).map(m => [m.id, m]));
 
-    return data.map(a => {
+    // Filter out activities for suspended meetups
+    const filteredData = data.filter(a => {
+      if (!a.meetup_id) return true;
+      const m = meetupMap.get(a.meetup_id);
+      return m && !m.suspended;
+    });
+
+    return filteredData.map(a => {
       const w = a.writeup_id ? writeupMap.get(a.writeup_id) : null;
       const courseList = coursesData ?? coursesRef.current;
       const courseName = w?.course_id
@@ -568,7 +582,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         target_user_name: a.target_user_id ? (profileMap.get(a.target_user_id) ?? 'another member') : undefined,
         post_content: a.post_id ? postMap.get(a.post_id) ?? '' : undefined,
         group_name: a.group_id ? groupMap.get(a.group_id) ?? '' : undefined,
-        meetup_name: a.meetup_id ? meetupMap.get(a.meetup_id) ?? '' : undefined,
+        meetup_name: a.meetup_id ? meetupMap.get(a.meetup_id)?.name ?? '' : undefined,
       };
     });
   }
@@ -649,10 +663,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const meetupIds = memberships.map(m => m.meetup_id);
     const { data: meetupData } = await supabase
       .from('meetups')
-      .select('id, name, meetup_date')
+      .select('id, name, meetup_date, suspended')
       .in('id', meetupIds);
 
     if (!meetupData || meetupData.length === 0) return;
+
+    // Skip suspended meetups
+    const activeMeetups = meetupData.filter(m => !m.suspended);
 
     const now = new Date();
 
@@ -670,7 +687,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     const toInsert: { user_id: string; type: string; meetup_id: string }[] = [];
 
-    for (const m of meetupData) {
+    for (const m of activeMeetups) {
       const meetupDate = new Date(m.meetup_date);
       const daysUntil = (meetupDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
@@ -686,7 +703,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await supabase.from('notifications').insert(toInsert);
       // Send push for each reminder
       for (const reminder of toInsert) {
-        const meetup = meetupData.find(m => m.id === reminder.meetup_id);
+        const meetup = activeMeetups.find(m => m.id === reminder.meetup_id);
         const daysLabel = reminder.type === 'meetup_reminder_1d' ? 'tomorrow' : 'in 7 days';
         sendPush({
           recipient_id: userId,
@@ -732,22 +749,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       : { data: [] };
     const writeupMap = new Map((writeupData ?? []).map(w => [w.id, w]));
 
-    // Batch fetch meetup names + dates
+    // Batch fetch meetup names + dates + suspended status
     const meetupIds = [...new Set(rawNotifications.filter(n => n.meetup_id).map(n => n.meetup_id!))];
     const { data: meetupInfo } = meetupIds.length > 0
-      ? await supabase.from('meetups').select('id, name, meetup_date').in('id', meetupIds)
+      ? await supabase.from('meetups').select('id, name, meetup_date, suspended').in('id', meetupIds)
       : { data: [] };
     const meetupMap = new Map((meetupInfo ?? []).map(m => [m.id, m]));
 
+    // Filter out notifications for suspended meetups
+    const visibleNotifications = rawNotifications.filter(n => {
+      if (!n.meetup_id) return true;
+      const m = meetupMap.get(n.meetup_id);
+      return m && !m.suspended;
+    });
+
     // Batch fetch post data for notifications with post_id
-    const postIds = [...new Set(rawNotifications.filter(n => n.post_id).map(n => n.post_id!))];
+    const postIds = [...new Set(visibleNotifications.filter(n => n.post_id).map(n => n.post_id!))];
     const { data: postInfo } = postIds.length > 0
       ? await supabase.from('posts').select('id, content').in('id', postIds)
       : { data: [] };
     const postMap = new Map((postInfo ?? []).map(p => [p.id, p.content]));
 
     // Batch fetch group names
-    const groupIds = [...new Set(rawNotifications.filter(n => n.group_id).map(n => n.group_id!))];
+    const groupIds = [...new Set(visibleNotifications.filter(n => n.group_id).map(n => n.group_id!))];
     const { data: groupInfo } = groupIds.length > 0
       ? await supabase.from('groups').select('id, name').in('id', groupIds)
       : { data: [] };
@@ -755,7 +779,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     const crs = coursesRef.current;
 
-    const enriched: Notification[] = rawNotifications.map(n => {
+    const enriched: Notification[] = visibleNotifications.map(n => {
       const actor = n.actor_id ? actorMap.get(n.actor_id) : null;
       const writeup = n.writeup_id ? writeupMap.get(n.writeup_id) : null;
       const meetup = n.meetup_id ? meetupMap.get(n.meetup_id) : null;
@@ -2217,19 +2241,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const { data: rawMeetups } = await supabase
       .from('meetups')
       .select('*')
+      .neq('suspended', true)
       .order('meetup_date', { ascending: true });
 
     if (!rawMeetups || rawMeetups.length === 0) { setMeetups([]); return; }
 
     const meetupIds = rawMeetups.map(m => m.id);
 
-    const [membersRes, lastMsgsRes] = await Promise.all([
+    const [membersRes, lastMsgsRes, waitlistRes] = await Promise.all([
       supabase.from('meetup_members').select('*').in('meetup_id', meetupIds),
       supabase.from('meetup_messages').select('meetup_id, user_id, content, created_at').in('meetup_id', meetupIds).order('created_at', { ascending: false }),
+      supabase.from('meetup_waitlist').select('meetup_id').in('meetup_id', meetupIds),
     ]);
 
     const members = membersRes.data ?? [];
     const lastMsgs = lastMsgsRes.data ?? [];
+
+    // Waitlist counts
+    const waitlistCountMap = new Map<string, number>();
+    for (const w of waitlistRes.data ?? []) {
+      waitlistCountMap.set(w.meetup_id, (waitlistCountMap.get(w.meetup_id) ?? 0) + 1);
+    }
 
     // Host names
     const hostIds = [...new Set(rawMeetups.map(m => m.host_id).filter(Boolean))];
@@ -2269,6 +2301,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...m,
         host_name: m.host_id ? (hostMap.get(m.host_id) ?? 'Member') : undefined,
         member_count: memberCountMap.get(m.id) ?? 0,
+        waitlist_count: waitlistCountMap.get(m.id) ?? 0,
         is_member: isMember,
         _last_message: lastMsg?.content,
         _last_message_at: lastMsg?.created_at,
@@ -2316,7 +2349,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (data.host_takes_slot && hostId) {
         await supabase
           .from('meetup_members')
-          .insert({ meetup_id: meetupData.id, user_id: hostId });
+          .insert({
+            meetup_id: meetupData.id,
+            user_id: hostId,
+            ...(data.is_fe_coordinated && data.cost_cents ? { payment_status: 'waived' } : {}),
+          });
       }
 
       const meetup: Meetup = {
@@ -2458,6 +2495,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         });
       }
 
+      // Remove from waitlist if user was on it
+      await supabase.from('meetup_waitlist').delete().eq('meetup_id', meetupId).eq('user_id', userId);
+
       const newActivities = await loadActivities();
       setActivities(newActivities);
 
@@ -2495,6 +2535,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const meetup = meetupsRef.current.find(m => m.id === meetupId);
       if (meetup?.host_id === userId) return; // Can't leave if host
 
+      const wasFull = meetup && (meetup.member_count ?? 0) >= meetup.total_slots;
+
       // Optimistic update
       setMeetups(prev => prev.map(m =>
         m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
@@ -2505,6 +2547,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .delete()
         .eq('meetup_id', meetupId)
         .eq('user_id', userId);
+
+      // Notify first waitlist person if meetup was full
+      if (wasFull && meetup) {
+        notifyNextOnWaitlist(meetupId, meetup.name);
+      }
     },
     [session],
   );
@@ -2512,6 +2559,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const withdrawAndRefund = useCallback(
     async (meetupId: string, memberId: string): Promise<boolean> => {
       if (!session) return false;
+
+      const meetup = meetupsRef.current.find(m => m.id === meetupId);
+      const wasFull = meetup && (meetup.member_count ?? 0) >= meetup.total_slots;
 
       // Optimistic update (same as leaveMeetup)
       const prevMeetups = meetupsRef.current;
@@ -2527,6 +2577,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // Revert optimistic update
         setMeetups(prevMeetups);
         return false;
+      }
+
+      // Notify first waitlist person if meetup was full
+      if (wasFull && meetup) {
+        notifyNextOnWaitlist(meetupId, meetup.name);
       }
 
       return true;
@@ -2755,6 +2810,133 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ---- Push notification helpers ----
+  async function notifyNextOnWaitlist(meetupId: string, meetupName: string) {
+    const { data: first } = await supabase
+      .from('meetup_waitlist')
+      .select('*')
+      .eq('meetup_id', meetupId)
+      .order('position', { ascending: true })
+      .limit(1)
+      .single();
+    if (first) {
+      await supabase.from('notifications').insert({
+        user_id: first.user_id,
+        type: 'waitlist_spot_available',
+        meetup_id: meetupId,
+      });
+      sendPush({
+        recipient_id: first.user_id,
+        title: 'Spot Available!',
+        body: `A spot opened up in ${meetupName}! Reserve it now.`,
+        data: { meetup_id: meetupId },
+        push_type: 'notification',
+      });
+    }
+  }
+
+  const requestCancellation = useCallback(
+    async (meetupId: string, memberId: string, note: string) => {
+      if (!session) return;
+      await supabase.from('cancellation_requests').insert({
+        meetup_id: meetupId,
+        user_id: session.user.id,
+        member_id: memberId,
+        note,
+      });
+    },
+    [session],
+  );
+
+  const getUserCancellationRequest = useCallback(
+    async (meetupId: string): Promise<CancellationRequest | null> => {
+      if (!session) return null;
+      const { data } = await supabase
+        .from('cancellation_requests')
+        .select('*')
+        .eq('meetup_id', meetupId)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      return data ?? null;
+    },
+    [session],
+  );
+
+  const joinWaitlist = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      // Get next position
+      const { data: existing } = await supabase
+        .from('meetup_waitlist')
+        .select('position')
+        .eq('meetup_id', meetupId)
+        .order('position', { ascending: false })
+        .limit(1);
+      const nextPosition = (existing && existing.length > 0 ? existing[0].position : 0) + 1;
+      await supabase.from('meetup_waitlist').insert({
+        meetup_id: meetupId,
+        user_id: session.user.id,
+        position: nextPosition,
+      });
+      // Update local waitlist count
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, waitlist_count: (m.waitlist_count ?? 0) + 1 } : m
+      ));
+    },
+    [session],
+  );
+
+  const leaveWaitlist = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      await supabase.from('meetup_waitlist').delete().eq('meetup_id', meetupId).eq('user_id', session.user.id);
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, waitlist_count: Math.max(0, (m.waitlist_count ?? 1) - 1) } : m
+      ));
+    },
+    [session],
+  );
+
+  const getWaitlistPosition = useCallback(
+    async (meetupId: string): Promise<number | null> => {
+      if (!session) return null;
+      const { data } = await supabase
+        .from('meetup_waitlist')
+        .select('position')
+        .eq('meetup_id', meetupId)
+        .eq('user_id', session.user.id)
+        .single();
+      return data?.position ?? null;
+    },
+    [session],
+  );
+
+  const getWaitlistEntries = useCallback(
+    async (meetupId: string): Promise<WaitlistEntry[]> => {
+      const { data: entries } = await supabase
+        .from('meetup_waitlist')
+        .select('*')
+        .eq('meetup_id', meetupId)
+        .order('position', { ascending: true });
+      if (!entries || entries.length === 0) return [];
+
+      const userIds = [...new Set(entries.map(e => e.user_id))];
+      const { data: userProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, image')
+        .in('id', userIds);
+      const profileMap = new Map((userProfiles ?? []).map(p => [p.id, p]));
+
+      return entries.map(e => ({
+        ...e,
+        user_name: profileMap.get(e.user_id)?.name ?? 'Member',
+        user_image: profileMap.get(e.user_id)?.image ?? null,
+      }));
+    },
+    [],
+  );
+
   function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' }) {
     supabase.functions.invoke('send-push', { body: params }).catch(() => {});
   }
@@ -2904,6 +3086,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         sendMeetupMessage,
         toggleMeetupMessageReaction,
         markMeetupRead,
+        requestCancellation,
+        getUserCancellationRequest,
+        joinWaitlist,
+        leaveWaitlist,
+        getWaitlistPosition,
+        getWaitlistEntries,
         notifications,
         hasUnreadNotifications,
         markNotificationRead,

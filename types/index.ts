@@ -327,12 +327,14 @@ export interface Meetup {
   host_takes_slot: boolean;
   image: string | null;
   is_fe_coordinated: boolean;
+  suspended?: boolean;
   stripe_payment_url: string | null;
   cost_cents?: number | null;
   created_at: string;
   updated_at: string;
   host_name?: string;
   member_count?: number;
+  waitlist_count?: number;
   is_member?: boolean;
   _last_message?: string;
   _last_message_at?: string;
@@ -373,7 +375,29 @@ export interface MessageReaction {
   created_at: string;
 }
 
-export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply';
+export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply' | 'waitlist_spot_available' | 'cancellation_approved' | 'cancellation_denied';
+
+export interface CancellationRequest {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  member_id: string;
+  note: string;
+  status: 'pending' | 'approved' | 'denied';
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  meetup_id: string;
+  user_id: string;
+  position: number;
+  created_at: string;
+  user_name?: string;
+  user_image?: string | null;
+}
 
 export interface Notification {
   id: string;

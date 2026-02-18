@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Tabs, Redirect } from 'expo-router';
-import { Image, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image, Linking, Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -85,7 +86,8 @@ export default function TabLayout() {
   const { session, isLoading } = useStore();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const TAB_BAR_WIDTH = 286;
+  const TAB_BAR_WIDTH = 340;
+  const [showMore, setShowMore] = useState(false);
 
   if (isLoading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
@@ -98,6 +100,7 @@ export default function TabLayout() {
   }
 
   return (
+    <>
     <Tabs
       sceneContainerStyle={{ paddingBottom: 0 }}
       screenOptions={{
@@ -182,6 +185,23 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="more"
+        options={{
+          title: 'MORE',
+          tabBarIcon: ({ color }) => (
+            <TabIconBox>
+              <Ionicons name="ellipsis-horizontal" size={24} color={color} />
+            </TabIconBox>
+          ),
+          tabBarButton: (props) => (
+            <Pressable
+              {...props}
+              onPress={() => setShowMore(true)}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="conversations"
         options={{
           href: null,
@@ -196,6 +216,52 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+
+      <Modal
+        visible={showMore}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowMore(false)}
+      >
+        <Pressable style={styles.moreBackdrop} onPress={() => setShowMore(false)}>
+          <View style={styles.moreSheet}>
+            <Pressable
+              style={styles.moreOption}
+              onPress={() => {
+                setShowMore(false);
+                Linking.openURL('https://proshop.thefriedegg.com/');
+              }}
+            >
+              <View style={styles.moreIconBox}>
+                <Ionicons name="bag-handle-outline" size={22} color={Colors.black} />
+              </View>
+              <View>
+                <Text style={styles.moreOptionTitle}>Pro Shop</Text>
+                <Text style={styles.moreOptionDesc}>Shop Fried Egg gear</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+            </Pressable>
+            <View style={styles.moreSeparator} />
+            <Pressable
+              style={styles.moreOption}
+              onPress={() => {
+                setShowMore(false);
+                Linking.openURL('https://www.thefriedegg.com/trip-planning');
+              }}
+            >
+              <View style={styles.moreIconBox}>
+                <Ionicons name="airplane-outline" size={22} color={Colors.black} />
+              </View>
+              <View>
+                <Text style={styles.moreOptionTitle}>International Trip Planning</Text>
+                <Text style={styles.moreOptionDesc}>Plan your next golf trip abroad</Text>
+              </View>
+              <Ionicons name="open-outline" size={16} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -204,7 +270,7 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     bottom: 16,
-    width: 286,
+    width: 340,
     height: 56,
     borderRadius: 28,
     backgroundColor: 'transparent',
@@ -282,6 +348,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.lightGray,
+  },
+
+  // ── More modal ──
+  moreBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'flex-end',
+  },
+  moreSheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 16,
+  },
+  moreOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 16,
+  },
+  moreIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  moreOptionTitle: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  moreOptionDesc: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  moreSeparator: {
+    height: 1,
+    backgroundColor: Colors.lightGray,
+    marginLeft: 58,
   },
 
   // ── Back button (circle) ──

@@ -73,6 +73,30 @@ function getNotificationText(n: Notification): { parts: { text: string; bold: bo
           { text: n.course_name ?? 'a course', bold: true },
         ],
       };
+    case 'waitlist_spot_available':
+      return {
+        parts: [
+          { text: 'A spot opened up in ', bold: false },
+          { text: n.meetup_name ?? 'a meetup', bold: true },
+          { text: '! Reserve it now.', bold: false },
+        ],
+      };
+    case 'cancellation_approved':
+      return {
+        parts: [
+          { text: 'Your cancellation for ', bold: false },
+          { text: n.meetup_name ?? 'a meetup', bold: true },
+          { text: ' was approved.', bold: false },
+        ],
+      };
+    case 'cancellation_denied':
+      return {
+        parts: [
+          { text: 'Your cancellation request for ', bold: false },
+          { text: n.meetup_name ?? 'a meetup', bold: true },
+          { text: ' was denied.', bold: false },
+        ],
+      };
     default:
       return { parts: [{ text: 'New notification', bold: false }] };
   }
@@ -85,6 +109,9 @@ function getNavTarget(n: Notification): string | null {
     case 'meetup_signup':
     case 'meetup_reminder_7d':
     case 'meetup_reminder_1d':
+    case 'waitlist_spot_available':
+    case 'cancellation_approved':
+    case 'cancellation_denied':
       return n.meetup_id ? `/meetup/${n.meetup_id}` : null;
     case 'group_join':
       return n.group_id ? `/group/${n.group_id}` : null;
@@ -104,7 +131,7 @@ function NotificationItem({
   item: Notification;
   onPress: () => void;
 }) {
-  const isReminder = item.type === 'meetup_reminder_7d' || item.type === 'meetup_reminder_1d';
+  const isReminder = item.type === 'meetup_reminder_7d' || item.type === 'meetup_reminder_1d' || item.type === 'waitlist_spot_available' || item.type === 'cancellation_approved' || item.type === 'cancellation_denied';
   const { parts } = getNotificationText(item);
 
   return (

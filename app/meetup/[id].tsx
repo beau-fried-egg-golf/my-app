@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, AppState, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { MeetupMember } from '@/types';
+import { CancellationRequest, MeetupMember, WaitlistEntry } from '@/types';
 import DetailHeader from '@/components/DetailHeader';
 
 function formatMeetupDate(iso: string): string {
@@ -22,13 +22,18 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup } = useStore();
+  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup, requestCancellation, getUserCancellationRequest, joinWaitlist, leaveWaitlist, getWaitlistPosition, getWaitlistEntries } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [addMemberSearch, setAddMemberSearch] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [cancellationRequest, setCancellationRequest] = useState<CancellationRequest | null>(null);
+  const [showCancellationForm, setShowCancellationForm] = useState(false);
+  const [cancellationNote, setCancellationNote] = useState('');
+  const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
 
   const meetup = meetups.find(m => m.id === id);
   const currentUserId = session?.user?.id;
@@ -41,6 +46,9 @@ export default function MeetupDetailScreen() {
   const isFeMeetupWithPayment = meetup?.is_fe_coordinated && ((meetup?.cost_cents != null && meetup.cost_cents > 0) || meetup?.stripe_payment_url);
   const currentUserMember = members.find(m => m.user_id === currentUserId);
   const currentPaymentStatus = currentUserMember?.payment_status;
+
+  const daysUntilMeetup = meetup ? Math.ceil((new Date(meetup.meetup_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
+  const canAutoRefund = daysUntilMeetup > 7;
 
   const memberUserIds = useMemo(() => new Set(members.map(m => m.user_id)), [members]);
 
@@ -60,6 +68,23 @@ export default function MeetupDetailScreen() {
       setMembers(m);
       setLoadingMembers(false);
     });
+    getUserCancellationRequest(id).then(setCancellationRequest);
+    getWaitlistPosition(id).then(setWaitlistPosition);
+    getWaitlistEntries(id).then(setWaitlistEntries);
+  }, [id, loadMeetups, getMeetupMembers, getUserCancellationRequest, getWaitlistPosition, getWaitlistEntries]);
+
+  // Re-fetch members when app returns to foreground (e.g. after Stripe checkout)
+  const appStateRef = useRef(AppState.currentState);
+  useEffect(() => {
+    if (!id) return;
+    const sub = AppState.addEventListener('change', (nextState) => {
+      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+        loadMeetups();
+        getMeetupMembers(id).then(setMembers);
+      }
+      appStateRef.current = nextState;
+    });
+    return () => sub.remove();
   }, [id, loadMeetups, getMeetupMembers]);
 
   if (!meetup) {
@@ -102,12 +127,42 @@ export default function MeetupDetailScreen() {
     if (isFeMeetupWithPayment) {
       // FE-coordinated meetup with Stripe payment
       if (!isMember) {
-        // Not yet joined — single "Reserve & Pay" button
+        // Not yet joined — single "Reserve & Pay" button or waitlist
         if (isFull) {
+          if (waitlistPosition != null) {
+            return (
+              <>
+                <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
+                  <Text style={[styles.paidBadgeText, { color: '#0C5460' }]}>Waitlist #{waitlistPosition}</Text>
+                </View>
+                <Pressable
+                  style={styles.actionBtnOutline}
+                  onPress={async () => {
+                    await leaveWaitlist(meetup.id);
+                    setWaitlistPosition(null);
+                    setWaitlistEntries(prev => prev.filter(e => e.user_id !== currentUserId));
+                  }}
+                >
+                  <Text style={styles.actionBtnOutlineText}>Leave Waitlist</Text>
+                </Pressable>
+              </>
+            );
+          }
           return (
-            <View style={[styles.stripeBtn, { opacity: 0.4 }]}>
-              <Text style={styles.stripeBtnText}>Meetup Full</Text>
-            </View>
+            <Pressable
+              style={[styles.actionBtnPrimary, { backgroundColor: '#6C757D' }]}
+              onPress={async () => {
+                await joinWaitlist(meetup.id);
+                const pos = await getWaitlistPosition(meetup.id);
+                setWaitlistPosition(pos);
+                const entries = await getWaitlistEntries(meetup.id);
+                setWaitlistEntries(entries);
+              }}
+            >
+              <Text style={styles.actionBtnPrimaryText}>
+                Join Waitlist{(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} waiting)` : ''}
+              </Text>
+            </Pressable>
           );
         }
         return (
@@ -121,20 +176,13 @@ export default function MeetupDetailScreen() {
       if (currentPaymentStatus === 'paid' || currentPaymentStatus === 'waived') {
         // Paid or waived — show badge
         const badgeColor = PAYMENT_BADGE_COLORS[currentPaymentStatus];
-        return (
-          <>
-            <Pressable
-              style={styles.actionBtnPrimary}
-              onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
-            >
-              <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
-            </Pressable>
-            <View style={[styles.paidBadge, { backgroundColor: badgeColor.bg }]}>
-              <Text style={[styles.paidBadgeText, { color: badgeColor.text }]}>
-                {currentPaymentStatus === 'paid' ? 'Paid' : 'Waived'}
-              </Text>
-            </View>
-            {!isHost && currentPaymentStatus === 'paid' && currentUserMember && (
+
+        const renderCancellationButton = () => {
+          if (isHost || currentPaymentStatus !== 'paid' || !currentUserMember) return null;
+
+          // Auto-refund path (>7 days out)
+          if (canAutoRefund) {
+            return (
               <Pressable
                 style={styles.actionBtnOutline}
                 onPress={async () => {
@@ -166,7 +214,49 @@ export default function MeetupDetailScreen() {
               >
                 <Text style={styles.actionBtnOutlineText}>Withdraw & Refund</Text>
               </Pressable>
-            )}
+            );
+          }
+
+          // Within 7 days — cancellation request flow
+          if (cancellationRequest?.status === 'pending') {
+            return (
+              <View style={[styles.paidBadge, { backgroundColor: '#FFF3CD' }]}>
+                <Text style={[styles.paidBadgeText, { color: '#856404' }]}>Cancellation Request Pending</Text>
+              </View>
+            );
+          }
+          if (cancellationRequest?.status === 'denied') {
+            return (
+              <View style={[styles.paidBadge, { backgroundColor: '#F8D7DA' }]}>
+                <Text style={[styles.paidBadgeText, { color: '#721C24' }]}>Cancellation Denied</Text>
+              </View>
+            );
+          }
+
+          return (
+            <Pressable
+              style={styles.actionBtnOutline}
+              onPress={() => setShowCancellationForm(true)}
+            >
+              <Text style={styles.actionBtnOutlineText}>Request Cancellation</Text>
+            </Pressable>
+          );
+        };
+
+        return (
+          <>
+            <Pressable
+              style={styles.actionBtnPrimary}
+              onPress={() => router.push(`/meetup-chat/${meetup.id}`)}
+            >
+              <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
+            </Pressable>
+            <View style={[styles.paidBadge, { backgroundColor: badgeColor.bg }]}>
+              <Text style={[styles.paidBadgeText, { color: badgeColor.text }]}>
+                {currentPaymentStatus === 'paid' ? 'Paid' : 'Waived'}
+              </Text>
+            </View>
+            {renderCancellationButton()}
             {!isHost && currentPaymentStatus === 'waived' && (
               <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
                 <Text style={styles.actionBtnOutlineText}>Leave</Text>
@@ -185,16 +275,18 @@ export default function MeetupDetailScreen() {
           >
             <Text style={styles.actionBtnPrimaryText}>Meetup Chat</Text>
           </Pressable>
-          <Pressable
-            style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]}
-            disabled={checkoutLoading}
-            onPress={() => currentUserMember && openCheckout(currentUserMember.id)}
-          >
-            <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Pay Now'}</Text>
-          </Pressable>
+          {!isHost && (
+            <Pressable
+              style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]}
+              disabled={checkoutLoading}
+              onPress={() => currentUserMember && openCheckout(currentUserMember.id)}
+            >
+              <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Pay Now'}</Text>
+            </Pressable>
+          )}
           {!isHost && (
             <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
-              <Text style={styles.actionBtnOutlineText}>Leave</Text>
+              <Text style={styles.actionBtnOutlineText}>Leave & Request Refund</Text>
             </Pressable>
           )}
         </>
@@ -220,10 +312,40 @@ export default function MeetupDetailScreen() {
       );
     }
     if (isFull) {
+      if (waitlistPosition != null) {
+        return (
+          <>
+            <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
+              <Text style={[styles.paidBadgeText, { color: '#0C5460' }]}>Waitlist #{waitlistPosition}</Text>
+            </View>
+            <Pressable
+              style={styles.actionBtnOutline}
+              onPress={async () => {
+                await leaveWaitlist(meetup.id);
+                setWaitlistPosition(null);
+                setWaitlistEntries(prev => prev.filter(e => e.user_id !== currentUserId));
+              }}
+            >
+              <Text style={styles.actionBtnOutlineText}>Leave Waitlist</Text>
+            </Pressable>
+          </>
+        );
+      }
       return (
-        <View style={[styles.actionBtnPrimary, { opacity: 0.4 }]}>
-          <Text style={styles.actionBtnPrimaryText}>Meetup Full</Text>
-        </View>
+        <Pressable
+          style={[styles.actionBtnPrimary, { backgroundColor: '#6C757D' }]}
+          onPress={async () => {
+            await joinWaitlist(meetup.id);
+            const pos = await getWaitlistPosition(meetup.id);
+            setWaitlistPosition(pos);
+            const entries = await getWaitlistEntries(meetup.id);
+            setWaitlistEntries(entries);
+          }}
+        >
+          <Text style={styles.actionBtnPrimaryText}>
+            Join Waitlist{(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} waiting)` : ''}
+          </Text>
+        </Pressable>
       );
     }
     return (
@@ -251,6 +373,14 @@ export default function MeetupDetailScreen() {
           {meetup.is_fe_coordinated && (
             <View style={styles.feBadge}>
               <Text style={styles.feBadgeText}>FE COORDINATED</Text>
+            </View>
+          )}
+          {isFeMeetupWithPayment && (
+            <View style={styles.policyNotice}>
+              <Ionicons name="information-circle" size={16} color="#856404" />
+              <Text style={styles.policyNoticeText}>
+                Cancellation Policy: Full refunds are automatic more than 7 days before the event. Within 7 days, cancellations require approval from FE coordinators.
+              </Text>
             </View>
           )}
           <Text style={styles.meetupDateHero}>{formatMeetupDate(meetup.meetup_date)}</Text>
@@ -286,6 +416,50 @@ export default function MeetupDetailScreen() {
         <View style={styles.actionRow}>
           {renderActionButtons()}
         </View>
+
+        {/* Cancellation Request Form */}
+        {showCancellationForm && currentUserMember && (
+          <View style={styles.cancellationForm}>
+            <Text style={styles.cancellationFormTitle}>Request Cancellation</Text>
+            <Text style={styles.cancellationFormSubtitle}>
+              Since the event is within 7 days, your cancellation needs approval from FE coordinators.
+            </Text>
+            <TextInput
+              style={styles.cancellationInput}
+              value={cancellationNote}
+              onChangeText={setCancellationNote}
+              placeholder="Reason for cancellation..."
+              placeholderTextColor={Colors.gray}
+              multiline
+              numberOfLines={3}
+            />
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'center' }}>
+              <Pressable
+                style={styles.actionBtnPrimary}
+                onPress={async () => {
+                  if (!cancellationNote.trim()) {
+                    if (Platform.OS === 'web') window.alert('Please provide a reason.');
+                    else Alert.alert('Required', 'Please provide a reason.');
+                    return;
+                  }
+                  await requestCancellation(meetup.id, currentUserMember.id, cancellationNote.trim());
+                  const req = await getUserCancellationRequest(meetup.id);
+                  setCancellationRequest(req);
+                  setShowCancellationForm(false);
+                  setCancellationNote('');
+                }}
+              >
+                <Text style={styles.actionBtnPrimaryText}>Submit Request</Text>
+              </Pressable>
+              <Pressable
+                style={styles.actionBtnOutline}
+                onPress={() => { setShowCancellationForm(false); setCancellationNote(''); }}
+              >
+                <Text style={styles.actionBtnOutlineText}>Cancel</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         {/* Details */}
         {meetup.host_id ? (
@@ -427,6 +601,35 @@ export default function MeetupDetailScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* Waitlist Section */}
+        {waitlistEntries.length > 0 && (
+          <View style={styles.rosterSection}>
+            <Text style={styles.rosterTitle}>Waitlist ({waitlistEntries.length})</Text>
+            {waitlistEntries.map(e => (
+              <Pressable
+                key={e.id}
+                style={styles.memberRow}
+                onPress={() => {
+                  if (e.user_id === currentUserId) router.push('/profile');
+                  else router.push(`/member/${e.user_id}`);
+                }}
+              >
+                {e.user_image ? (
+                  <Image source={{ uri: e.user_image }} style={styles.memberAvatar} />
+                ) : (
+                  <View style={styles.memberAvatarPlaceholder}>
+                    <Ionicons name="person" size={16} color={Colors.gray} />
+                  </View>
+                )}
+                <Text style={styles.memberName}>{e.user_name ?? 'Member'}</Text>
+                <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
+                  <Text style={[styles.paidBadgeText, { color: '#0C5460', fontSize: 11 }]}>#{e.position}</Text>
+                </View>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
@@ -662,5 +865,52 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: Fonts!.sansBold,
     fontWeight: FontWeights.bold,
+  },
+  policyNotice: {
+    flexDirection: 'row',
+    backgroundColor: '#FFF3CD',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 10,
+    gap: 8,
+    alignItems: 'flex-start',
+    maxWidth: 340,
+  },
+  policyNoticeText: {
+    flex: 1,
+    fontSize: 12,
+    fontFamily: Fonts!.sans,
+    color: '#856404',
+    lineHeight: 17,
+  },
+  cancellationForm: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 10,
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  cancellationFormTitle: {
+    fontSize: 16,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+  },
+  cancellationFormSubtitle: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    lineHeight: 18,
+  },
+  cancellationInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 15,
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
 });

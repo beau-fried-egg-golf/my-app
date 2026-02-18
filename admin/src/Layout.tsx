@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { to: '/meetups', label: 'Meetups' },
   { to: '/groups', label: 'Groups' },
   { to: '/flags', label: 'Flagged' },
+  { to: '/cancellations', label: 'Cancellations' },
   { to: '/email-templates', label: 'Emails' },
 ];
 

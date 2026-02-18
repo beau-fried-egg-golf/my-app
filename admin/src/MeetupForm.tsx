@@ -95,7 +95,11 @@ export default function MeetupForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.name.trim() || !form.host_id) return;
+    console.log('handleSubmit called', { name: form.name, host_id: form.host_id, is_fe: form.is_fe_coordinated, cost_cents: form.cost_cents });
+    if (!form.name.trim() || !form.host_id) {
+      console.warn('Validation failed — name:', JSON.stringify(form.name), 'host_id:', JSON.stringify(form.host_id));
+      return;
+    }
 
     const now = new Date().toISOString();
     const meetupId = isEditing ? id! : crypto.randomUUID();
@@ -120,9 +124,9 @@ export default function MeetupForm() {
       is_fe_coordinated: form.is_fe_coordinated,
       stripe_payment_url: null,
       cost_cents: costCents,
-      created_at: isEditing ? '' : now,
+      ...(isEditing ? {} : { created_at: now }),
       updated_at: now,
-    };
+    } as Meetup;
 
     await saveMeetup(meetup);
 
@@ -133,7 +137,19 @@ export default function MeetupForm() {
         meetup_id: meetupId,
         user_id: form.host_id,
         joined_at: now,
+        ...(form.is_fe_coordinated && costCents ? { payment_status: 'waived' } : {}),
       });
+    }
+
+    // Insert activity so meetup shows in the home feed (only on create, not edit)
+    if (!isEditing) {
+      const { error: actError } = await supabase.from('activities').insert({
+        type: 'meetup_created',
+        user_id: form.host_id,
+        meetup_id: meetupId,
+        course_id: form.course_id || null,
+      });
+      if (actError) console.error('Failed to insert meetup activity:', actError);
     }
 
     navigate('/meetups');

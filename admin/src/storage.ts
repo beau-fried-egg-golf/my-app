@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto, CancellationRequest, WaitlistEntry } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const { data } = await supabase.from('courses').select('*').order('name');
@@ -318,11 +318,18 @@ export async function getMeetups(): Promise<Meetup[]> {
 
 export async function saveMeetup(meetup: Meetup): Promise<void> {
   const { host_name, member_count, ...data } = meetup;
-  await supabase.from('meetups').upsert(data);
+  const { error } = await supabase.from('meetups').upsert(data);
+  if (error) console.error('saveMeetup failed:', error, data);
 }
 
 export async function deleteMeetup(id: string): Promise<void> {
-  await supabase.from('meetups').delete().eq('id', id);
+  const { error } = await supabase.from('meetups').delete().eq('id', id);
+  if (error) console.error('deleteMeetup failed:', error);
+}
+
+export async function suspendMeetup(id: string, suspended: boolean): Promise<void> {
+  const { error } = await supabase.from('meetups').update({ suspended }).eq('id', id);
+  if (error) console.error('suspendMeetup failed:', error);
 }
 
 // ---- Admin Users ----
@@ -783,6 +790,149 @@ export async function saveAnnotation(
 
 export async function deleteAnnotation(id: string): Promise<void> {
   await supabase.from('hole_annotations').delete().eq('id', id);
+}
+
+// ---- Cancellation Requests ----
+
+export async function getCancellationRequests(): Promise<CancellationRequest[]> {
+  const { data: requests } = await supabase
+    .from('cancellation_requests')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (!requests || requests.length === 0) return [];
+
+  const userIds = [...new Set(requests.map(r => r.user_id))];
+  const meetupIds = [...new Set(requests.map(r => r.meetup_id))];
+
+  const [profilesRes, meetupsRes] = await Promise.all([
+    supabase.from('profiles').select('id, name').in('id', userIds),
+    supabase.from('meetups').select('id, name, meetup_date').in('id', meetupIds),
+  ]);
+
+  const profileMap = new Map((profilesRes.data ?? []).map(p => [p.id, p.name]));
+  const meetupMap = new Map((meetupsRes.data ?? []).map(m => [m.id, m]));
+
+  return requests.map(r => ({
+    ...r,
+    user_name: profileMap.get(r.user_id) ?? 'Member',
+    meetup_name: meetupMap.get(r.meetup_id)?.name ?? 'Unknown',
+    meetup_date: meetupMap.get(r.meetup_id)?.meetup_date,
+  }));
+}
+
+export async function approveCancellationRequest(id: string, adminNote?: string): Promise<void> {
+  // Get the request
+  const { data: request } = await supabase
+    .from('cancellation_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (!request) return;
+
+  // Update status
+  await supabase.from('cancellation_requests').update({
+    status: 'approved',
+    admin_note: adminNote ?? null,
+    resolved_at: new Date().toISOString(),
+  }).eq('id', id);
+
+  // Process refund via edge function
+  await supabase.functions.invoke('stripe-refund', {
+    body: { member_id: request.member_id },
+  });
+
+  // Insert notification for user
+  await supabase.from('notifications').insert({
+    user_id: request.user_id,
+    type: 'cancellation_approved',
+    meetup_id: request.meetup_id,
+  });
+
+  // Notify first waitlist person
+  await notifyNextWaitlistUser(request.meetup_id);
+}
+
+export async function denyCancellationRequest(id: string, adminNote?: string): Promise<void> {
+  const { data: request } = await supabase
+    .from('cancellation_requests')
+    .select('*')
+    .eq('id', id)
+    .single();
+  if (!request) return;
+
+  await supabase.from('cancellation_requests').update({
+    status: 'denied',
+    admin_note: adminNote ?? null,
+    resolved_at: new Date().toISOString(),
+  }).eq('id', id);
+
+  await supabase.from('notifications').insert({
+    user_id: request.user_id,
+    type: 'cancellation_denied',
+    meetup_id: request.meetup_id,
+  });
+}
+
+async function notifyNextWaitlistUser(meetupId: string): Promise<void> {
+  const { data: first } = await supabase
+    .from('meetup_waitlist')
+    .select('*')
+    .eq('meetup_id', meetupId)
+    .order('position', { ascending: true })
+    .limit(1)
+    .single();
+
+  if (!first) return;
+
+  const { data: meetup } = await supabase
+    .from('meetups')
+    .select('name')
+    .eq('id', meetupId)
+    .single();
+
+  await supabase.from('notifications').insert({
+    user_id: first.user_id,
+    type: 'waitlist_spot_available',
+    meetup_id: meetupId,
+  });
+
+  // Send push via edge function
+  await supabase.functions.invoke('send-push', {
+    body: {
+      recipient_id: first.user_id,
+      title: 'Spot Available!',
+      body: `A spot opened up in ${meetup?.name ?? 'a meetup'}! Reserve it now.`,
+      data: { meetup_id: meetupId },
+      push_type: 'notification',
+    },
+  });
+}
+
+export async function getWaitlistEntries(meetupId: string): Promise<WaitlistEntry[]> {
+  const { data: entries } = await supabase
+    .from('meetup_waitlist')
+    .select('*')
+    .eq('meetup_id', meetupId)
+    .order('position', { ascending: true });
+
+  if (!entries || entries.length === 0) return [];
+
+  const userIds = [...new Set(entries.map(e => e.user_id))];
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, name')
+    .in('id', userIds);
+  const profileMap = new Map((profiles ?? []).map(p => [p.id, p.name]));
+
+  return entries.map(e => ({
+    ...e,
+    user_name: profileMap.get(e.user_id) ?? 'Member',
+  }));
+}
+
+export async function removeFromWaitlist(entryId: string): Promise<void> {
+  await supabase.from('meetup_waitlist').delete().eq('id', entryId);
 }
 
 export async function duplicateAnnotation(id: string): Promise<string | null> {
