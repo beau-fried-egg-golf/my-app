@@ -48,9 +48,17 @@ interface ExperienceStoreContextType {
   checkPackageAvailability: (
     packageId: string,
     startDate: string,
-  ) => Promise<boolean>;
+    groupSize: number,
+  ) => Promise<{ available: boolean; unavailableItems: string[] }>;
 
   // Reservations
+  createPackageReservation: (data: {
+    packageId: string;
+    startDate: string;
+    groupSize: number;
+    guestNames: string[];
+    specialRequests: string | null;
+  }) => Promise<Reservation>;
   createReservation: (data: Partial<Reservation> & { items?: Partial<ReservationItem>[] }) => Promise<Reservation>;
   confirmReservation: (id: string, paymentIntentId: string) => Promise<void>;
   cancelReservation: (id: string, reason: string) => Promise<void>;
@@ -291,14 +299,205 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
   }, []);
 
   const checkPackageAvailability = useCallback(async (
-    _packageId: string,
-    _startDate: string,
+    packageId: string,
+    startDate: string,
+    groupSize: number,
   ) => {
-    // TODO: Check room + tee time availability for all package items
-    return true;
-  }, []);
+    const result = await getPackage(packageId);
+    if (!result) return { available: false, unavailableItems: ['Package not found'] };
+
+    const { pkg, items } = result;
+    const unavailableItems: string[] = [];
+
+    for (const item of items) {
+      // Resolve the date for this item: startDate + (day_number - 1)
+      const itemDate = new Date(startDate + 'T00:00:00');
+      itemDate.setDate(itemDate.getDate() + (item.day_number - 1));
+      const dateStr = itemDate.toISOString().split('T')[0];
+
+      if (item.type === 'lodging' && item.room_type_id) {
+        // Check one night of lodging availability
+        const nextDate = new Date(itemDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        const checkOut = nextDate.toISOString().split('T')[0];
+
+        const availability = await checkLodgingAvailability(pkg.location_id, dateStr, checkOut);
+        const roomType = availability.find(rt => rt.id === item.room_type_id);
+        if (!roomType || !roomType.nights[0]?.length || (roomType.nights[0][0].available_units ?? 0) < 1) {
+          unavailableItems.push(`${item.title} (Day ${item.day_number}): no rooms available on ${dateStr}`);
+        }
+      }
+
+      if (item.type === 'tee_time' && item.course_id) {
+        const slots = await checkTeeTimeAvailability(item.course_id, dateStr);
+        // Find a slot that fits the group; prefer matching start_time if set
+        let matchingSlot = null;
+        if (item.start_time) {
+          matchingSlot = slots.find(s =>
+            s.time.startsWith(item.start_time!.slice(0, 5)) &&
+            s.max_players - (s.booked_players ?? 0) >= groupSize,
+          );
+        }
+        if (!matchingSlot) {
+          matchingSlot = slots.find(s =>
+            s.max_players - (s.booked_players ?? 0) >= groupSize,
+          );
+        }
+        if (!matchingSlot) {
+          unavailableItems.push(`${item.title} (Day ${item.day_number}): no tee time slots with ${groupSize} spots on ${dateStr}`);
+        }
+      }
+    }
+
+    return { available: unavailableItems.length === 0, unavailableItems };
+  }, [getPackage, checkLodgingAvailability, checkTeeTimeAvailability]);
 
   // ── Reservations ──
+
+  const createPackageReservation = useCallback(async (data: {
+    packageId: string;
+    startDate: string;
+    groupSize: number;
+    guestNames: string[];
+    specialRequests: string | null;
+  }) => {
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('Not authenticated');
+
+    // 1. Check availability
+    const availability = await checkPackageAvailability(data.packageId, data.startDate, data.groupSize);
+    if (!availability.available) {
+      throw new Error(`Package unavailable:\n${availability.unavailableItems.join('\n')}`);
+    }
+
+    // 2. Load package + items
+    const result = await getPackage(data.packageId);
+    if (!result) throw new Error('Package not found');
+    const { pkg, items } = result;
+
+    const totalCents = pkg.price_per_person * data.groupSize;
+    const endDate = new Date(data.startDate + 'T00:00:00');
+    endDate.setDate(endDate.getDate() + pkg.duration_nights);
+    const checkOutDate = endDate.toISOString().split('T')[0];
+
+    // Find first lodging item room_type_id and first tee_time course_id for reservation header
+    const firstLodging = items.find(i => i.type === 'lodging' && i.room_type_id);
+    const firstTeeTime = items.find(i => i.type === 'tee_time' && i.course_id);
+
+    const holdExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    // 3. Insert reservation
+    const { data: reservation, error: resError } = await supabase
+      .from('reservations')
+      .insert({
+        user_id: userId,
+        type: 'package',
+        status: 'pending',
+        package_id: data.packageId,
+        location_id: pkg.location_id,
+        check_in_date: data.startDate,
+        check_out_date: checkOutDate,
+        room_type_id: firstLodging?.room_type_id ?? null,
+        course_id: firstTeeTime?.course_id ?? null,
+        player_count: data.groupSize,
+        guest_names: data.guestNames,
+        total_price: totalCents,
+        special_requests: data.specialRequests,
+        hold_expires_at: holdExpiry,
+      })
+      .select()
+      .single();
+
+    if (resError) throw resError;
+
+    // 4. Build reservation_items and collect tee time junction rows
+    const reservationItems: any[] = [];
+    const teeTimeJunctions: any[] = [];
+
+    for (const item of items) {
+      const itemDate = new Date(data.startDate + 'T00:00:00');
+      itemDate.setDate(itemDate.getDate() + (item.day_number - 1));
+      const dateStr = itemDate.toISOString().split('T')[0];
+
+      if (item.type === 'lodging') {
+        reservationItems.push({
+          reservation_id: reservation.id,
+          type: 'room_night',
+          description: item.title,
+          date: dateStr,
+          unit_price: 0, // included in package price
+          quantity: 1,
+          subtotal: 0,
+          metadata: item.room_type_id ? { room_type_id: item.room_type_id } : {},
+        });
+      } else if (item.type === 'tee_time' && item.course_id) {
+        // Find best available slot
+        const slots = await checkTeeTimeAvailability(item.course_id, dateStr);
+        let bestSlot = null;
+        if (item.start_time) {
+          bestSlot = slots.find(s =>
+            s.time.startsWith(item.start_time!.slice(0, 5)) &&
+            s.max_players - (s.booked_players ?? 0) >= data.groupSize,
+          );
+        }
+        if (!bestSlot) {
+          bestSlot = slots.find(s =>
+            s.max_players - (s.booked_players ?? 0) >= data.groupSize,
+          );
+        }
+
+        reservationItems.push({
+          reservation_id: reservation.id,
+          type: 'tee_time',
+          description: item.title,
+          date: dateStr,
+          unit_price: 0,
+          quantity: data.groupSize,
+          subtotal: 0,
+          tee_time_slot_id: bestSlot?.id ?? null,
+          metadata: { course_id: item.course_id },
+        });
+
+        if (bestSlot) {
+          teeTimeJunctions.push({
+            reservation_id: reservation.id,
+            tee_time_slot_id: bestSlot.id,
+            player_count: data.groupSize,
+          });
+        }
+      } else {
+        // meal, transport, other
+        reservationItems.push({
+          reservation_id: reservation.id,
+          type: 'other',
+          description: item.title,
+          date: dateStr,
+          unit_price: 0,
+          quantity: 1,
+          subtotal: 0,
+          metadata: {},
+        });
+      }
+    }
+
+    // 5. Insert reservation items
+    if (reservationItems.length) {
+      const { error: itemsError } = await supabase
+        .from('reservation_items')
+        .insert(reservationItems);
+      if (itemsError) console.error('Failed to insert reservation items:', itemsError);
+    }
+
+    // 6. Insert tee time junctions
+    if (teeTimeJunctions.length) {
+      const { error: junctionError } = await supabase
+        .from('reservation_tee_times')
+        .insert(teeTimeJunctions);
+      if (junctionError) console.error('Failed to insert reservation_tee_times:', junctionError);
+    }
+
+    return reservation as Reservation;
+  }, [session, checkPackageAvailability, getPackage, checkTeeTimeAvailability]);
 
   const createReservation = useCallback(async (
     data: Partial<Reservation> & { items?: Partial<ReservationItem>[] },
@@ -421,6 +620,7 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
     loadPackages,
     getPackage,
     checkPackageAvailability,
+    createPackageReservation,
     createReservation,
     confirmReservation,
     cancelReservation,

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { getLocations, getPackage, savePackage, savePackageItems } from './experienceStorage';
-import type { ExperienceLocation, ExperiencePackage, PackageItem } from './types';
+import { getLocations, getPackage, savePackage, savePackageItems, getRoomTypes, getExperienceCourses } from './experienceStorage';
+import type { ExperienceLocation, ExperiencePackage, PackageItem, RoomType } from './types';
 
 function generateSlug(name: string): string {
   return name
@@ -54,6 +54,8 @@ export default function PackageEditor() {
   const [form, setForm] = useState<FormData>(EMPTY_PACKAGE);
   const [items, setItems] = useState<(Omit<PackageItem, 'package_id'> & { _key: string })[]>([]);
   const [locations, setLocations] = useState<ExperienceLocation[]>([]);
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>([]);
+  const [experienceCourses, setExperienceCourses] = useState<any[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [inclusionInput, setInclusionInput] = useState('');
   const [exclusionInput, setExclusionInput] = useState('');
@@ -74,6 +76,16 @@ export default function PackageEditor() {
       });
     }
   }, [id, isEditing]);
+
+  useEffect(() => {
+    if (form.location_id) {
+      getRoomTypes(form.location_id).then(setRoomTypes);
+      getExperienceCourses(form.location_id).then(setExperienceCourses);
+    } else {
+      setRoomTypes([]);
+      setExperienceCourses([]);
+    }
+  }, [form.location_id]);
 
   function handleChange(field: string, value: any) {
     setForm(prev => ({ ...prev, [field]: value }));
@@ -105,9 +117,15 @@ export default function PackageEditor() {
   }
 
   function updateItem(key: string, field: string, value: any) {
-    setItems(prev => prev.map(item =>
-      item._key === key ? { ...item, [field]: value } : item,
-    ));
+    setItems(prev => prev.map(item => {
+      if (item._key !== key) return item;
+      const updated = { ...item, [field]: value };
+      if (field === 'type') {
+        updated.room_type_id = null;
+        updated.course_id = null;
+      }
+      return updated;
+    }));
   }
 
   function removeItem(key: string) {
@@ -302,6 +320,28 @@ export default function PackageEditor() {
                 <input className="form-input" type="time" value={item.end_time ?? ''} onChange={e => updateItem(item._key, 'end_time', e.target.value || null)} />
               </div>
             </div>
+            {item.type === 'lodging' && (
+              <div className="form-group">
+                <label className="form-label">Room Type</label>
+                <select className="form-input" value={item.room_type_id ?? ''} onChange={e => updateItem(item._key, 'room_type_id', e.target.value || null)}>
+                  <option value="">Select room type...</option>
+                  {roomTypes.map(rt => (
+                    <option key={rt.id} value={rt.id}>{rt.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {item.type === 'tee_time' && (
+              <div className="form-group">
+                <label className="form-label">Course</label>
+                <select className="form-input" value={item.course_id ?? ''} onChange={e => updateItem(item._key, 'course_id', e.target.value || null)}>
+                  <option value="">Select course...</option>
+                  {experienceCourses.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         ))}
         <button type="button" className="btn" onClick={addItem} style={{ marginBottom: 24 }}>+ Add Itinerary Item</button>

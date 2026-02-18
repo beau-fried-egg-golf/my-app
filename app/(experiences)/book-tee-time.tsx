@@ -86,6 +86,13 @@ export default function BookTeeTime() {
         }],
       });
 
+      // Insert junction row so checkTeeTimeAvailability counts this booking
+      await supabase.from('reservation_tee_times').insert({
+        reservation_id: reservation.id,
+        tee_time_slot_id: slot.id,
+        player_count: playerCount,
+      });
+
       const { data, error } = await supabase.functions.invoke('create-experience-payment', {
         body: {
           reservation_id: reservation.id,

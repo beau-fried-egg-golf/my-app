@@ -20,7 +20,7 @@ export default function BookPackage() {
   const router = useRouter();
   const goBack = useGoBack();
   const insets = useSafeAreaInsets();
-  const { getPackage, createReservation } = useExperienceStore();
+  const { getPackage, createPackageReservation, checkPackageAvailability } = useExperienceStore();
 
   const [pkg, setPkg] = useState<Package | null>(null);
   const [items, setItems] = useState<PackageItem[]>([]);
@@ -29,6 +29,12 @@ export default function BookPackage() {
   const [guestNames, setGuestNames] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [booking, setBooking] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [availabilityResult, setAvailabilityResult] = useState<{ available: boolean; unavailableItems: string[] } | null>(null);
+
+  // Reset availability when inputs change
+  function updateStartDate(val: string) { setStartDate(val); setAvailabilityResult(null); }
+  function updateGroupSize(val: number) { setGroupSize(val); setAvailabilityResult(null); }
 
   useEffect(() => {
     if (!packageId) return;
@@ -66,31 +72,33 @@ export default function BookPackage() {
     endDate = d.toISOString().split('T')[0];
   }
 
+  async function handleCheckAvailability() {
+    if (!packageId || !startDate) return;
+    setChecking(true);
+    setAvailabilityResult(null);
+    try {
+      const result = await checkPackageAvailability(packageId, startDate, groupSize);
+      setAvailabilityResult(result);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Could not check availability');
+    } finally {
+      setChecking(false);
+    }
+  }
+
   async function handleBook() {
-    if (!packageId || !pkg || !startDate) return;
+    if (!packageId || !pkg || !startDate || !availabilityResult?.available) return;
     setBooking(true);
     try {
-      const reservation = await createReservation({
-        type: 'package',
-        package_id: packageId,
-        location_id: pkg.location_id,
-        check_in_date: startDate,
-        check_out_date: endDate,
-        player_count: groupSize,
-        guest_names: guestNames ? guestNames.split(',').map(n => n.trim()) : [],
-        total_price: totalCents,
-        special_requests: specialRequests || null,
-        items: [{
-          type: 'other',
-          description: `${pkg.name} – ${groupSize} person${groupSize > 1 ? 's' : ''}`,
-          date: startDate,
-          unit_price: pkg.price_per_person,
-          quantity: groupSize,
-          subtotal: totalCents,
-        }],
+      const reservation = await createPackageReservation({
+        packageId,
+        startDate,
+        groupSize,
+        guestNames: guestNames ? guestNames.split(',').map(n => n.trim()) : [],
+        specialRequests: specialRequests || null,
       });
 
-      const { data, error } = await supabase.functions.invoke('create-experience-payment', {
+      const { error } = await supabase.functions.invoke('create-experience-payment', {
         body: {
           reservation_id: reservation.id,
           amount_cents: totalCents,
@@ -140,7 +148,7 @@ export default function BookPackage() {
             <TextInput
               style={styles.input}
               value={startDate}
-              onChangeText={setStartDate}
+              onChangeText={updateStartDate}
               placeholder="YYYY-MM-DD"
               placeholderTextColor={Colors.gray}
             />
@@ -155,11 +163,11 @@ export default function BookPackage() {
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>Group Size</Text>
             <View style={styles.counter}>
-              <Pressable onPress={() => setGroupSize(Math.max(pkg.min_group_size, groupSize - 1))} style={styles.counterBtn}>
+              <Pressable onPress={() => updateGroupSize(Math.max(pkg.min_group_size, groupSize - 1))} style={styles.counterBtn}>
                 <Ionicons name="remove" size={18} color={Colors.black} />
               </Pressable>
               <Text style={styles.counterValue}>{groupSize}</Text>
-              <Pressable onPress={() => setGroupSize(Math.min(pkg.max_group_size, groupSize + 1))} style={styles.counterBtn}>
+              <Pressable onPress={() => updateGroupSize(Math.min(pkg.max_group_size, groupSize + 1))} style={styles.counterBtn}>
                 <Ionicons name="add" size={18} color={Colors.black} />
               </Pressable>
             </View>
@@ -191,6 +199,32 @@ export default function BookPackage() {
             />
           </View>
 
+          {/* Check Availability */}
+          {startDate ? (
+            <Pressable
+              style={[styles.checkBtn, checking && styles.bookBtnDisabled]}
+              onPress={handleCheckAvailability}
+              disabled={checking}
+            >
+              <Text style={styles.checkBtnText}>
+                {checking ? 'Checking...' : 'Check Availability'}
+              </Text>
+            </Pressable>
+          ) : null}
+
+          {availabilityResult && (
+            <View style={[styles.availabilityResult, availabilityResult.available ? styles.availabilityOk : styles.availabilityBad]}>
+              <Text style={[styles.availabilityText, availabilityResult.available ? styles.availabilityTextOk : styles.availabilityTextBad]}>
+                {availabilityResult.available
+                  ? 'All items available for your dates!'
+                  : 'Some items are unavailable:'}
+              </Text>
+              {availabilityResult.unavailableItems.map((item, i) => (
+                <Text key={i} style={styles.unavailableItem}>{item}</Text>
+              ))}
+            </View>
+          )}
+
           <BookingSummary
             title={pkg.name}
             subtitle={startDate ? `${startDate} – ${endDate}` : undefined}
@@ -204,9 +238,9 @@ export default function BookPackage() {
           />
 
           <Pressable
-            style={[styles.bookBtn, (booking || !startDate) && styles.bookBtnDisabled]}
+            style={[styles.bookBtn, (booking || !startDate || !availabilityResult?.available) && styles.bookBtnDisabled]}
             onPress={handleBook}
-            disabled={booking || !startDate}
+            disabled={booking || !startDate || !availabilityResult?.available}
           >
             <Text style={styles.bookBtnText}>
               {booking ? 'Booking...' : `Book for ${formatPrice(totalCents)}`}
@@ -237,6 +271,15 @@ const styles = StyleSheet.create({
   counterBtn: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: Colors.border, alignItems: 'center', justifyContent: 'center' },
   counterValue: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, minWidth: 24, textAlign: 'center' },
   sizeHint: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 4 },
+  checkBtn: { borderWidth: 2, borderColor: Colors.black, paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginBottom: 16 },
+  checkBtnText: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  availabilityResult: { borderRadius: 10, padding: 14, marginBottom: 16 },
+  availabilityOk: { backgroundColor: '#e8f5e9' },
+  availabilityBad: { backgroundColor: '#fce4ec' },
+  availabilityText: { fontSize: 14, fontFamily: Fonts!.sansMedium },
+  availabilityTextOk: { color: '#2e7d32' },
+  availabilityTextBad: { color: '#c62828' },
+  unavailableItem: { fontSize: 13, fontFamily: Fonts!.sans, color: '#c62828', marginTop: 4 },
   bookBtn: { backgroundColor: Colors.black, paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginTop: 24 },
   bookBtnDisabled: { opacity: 0.4 },
   bookBtnText: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },

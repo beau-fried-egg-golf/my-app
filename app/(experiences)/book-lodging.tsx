@@ -27,7 +27,7 @@ export default function BookLodging() {
   const router = useRouter();
   const goBack = useGoBack();
   const insets = useSafeAreaInsets();
-  const { getLocation, createReservation } = useExperienceStore();
+  const { getLocation, createReservation, checkLodgingAvailability } = useExperienceStore();
 
   const [step, setStep] = useState<Step>('dates');
   const [location, setLocation] = useState<ExperienceLocation | null>(null);
@@ -39,6 +39,7 @@ export default function BookLodging() {
   const [roomCount, setRoomCount] = useState(1);
   const [specialRequests, setSpecialRequests] = useState('');
   const [booking, setBooking] = useState(false);
+  const [checkingAvail, setCheckingAvail] = useState(false);
 
   useEffect(() => {
     if (!params.locationId) return;
@@ -214,11 +215,38 @@ export default function BookLodging() {
             )}
 
             <Pressable
-              style={[styles.nextBtn, !selectedRoomType && styles.nextBtnDisabled]}
-              onPress={() => setStep('summary')}
-              disabled={!selectedRoomType}
+              style={[styles.nextBtn, (!selectedRoomType || checkingAvail) && styles.nextBtnDisabled]}
+              onPress={async () => {
+                if (!selectedRoomType || !params.locationId || !checkIn || !checkOut) return;
+                setCheckingAvail(true);
+                try {
+                  const availability = await checkLodgingAvailability(params.locationId, checkIn, checkOut);
+                  const roomAvail = availability.find(rt => rt.id === selectedRoomType.id);
+                  if (!roomAvail) {
+                    Alert.alert('Unavailable', 'This room type has no inventory for the selected dates.');
+                    return;
+                  }
+                  // Check that every night has enough units
+                  const insufficientNight = roomAvail.nights.find(
+                    night => !night.length || (night[0].available_units ?? 0) < roomCount,
+                  );
+                  if (insufficientNight) {
+                    Alert.alert(
+                      'Unavailable',
+                      `Not enough ${selectedRoomType.name} rooms available for all nights. Please try fewer rooms or different dates.`,
+                    );
+                    return;
+                  }
+                  setStep('summary');
+                } catch (err: any) {
+                  Alert.alert('Error', err.message || 'Could not check availability');
+                } finally {
+                  setCheckingAvail(false);
+                }
+              }}
+              disabled={!selectedRoomType || checkingAvail}
             >
-              <Text style={styles.nextBtnText}>Review Booking</Text>
+              <Text style={styles.nextBtnText}>{checkingAvail ? 'Checking...' : 'Review Booking'}</Text>
             </Pressable>
           </View>
         )}
