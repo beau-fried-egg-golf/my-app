@@ -4,9 +4,11 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 interface LetterSpacedHeaderProps {
   text: string;
   size?: number;
+  variant?: 'default' | 'experiences';
 }
 
-export default function LetterSpacedHeader({ text, size = 32 }: LetterSpacedHeaderProps) {
+export default function LetterSpacedHeader({ text, size = 32, variant = 'default' }: LetterSpacedHeaderProps) {
+  const isExperiences = variant === 'experiences';
   const words = text.toUpperCase().split(' ');
 
   return (
@@ -21,6 +23,7 @@ export default function LetterSpacedHeader({ text, size = 32 }: LetterSpacedHead
                 {
                   width: size * 0.75,
                   height: size * 1.1,
+                  backgroundColor: isExperiences ? Colors.black : Colors.orange,
                 },
               ]}
             >
@@ -32,6 +35,7 @@ export default function LetterSpacedHeader({ text, size = 32 }: LetterSpacedHead
                     lineHeight: size * 1.1,
                     fontFamily: Fonts!.sansBold,
                     fontWeight: FontWeights.bold,
+                    color: isExperiences ? Colors.white : Colors.black,
                   },
                 ]}
               >

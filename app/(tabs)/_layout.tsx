@@ -246,6 +246,23 @@ export default function TabLayout() {
               style={styles.moreOption}
               onPress={() => {
                 setShowMore(false);
+                router.push('/(experiences)/');
+              }}
+            >
+              <View style={styles.moreIconBox}>
+                <Ionicons name="layers-outline" size={22} color={Colors.black} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moreOptionTitle}>Experiences</Text>
+                <Text style={styles.moreOptionDesc}>Book lodging, tee times & curated trips</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+            </Pressable>
+            <View style={styles.moreSeparator} />
+            <Pressable
+              style={styles.moreOption}
+              onPress={() => {
+                setShowMore(false);
                 Linking.openURL('https://www.thefriedegg.com/trip-planning');
               }}
             >

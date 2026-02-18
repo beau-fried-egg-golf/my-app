@@ -26,6 +26,16 @@ import GroupList from './GroupList';
 import AnnotationList from './AnnotationList';
 import AnnotationEditor from './AnnotationEditor';
 import CancellationQueue from './CancellationQueue';
+import ExperiencesDashboard from './ExperiencesDashboard';
+import LocationList from './LocationList';
+import LocationForm from './LocationForm';
+import RoomTypeEditor from './RoomTypeEditor';
+import InventoryCalendar from './InventoryCalendar';
+import TeeTimeManager from './TeeTimeManager';
+import PackageList from './PackageList';
+import PackageEditor from './PackageEditor';
+import ReservationList from './ReservationList';
+import ReservationDetail from './ReservationDetail';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -110,6 +120,18 @@ export default function App() {
         <Route path="groups" element={<GroupList />} />
         <Route path="hole-annotations" element={<AnnotationList />} />
         <Route path="hole-annotations/:id/edit" element={<AnnotationEditor />} />
+        <Route path="experiences" element={<ExperiencesDashboard />} />
+        <Route path="experiences/locations" element={<LocationList />} />
+        <Route path="experiences/locations/new" element={<LocationForm />} />
+        <Route path="experiences/locations/:id/edit" element={<LocationForm />} />
+        <Route path="experiences/locations/:id/rooms" element={<RoomTypeEditor />} />
+        <Route path="experiences/locations/:id/inventory" element={<InventoryCalendar />} />
+        <Route path="experiences/tee-times/:courseId" element={<TeeTimeManager />} />
+        <Route path="experiences/packages" element={<PackageList />} />
+        <Route path="experiences/packages/new" element={<PackageEditor />} />
+        <Route path="experiences/packages/:id/edit" element={<PackageEditor />} />
+        <Route path="experiences/reservations" element={<ReservationList />} />
+        <Route path="experiences/reservations/:id" element={<ReservationDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

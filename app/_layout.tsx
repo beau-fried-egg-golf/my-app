@@ -5,6 +5,7 @@ import { Image, Platform, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
+import { ExperienceStoreProvider } from '@/data/experienceStore';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -52,6 +53,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
     <StoreProvider>
+    <ExperienceStoreProvider>
       <PushNotificationRegistrar />
       <PasswordResetNavigator />
       <StatusBar style="dark" />
@@ -70,6 +72,7 @@ export default function RootLayout() {
       >
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(experiences)" options={{ headerShown: false }} />
         <Stack.Screen
           name="profile"
           options={{ headerShown: false, presentation: 'modal' }}
@@ -112,6 +115,7 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
       </Stack>
+    </ExperienceStoreProvider>
     </StoreProvider>
     </SafeAreaProvider>
   );

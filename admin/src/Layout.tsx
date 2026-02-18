@@ -16,6 +16,13 @@ const NAV_ITEMS = [
   { to: '/email-templates', label: 'Emails' },
 ];
 
+const EXPERIENCE_NAV_ITEMS = [
+  { to: '/experiences', label: 'Overview', end: true },
+  { to: '/experiences/locations', label: 'Locations' },
+  { to: '/experiences/packages', label: 'Packages' },
+  { to: '/experiences/reservations', label: 'Reservations' },
+];
+
 export default function Layout() {
   const navigate = useNavigate();
 
@@ -33,6 +40,20 @@ export default function Layout() {
         </div>
         <nav className="sidebar-nav">
           {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <div style={{ borderTop: '1px solid #e0ded4', margin: '8px 0' }} />
+          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Experiences
+          </div>
+          {EXPERIENCE_NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
