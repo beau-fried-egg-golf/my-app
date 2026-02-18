@@ -196,7 +196,7 @@ serve(async (req: Request) => {
       <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
         <tr>
           <td style="background-color:#1a1a1a;border-radius:6px;padding:14px 32px;">
-            <a href="${Deno.env.get("WIDGET_BASE_URL") || "https://friedegggc.com"}/embed/${event.slug}" style="color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;">Claim Your Spot</a>
+            <a href="${Deno.env.get("WIDGET_BASE_URL") || "https://dist-ecru-seven-95.vercel.app"}/embed/${event.slug}" style="color:#ffffff;font-size:16px;font-weight:bold;text-decoration:none;">Claim Your Spot</a>
           </td>
         </tr>
       </table>

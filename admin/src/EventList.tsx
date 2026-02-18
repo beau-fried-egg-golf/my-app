@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getEvents, deleteEvent, duplicateEvent } from './eventStorage';
 import type { Event } from './eventTypes';
+import { generateEventEmbedHTML } from './generateEventEmbedHTML';
+import AnnotationPreview from './AnnotationPreview';
+import AnnotationExport from './AnnotationExport';
 
 function formatCents(cents: number): string {
   return '$' + (cents / 100).toLocaleString();
@@ -25,6 +28,8 @@ export default function EventList() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [exportHtml, setExportHtml] = useState<string | null>(null);
 
   useEffect(() => {
     loadEvents();
@@ -49,6 +54,14 @@ export default function EventList() {
     if (newId) {
       navigate(`/events/${newId}/edit`);
     }
+  }
+
+  function handlePreview(slug: string) {
+    setPreviewHtml(generateEventEmbedHTML(slug));
+  }
+
+  function handleExport(slug: string) {
+    setExportHtml(generateEventEmbedHTML(slug));
   }
 
   return (
@@ -120,6 +133,8 @@ export default function EventList() {
                     <div className="btn-group">
                       <Link to={`/events/${e.id}/edit`} className="btn btn-sm">Edit</Link>
                       <Link to={`/events/${e.id}/bookings`} className="btn btn-sm">Bookings</Link>
+                      <button className="btn btn-sm" onClick={() => handlePreview(e.slug)}>Preview</button>
+                      <button className="btn btn-sm" onClick={() => handleExport(e.slug)}>Export</button>
                       <button className="btn btn-sm" onClick={() => handleDuplicate(e.id)}>Dup</button>
                       <button className="btn btn-sm btn-danger" onClick={() => setConfirmDelete(e.id)}>Del</button>
                     </div>
@@ -144,6 +159,9 @@ export default function EventList() {
           </div>
         </div>
       )}
+
+      {previewHtml && <AnnotationPreview html={previewHtml} onClose={() => setPreviewHtml(null)} />}
+      {exportHtml && <AnnotationExport html={exportHtml} onClose={() => setExportHtml(null)} />}
     </div>
   );
 }

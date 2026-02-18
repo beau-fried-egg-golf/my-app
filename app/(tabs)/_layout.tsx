@@ -83,7 +83,7 @@ function BackButton() {
 }
 
 export default function TabLayout() {
-  const { session, isLoading } = useStore();
+  const { session, isLoading, isAdmin } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -226,23 +226,27 @@ export default function TabLayout() {
       >
         <Pressable style={styles.moreBackdrop} onPress={() => setShowMore(false)}>
           <View style={styles.moreSheet}>
-            <Pressable
-              style={styles.moreOption}
-              onPress={() => {
-                setShowMore(false);
-                router.push('/(experiences)/');
-              }}
-            >
-              <View style={[styles.moreIconBox, { backgroundColor: Colors.orange }]}>
-                <GolfBagIcon size={24} color={Colors.white} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.moreOptionTitle}>Experiences</Text>
-                <Text style={styles.moreOptionDesc}>Book lodging, tee times & curated trips</Text>
-              </View>
-              <Ionicons name="repeat-outline" size={20} color={Colors.gray} style={{ marginLeft: 'auto' }} />
-            </Pressable>
-            <View style={styles.moreSeparator} />
+            {isAdmin && (
+              <>
+                <Pressable
+                  style={styles.moreOption}
+                  onPress={() => {
+                    setShowMore(false);
+                    router.push('/(experiences)/');
+                  }}
+                >
+                  <View style={[styles.moreIconBox, { backgroundColor: Colors.orange }]}>
+                    <GolfBagIcon size={24} color={Colors.white} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.moreOptionTitle}>Experiences</Text>
+                    <Text style={styles.moreOptionDesc}>Book lodging, tee times & curated trips</Text>
+                  </View>
+                  <Ionicons name="repeat-outline" size={20} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+                </Pressable>
+                <View style={styles.moreSeparator} />
+              </>
+            )}
             <Pressable
               style={styles.moreOption}
               onPress={() => {

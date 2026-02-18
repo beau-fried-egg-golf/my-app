@@ -138,6 +138,7 @@ interface StoreContextType {
   pushNearbyRadiusMiles: number;
   emailNotificationsEnabled: boolean;
   updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean }) => Promise<void>;
+  isAdmin: boolean;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -172,6 +173,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [pushNearbyEnabled, setPushNearbyEnabled] = useState(true);
   const [pushNearbyRadiusMiles, setPushNearbyRadiusMiles] = useState(50);
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -338,6 +340,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(profileToUser(profile));
     }
+    // Check admin status
+    const { data: adminFlag } = await supabase.rpc('is_admin');
+    setIsAdmin(adminFlag === true);
   }
 
   async function loadData() {
@@ -3102,6 +3107,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         pushNearbyRadiusMiles,
         emailNotificationsEnabled,
         updatePushPreferences,
+        isAdmin,
       }}
     >
       {children}

@@ -7,6 +7,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import type { Package, PackageItem } from '@/types/experiences';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 function formatPrice(cents: number): string {
   return `$${(cents / 100).toLocaleString()}`;
@@ -86,7 +87,9 @@ export default function PackageDetail() {
 
         {/* Info */}
         <View style={styles.infoSection}>
-          <Text style={styles.name}>{pkg.name}</Text>
+          <View style={{ marginBottom: 10 }}>
+            <LetterSpacedHeader text={pkg.name} size={26} variant="experiences" />
+          </View>
           {pkg.location_name && (
             <Text style={styles.location}>
               <Ionicons name="location-outline" size={14} color={Colors.gray} /> {pkg.location_name}

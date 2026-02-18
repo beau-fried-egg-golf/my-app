@@ -10,6 +10,7 @@ import type { ExperienceLocation, RoomType, TeeTimeSlot } from '@/types/experien
 import type { Course } from '@/types';
 import RoomCard from '@/components/experiences/RoomCard';
 import TeeTimeRow from '@/components/experiences/TeeTimeRow';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 type Tab = 'lodging' | 'tee_times' | 'packages';
 
@@ -88,7 +89,9 @@ export default function LocationDetail() {
 
         {/* Info */}
         <View style={styles.infoSection}>
-          <Text style={styles.locationName}>{location.name}</Text>
+          <View style={{ marginBottom: 10 }}>
+            <LetterSpacedHeader text={location.name} size={26} variant="experiences" />
+          </View>
           <View style={styles.typeBadge}>
             <Text style={styles.typeBadgeText}>{location.type.replace('_', ' ')}</Text>
           </View>

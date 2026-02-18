@@ -8,6 +8,9 @@ import {
   getFormFields, saveFormField, deleteFormField,
 } from './eventStorage';
 import type { Event, TicketType, AddOnGroup, AddOn, EventFormField } from './eventTypes';
+import { generateEventEmbedHTML } from './generateEventEmbedHTML';
+import AnnotationPreview from './AnnotationPreview';
+import AnnotationExport from './AnnotationExport';
 
 function generateSlug(name: string): string {
   return name
@@ -48,6 +51,8 @@ export default function EventEditor() {
   const [addOns, setAddOns] = useState<(AddOn & { _key: string; _new?: boolean })[]>([]);
   const [formFields, setFormFields] = useState<(EventFormField & { _key: string; _new?: boolean })[]>([]);
   const [saving, setSaving] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [exportHtml, setExportHtml] = useState<string | null>(null);
 
   useEffect(() => {
     if (isEditing && id) {
@@ -547,6 +552,29 @@ export default function EventEditor() {
           <button type="button" className="btn" onClick={() => navigate('/events/list')}>Cancel</button>
         </div>
       </form>
+
+      {/* Embed Preview / Export */}
+      {isEditing && form.slug && (
+        <div style={{ maxWidth: 860, marginTop: 32, display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setPreviewHtml(generateEventEmbedHTML(form.slug))}
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setExportHtml(generateEventEmbedHTML(form.slug))}
+          >
+            Export
+          </button>
+        </div>
+      )}
+
+      {previewHtml && <AnnotationPreview html={previewHtml} onClose={() => setPreviewHtml(null)} />}
+      {exportHtml && <AnnotationExport html={exportHtml} onClose={() => setExportHtml(null)} />}
     </div>
   );
 }
