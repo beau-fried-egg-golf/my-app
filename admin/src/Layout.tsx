@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from './supabase';
 
@@ -27,6 +28,39 @@ const EXPERIENCE_NAV_ITEMS = [
   { to: '/experiences/reservations', label: 'Reservations' },
 ];
 
+function NavSection({ title, items, defaultOpen = true }: { title: string; items: { to: string; label: string; end?: boolean }[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <>
+      <div style={{ borderTop: '1px solid #e0ded4', margin: '8px 0' }} />
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', padding: '6px 16px', border: 'none', background: 'none',
+          fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase',
+          letterSpacing: 0.5, cursor: 'pointer',
+        }}
+      >
+        {title}
+        <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}>
+          ▼
+        </span>
+      </button>
+      {open && items.map((item) => (
+        <NavLink
+          key={item.to}
+          to={item.to}
+          end={item.end}
+          className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+        >
+          {item.label}
+        </NavLink>
+      ))}
+    </>
+  );
+}
+
 export default function Layout() {
   const navigate = useNavigate();
 
@@ -43,47 +77,9 @@ export default function Layout() {
           <h2>Admin Panel</h2>
         </div>
         <nav className="sidebar-nav">
-          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Community
-          </div>
-          {COMMUNITY_NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          <div style={{ borderTop: '1px solid #e0ded4', margin: '8px 0' }} />
-          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Content
-          </div>
-          {CONTENT_NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-          <div style={{ borderTop: '1px solid #e0ded4', margin: '8px 0' }} />
-          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-            Experiences
-          </div>
-          {EXPERIENCE_NAV_ITEMS.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <NavSection title="Community" items={COMMUNITY_NAV_ITEMS} />
+          <NavSection title="Content" items={CONTENT_NAV_ITEMS} />
+          <NavSection title="Experiences" items={EXPERIENCE_NAV_ITEMS} />
         </nav>
       </aside>
       <main className="main-content">
