@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { supabase } from './supabase';
 
-const NAV_ITEMS = [
+const COMMUNITY_NAV_ITEMS = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/courses', label: 'Courses' },
   { to: '/writeups', label: 'Reviews' },
@@ -14,6 +14,10 @@ const NAV_ITEMS = [
   { to: '/flags', label: 'Flagged' },
   { to: '/cancellations', label: 'Cancellations' },
   { to: '/email-templates', label: 'Emails' },
+];
+
+const CONTENT_NAV_ITEMS: { to: string; label: string; end?: boolean }[] = [
+  { to: '/hole-annotations', label: 'Annotations' },
 ];
 
 const EXPERIENCE_NAV_ITEMS = [
@@ -39,7 +43,24 @@ export default function Layout() {
           <h2>Admin Panel</h2>
         </div>
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Community
+          </div>
+          {COMMUNITY_NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+            >
+              {item.label}
+            </NavLink>
+          ))}
+          <div style={{ borderTop: '1px solid #e0ded4', margin: '8px 0' }} />
+          <div style={{ padding: '6px 16px', fontSize: 11, fontWeight: 700, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            Content
+          </div>
+          {CONTENT_NAV_ITEMS.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
@@ -68,16 +89,6 @@ export default function Layout() {
       <main className="main-content">
         <div className="topbar">
           <div className="topbar-right">
-            <button
-              className="topbar-icon-btn"
-              title="Hole Annotations"
-              onClick={() => navigate('/hole-annotations')}
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                <circle cx="12" cy="13" r="4" />
-              </svg>
-            </button>
             <button
               className="topbar-icon-btn"
               title="Team"

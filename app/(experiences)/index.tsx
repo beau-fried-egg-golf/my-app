@@ -4,8 +4,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
+import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import TutorialPopup from '@/components/TutorialPopup';
 
 function formatPrice(cents: number) {
   return `$${(cents / 100).toLocaleString()}`;
@@ -13,7 +16,9 @@ function formatPrice(cents: number) {
 
 export default function ExperiencesHome() {
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
+  const { user } = useStore();
   const {
     locations,
     loadLocations,
@@ -37,12 +42,28 @@ export default function ExperiencesHome() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <TutorialPopup
+        storageKey="tutorial_experiences"
+        title="Welcome to Experiences"
+        paragraphs={[
+          "You've entered a new part of the app dedicated to booking real-world golf experiences.",
+          "Browse curated packages, book lodging at premier destinations, and reserve tee times at top courses — all in one place.",
+          "Your upcoming reservations and booking details will live here too.",
+        ]}
+        buttonLabel="Let's Go"
+      />
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
-        </Pressable>
         <LetterSpacedHeader text="EXPERIENCES" size={28} variant="experiences" />
+        <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
+          {user?.image ? (
+            <Image source={{ uri: user.image }} style={styles.profileImage} />
+          ) : (
+            <View style={styles.profilePlaceholder}>
+              <Ionicons name="person" size={16} color={Colors.white} />
+            </View>
+          )}
+        </Pressable>
       </View>
 
       <ScrollView
@@ -197,23 +218,35 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 12,
-    gap: 12,
   },
-  backBtn: {
+  profileBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  profileImage: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  profilePlaceholder: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
   },
   scroll: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
 
   // Hero

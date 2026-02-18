@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import type { Package, PackageItem } from '@/types/experiences';
 
@@ -30,6 +31,7 @@ const TYPE_ICONS: Record<string, string> = {
 export default function PackageDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { getPackage } = useExperienceStore();
 
@@ -67,7 +69,7 @@ export default function PackageDetail() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={goBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{pkg.name}</Text>

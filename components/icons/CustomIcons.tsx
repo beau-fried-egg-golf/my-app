@@ -1,4 +1,4 @@
-import Svg, { Path } from 'react-native-svg';
+import Svg, { Path, Rect, Line } from 'react-native-svg';
 
 interface IconProps {
   size?: number;
@@ -157,6 +157,47 @@ export function SearchIcon({ size = 24, color = '#1B1A1A' }: IconProps) {
         strokeWidth={1.5}
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+export function GolfBagIcon({ size = 24, color = '#1B1A1A' }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      {/* Bag body */}
+      <Path
+        d="M8 11V20C8 20.5523 8.44772 21 9 21H15C15.5523 21 16 20.5523 16 20V11"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Bag top rim */}
+      <Path
+        d="M7.5 11H16.5"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+      />
+      {/* Bag pocket */}
+      <Rect
+        x={13}
+        y={14}
+        width={2.5}
+        height={5}
+        rx={0.5}
+        stroke={color}
+        strokeWidth={1.2}
+      />
+      {/* Club 1 - iron */}
+      <Line x1={10} y1={3} x2={10} y2={11} stroke={color} strokeWidth={1.3} strokeLinecap="round" />
+      <Path d="M9 3H11" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
+      {/* Club 2 - wood */}
+      <Line x1={12.5} y1={4} x2={12.5} y2={11} stroke={color} strokeWidth={1.3} strokeLinecap="round" />
+      <Path d="M11.5 4.5C11.5 3.67 12.17 3 13 3C13.5 3 13.8 3.3 13.8 3.7C13.8 4.3 13.2 4.8 12.5 4.8" stroke={color} strokeWidth={1.2} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Club 3 - putter */}
+      <Line x1={14.5} y1={5} x2={14.5} y2={11} stroke={color} strokeWidth={1.3} strokeLinecap="round" />
+      <Path d="M14.5 5H16" stroke={color} strokeWidth={1.5} strokeLinecap="round" />
     </Svg>
   );
 }

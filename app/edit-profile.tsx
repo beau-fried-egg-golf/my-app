@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { uploadPhoto } from '@/utils/photo';
 import { useStore } from '@/data/store';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Course } from '@/types';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
@@ -34,6 +35,7 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 export default function EditProfileScreen() {
   const { user, saveUser, courses } = useStore();
   const router = useRouter();
+  const goBack = useGoBack();
 
   const [name, setName] = useState(user?.name ?? '');
   const [image, setImage] = useState(user?.image ?? null);
@@ -120,7 +122,7 @@ export default function EditProfileScreen() {
     >
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.headerRow}>
-          <Pressable onPress={() => router.back()} style={styles.backArrow}>
+          <Pressable onPress={goBack} style={styles.backArrow}>
             <Ionicons name="chevron-back" size={28} color={Colors.black} />
           </Pressable>
           <LetterSpacedHeader text="EDIT PROFILE" size={32} />

@@ -183,7 +183,7 @@ export default function CourseDetailScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={[styles.courseNameBlock, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/courses')} style={styles.backArrow}>
+        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backArrow}>
           <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
         <View style={styles.courseNameContent}>

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import type { ExperienceLocation, RoomType, TeeTimeSlot } from '@/types/experiences';
 import type { Course } from '@/types';
@@ -15,6 +16,7 @@ type Tab = 'lodging' | 'tee_times' | 'packages';
 export default function LocationDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { getLocation, checkLodgingAvailability, checkTeeTimeAvailability, packages } = useExperienceStore();
 
@@ -68,7 +70,7 @@ export default function LocationDetail() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={goBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle} numberOfLines={1}>{location.name}</Text>

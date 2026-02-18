@@ -7,7 +7,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { useRouter, usePathname } from 'expo-router';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
-import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, MessagingIcon, NotificationsIcon } from '@/components/icons/CustomIcons';
+import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, MessagingIcon, NotificationsIcon, GolfBagIcon } from '@/components/icons/CustomIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import PlatformPressable from '@/components/PlatformPressable';
@@ -84,6 +84,7 @@ function BackButton() {
 
 export default function TabLayout() {
   const { session, isLoading } = useStore();
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const TAB_BAR_WIDTH = 340;
@@ -229,6 +230,23 @@ export default function TabLayout() {
               style={styles.moreOption}
               onPress={() => {
                 setShowMore(false);
+                router.push('/(experiences)/');
+              }}
+            >
+              <View style={[styles.moreIconBox, { backgroundColor: Colors.orange }]}>
+                <GolfBagIcon size={24} color={Colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moreOptionTitle}>Experiences</Text>
+                <Text style={styles.moreOptionDesc}>Book lodging, tee times & curated trips</Text>
+              </View>
+              <Ionicons name="repeat-outline" size={20} color={Colors.gray} style={{ marginLeft: 'auto' }} />
+            </Pressable>
+            <View style={styles.moreSeparator} />
+            <Pressable
+              style={styles.moreOption}
+              onPress={() => {
+                setShowMore(false);
                 Linking.openURL('https://proshop.thefriedegg.com/');
               }}
             >
@@ -240,23 +258,6 @@ export default function TabLayout() {
                 <Text style={styles.moreOptionDesc}>Shop Fried Egg gear</Text>
               </View>
               <Ionicons name="open-outline" size={16} color={Colors.gray} style={{ marginLeft: 'auto' }} />
-            </Pressable>
-            <View style={styles.moreSeparator} />
-            <Pressable
-              style={styles.moreOption}
-              onPress={() => {
-                setShowMore(false);
-                router.push('/(experiences)/');
-              }}
-            >
-              <View style={styles.moreIconBox}>
-                <Ionicons name="layers-outline" size={22} color={Colors.black} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.moreOptionTitle}>Experiences</Text>
-                <Text style={styles.moreOptionDesc}>Book lodging, tee times & curated trips</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={16} color={Colors.gray} style={{ marginLeft: 'auto' }} />
             </Pressable>
             <View style={styles.moreSeparator} />
             <Pressable

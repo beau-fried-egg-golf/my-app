@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { useGoBack } from '@/hooks/useGoBack';
 
 interface DetailHeaderProps {
   title: string;
@@ -14,10 +15,11 @@ interface DetailHeaderProps {
 export default function DetailHeader({ title, onBack, right }: DetailHeaderProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const goBack = useGoBack();
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
-      <Pressable onPress={onBack ?? (() => router.back())} style={styles.backArrow}>
+      <Pressable onPress={onBack ?? goBack} style={styles.backArrow}>
         <Ionicons name="chevron-back" size={20} color={Colors.black} />
       </Pressable>
       <View style={styles.titleContainer}>

@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
@@ -20,6 +21,7 @@ function formatTime(time: string): string {
 export default function BookTeeTime() {
   const params = useLocalSearchParams<{ courseId: string; slotId: string; date: string }>();
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { courses } = useStore();
   const { checkTeeTimeAvailability, createReservation } = useExperienceStore();
@@ -44,7 +46,7 @@ export default function BookTeeTime() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
-          <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Pressable onPress={goBack} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={20} color={Colors.white} />
           </Pressable>
           <Text style={styles.headerTitle}>Book Tee Time</Text>
@@ -109,7 +111,7 @@ export default function BookTeeTime() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={goBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle}>Book Tee Time</Text>

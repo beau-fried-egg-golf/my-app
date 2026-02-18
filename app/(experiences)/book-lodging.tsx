@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import { supabase } from '@/data/supabase';
 import BookingSummary from '@/components/experiences/BookingSummary';
@@ -23,6 +24,7 @@ function nightsBetween(checkIn: string, checkOut: string): number {
 export default function BookLodging() {
   const params = useLocalSearchParams<{ locationId: string; roomTypeId?: string }>();
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { getLocation, createReservation } = useExperienceStore();
 
@@ -117,7 +119,7 @@ export default function BookLodging() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => step === 'dates' ? router.back() : setStep(step === 'summary' ? 'rooms' : 'dates')} style={styles.backBtn}>
+        <Pressable onPress={() => step === 'dates' ? goBack() : setStep(step === 'summary' ? 'rooms' : 'dates')} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle}>Book Lodging</Text>

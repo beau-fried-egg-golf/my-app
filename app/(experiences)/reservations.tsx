@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import type { Reservation } from '@/types/experiences';
 
@@ -27,6 +28,7 @@ const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
 
 export default function Reservations() {
   const router = useRouter();
+  const goBack = useGoBack();
   const insets = useSafeAreaInsets();
   const { myReservations, loadMyReservations } = useExperienceStore();
   const [activeTab, setActiveTab] = useState<Tab>('upcoming');
@@ -73,7 +75,7 @@ export default function Reservations() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+        <Pressable onPress={goBack} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={Colors.white} />
         </Pressable>
         <Text style={styles.headerTitle}>My Reservations</Text>

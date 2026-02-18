@@ -1,5 +1,6 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useGoBack } from '@/hooks/useGoBack';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
@@ -10,6 +11,7 @@ import PassportBook from '@/components/PassportBook';
 export default function ProfileScreen() {
   const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, updatePushPreferences } = useStore();
   const router = useRouter();
+  const goBack = useGoBack();
 
   if (!user) return null;
 
@@ -31,7 +33,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()} style={styles.backArrow}>
+        <Pressable onPress={goBack} style={styles.backArrow}>
           <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
         <View style={styles.headerCenter}>
