@@ -73,6 +73,10 @@ export default function ExperiencesHome() {
       >
         {/* Hero Banner */}
         <View style={styles.heroBanner}>
+          <Image
+            source={require('@/assets/images/experiences-hero.jpg')}
+            style={styles.heroImage}
+          />
           <View style={styles.heroOverlay}>
             <Text style={styles.heroTitle}>Curated Golf Experiences</Text>
             <Text style={styles.heroSubtitle}>
@@ -251,10 +255,17 @@ const styles = StyleSheet.create({
 
   // Hero
   heroBanner: {
-    height: 200,
+    height: 220,
     backgroundColor: Colors.black,
     justifyContent: 'flex-end',
   },
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+    opacity: 0.6,
+  } as any,
   heroOverlay: {
     padding: 20,
   },
