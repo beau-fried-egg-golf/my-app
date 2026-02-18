@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { supabase } from './supabase';
+import { supabase, supabaseAuth } from './supabase';
 import Login from './Login';
 import Layout from './Layout';
 import Dashboard from './Dashboard';
@@ -31,6 +31,7 @@ import LocationList from './LocationList';
 import LocationForm from './LocationForm';
 import RoomTypeEditor from './RoomTypeEditor';
 import InventoryCalendar from './InventoryCalendar';
+import TeeTimeList from './TeeTimeList';
 import TeeTimeManager from './TeeTimeManager';
 import PackageList from './PackageList';
 import PackageEditor from './PackageEditor';
@@ -42,11 +43,11 @@ export default function App() {
   const [authorized, setAuthorized] = useState<boolean | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabaseAuth.auth.getSession().then(({ data: { session } }) => {
       setAuthed(!!session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabaseAuth.auth.onAuthStateChange((_event, session) => {
       setAuthed(!!session);
       if (!session) setAuthorized(null);
     });
@@ -56,7 +57,7 @@ export default function App() {
 
   useEffect(() => {
     if (authed) {
-      supabase.auth.getUser().then(({ data: { user } }) => {
+      supabaseAuth.auth.getUser().then(({ data: { user } }) => {
         if (!user?.email) { setAuthorized(false); return; }
         supabase
           .from('admin_users')
@@ -85,7 +86,7 @@ export default function App() {
       <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', gap: 16 }}>
         <h2>Unauthorized</h2>
         <p style={{ color: '#888' }}>Your account does not have admin access.</p>
-        <button className="btn" onClick={() => { supabase.auth.signOut(); setAuthed(false); setAuthorized(null); }}>
+        <button className="btn" onClick={() => { supabaseAuth.auth.signOut(); setAuthed(false); setAuthorized(null); }}>
           Sign Out
         </button>
       </div>
@@ -126,6 +127,7 @@ export default function App() {
         <Route path="experiences/locations/:id/edit" element={<LocationForm />} />
         <Route path="experiences/locations/:id/rooms" element={<RoomTypeEditor />} />
         <Route path="experiences/locations/:id/inventory" element={<InventoryCalendar />} />
+        <Route path="experiences/tee-times" element={<TeeTimeList />} />
         <Route path="experiences/tee-times/:courseId" element={<TeeTimeManager />} />
         <Route path="experiences/packages" element={<PackageList />} />
         <Route path="experiences/packages/new" element={<PackageEditor />} />

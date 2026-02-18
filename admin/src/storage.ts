@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, supabaseAuth } from './supabase';
 import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto, CancellationRequest, WaitlistEntry } from './types';
 
 export async function getCourses(): Promise<Course[]> {
@@ -343,7 +343,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 }
 
 export async function addAdminUser(email: string, name: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
   // Find current admin user's id for invited_by
   const { data: currentAdmin } = await supabase
     .from('admin_users')

@@ -34,6 +34,7 @@ export interface Course {
   fe_egg_rating: number | null;
   fe_bang_for_buck: boolean;
   fe_profile_date: string | null;
+  is_experience_course?: boolean;
 }
 
 export interface Photo {

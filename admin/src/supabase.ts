@@ -8,12 +8,16 @@ if (!SUPABASE_URL || !ANON_KEY) {
   throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY env vars');
 }
 
-// Use anon key for API gateway (sb_publishable_ format), but override
-// Authorization header with service role JWT to bypass RLS
-export const supabase = createClient(SUPABASE_URL, ANON_KEY, SERVICE_KEY ? {
+// Auth client — for sign-in, sign-out, session management
+export const supabaseAuth = createClient(SUPABASE_URL, ANON_KEY);
+
+// Data client — uses service role key to bypass RLS, never picks up user session
+export const supabase = createClient(SUPABASE_URL, ANON_KEY, {
   global: {
-    headers: {
-      Authorization: `Bearer ${SERVICE_KEY}`,
-    },
+    headers: SERVICE_KEY ? { Authorization: `Bearer ${SERVICE_KEY}` } : {},
   },
-} : undefined);
+  auth: {
+    persistSession: false,
+    autoRefreshToken: false,
+  },
+});

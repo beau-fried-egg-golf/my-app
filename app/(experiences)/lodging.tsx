@@ -25,9 +25,9 @@ export default function LodgingBrowse() {
           <Pressable onPress={goBack} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
-        </View>
-        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-          <LetterSpacedHeader text="LODGING" size={32} variant="experiences" />
+          <View style={{ flex: 1 }}>
+            <LetterSpacedHeader text="LODGING" size={32} variant="experiences" />
+          </View>
         </View>
         {locations.length > 0 ? (
           locations.map(loc => (
@@ -75,8 +75,11 @@ export default function LodgingBrowse() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 12,
+    gap: 12,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,

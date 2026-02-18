@@ -90,7 +90,7 @@ export default function LocationDetail() {
         <View style={styles.infoSection}>
           <Text style={styles.locationName}>{location.name}</Text>
           <View style={styles.typeBadge}>
-            <Text style={styles.typeBadgeText}>{location.type}</Text>
+            <Text style={styles.typeBadgeText}>{location.type.replace('_', ' ')}</Text>
           </View>
           {location.city && location.state && (
             <Text style={styles.locationAddress}>{location.city}, {location.state}</Text>

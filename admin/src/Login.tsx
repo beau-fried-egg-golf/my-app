@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { supabase } from './supabase';
+import { supabaseAuth } from './supabase';
 
 interface Props {
   onLogin: () => void;
@@ -16,7 +16,7 @@ export default function Login({ onLogin }: Props) {
     setError('');
     setLoading(true);
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
+    const { error: authError } = await supabaseAuth.auth.signInWithPassword({
       email,
       password,
     });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAdminUsers, addAdminUser, removeAdminUser } from './storage';
-import { supabase } from './supabase';
+import { supabaseAuth } from './supabase';
 import type { AdminUser } from './types';
 
 function formatDate(iso: string): string {
@@ -21,7 +21,7 @@ export default function TeamList() {
 
   useEffect(() => {
     getAdminUsers().then(setAdmins);
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabaseAuth.auth.getUser().then(({ data: { user } }) => {
       setCurrentEmail(user?.email ?? null);
     });
   }, []);
