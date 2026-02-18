@@ -8,6 +8,7 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import type { TeeTimeSlot } from '@/types/experiences';
 import TeeTimeRow from '@/components/experiences/TeeTimeRow';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function TeeTimesBrowse() {
   const router = useRouter();
@@ -58,9 +59,11 @@ export default function TeeTimesBrowse() {
       {/* Header */}
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle}>Tee Times</Text>
+        <View style={{ flex: 1 }}>
+          <LetterSpacedHeader text="TEE TIMES" size={32} variant="experiences" />
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
@@ -156,7 +159,7 @@ export default function TeeTimesBrowse() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   header: {
-    backgroundColor: Colors.black,
+    backgroundColor: Colors.white,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -165,11 +168,8 @@ const styles = StyleSheet.create({
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: Colors.lightGray,
     alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white, flex: 1,
   },
   scrollContent: { paddingBottom: 100 },
 

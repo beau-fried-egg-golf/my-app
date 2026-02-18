@@ -65,7 +65,7 @@ export default function ExperiencesHome() {
           />
           <View style={styles.heroContent}>
             <View style={styles.headerRow}>
-              <LetterSpacedHeader text="EXPERIENCES" size={28} variant="experiences" />
+              <LetterSpacedHeader text="EXPERIENCES" size={32} variant="experiences" />
               <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
                 {user?.image ? (
                   <Image source={{ uri: user.image }} style={styles.profileImage} />

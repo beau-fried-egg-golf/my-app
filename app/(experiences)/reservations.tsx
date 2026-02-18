@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import type { Reservation } from '@/types/experiences';
 
 type Tab = 'upcoming' | 'past' | 'cancelled';
@@ -76,9 +77,11 @@ export default function Reservations() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle}>My Reservations</Text>
+        <View style={{ flex: 1 }}>
+          <LetterSpacedHeader text="RESERVATIONS" size={32} variant="experiences" />
+        </View>
       </View>
 
       {/* Tabs */}
@@ -113,9 +116,8 @@ export default function Reservations() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: { backgroundColor: Colors.black, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  header: { backgroundColor: Colors.white, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
   tabBar: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.lightGray, paddingHorizontal: 16 },
   tab: { paddingVertical: 12, paddingHorizontal: 16, marginRight: 4 },
   tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.black },

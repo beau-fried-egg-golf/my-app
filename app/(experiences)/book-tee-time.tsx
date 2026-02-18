@@ -9,6 +9,7 @@ import { useExperienceStore } from '@/data/experienceStore';
 import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
 import BookingSummary from '@/components/experiences/BookingSummary';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import type { TeeTimeSlot } from '@/types/experiences';
 
 function formatTime(time: string): string {
@@ -47,9 +48,11 @@ export default function BookTeeTime() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <Pressable onPress={goBack} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={20} color={Colors.white} />
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
-          <Text style={styles.headerTitle}>Book Tee Time</Text>
+          <View style={{ flex: 1 }}>
+            <LetterSpacedHeader text="BOOK TEE TIME" size={32} variant="experiences" />
+          </View>
         </View>
         <Text style={{ textAlign: 'center', marginTop: 100, color: Colors.gray }}>Loading...</Text>
       </View>
@@ -112,9 +115,11 @@ export default function BookTeeTime() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable onPress={goBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle}>Book Tee Time</Text>
+        <View style={{ flex: 1 }}>
+          <LetterSpacedHeader text="BOOK TEE TIME" size={32} variant="experiences" />
+        </View>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
@@ -196,9 +201,8 @@ export default function BookTeeTime() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: { backgroundColor: Colors.black, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  header: { backgroundColor: Colors.white, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 100 },
   content: { padding: 20 },

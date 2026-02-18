@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function LodgingBrowse() {
   const router = useRouter();
@@ -19,14 +20,15 @@ export default function LodgingBrowse() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Lodging</Text>
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.topRow}>
+          <Pressable onPress={goBack} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
+          </Pressable>
+        </View>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <LetterSpacedHeader text="LODGING" size={32} variant="experiences" />
+        </View>
         {locations.length > 0 ? (
           locations.map(loc => (
             <Pressable
@@ -72,21 +74,14 @@ export default function LodgingBrowse() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: {
-    backgroundColor: Colors.black,
-    flexDirection: 'row',
-    alignItems: 'center',
+  topRow: {
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
+    paddingVertical: 8,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: Colors.lightGray,
     alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white, flex: 1,
   },
   scrollContent: { padding: 16, paddingBottom: 100 },
 

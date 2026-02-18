@@ -8,6 +8,7 @@ import { useGoBack } from '@/hooks/useGoBack';
 import { useExperienceStore } from '@/data/experienceStore';
 import { supabase } from '@/data/supabase';
 import BookingSummary from '@/components/experiences/BookingSummary';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import type { ExperienceLocation, RoomType } from '@/types/experiences';
 
 type Step = 'dates' | 'rooms' | 'summary';
@@ -120,9 +121,11 @@ export default function BookLodging() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable onPress={() => step === 'dates' ? goBack() : setStep(step === 'summary' ? 'rooms' : 'dates')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          <Ionicons name="chevron-back" size={20} color={Colors.black} />
         </Pressable>
-        <Text style={styles.headerTitle}>Book Lodging</Text>
+        <View style={{ flex: 1 }}>
+          <LetterSpacedHeader text="BOOK LODGING" size={32} variant="experiences" />
+        </View>
       </View>
 
       {/* Progress */}
@@ -261,9 +264,8 @@ export default function BookLodging() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: { backgroundColor: Colors.black, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
-  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
+  header: { backgroundColor: Colors.white, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 12, gap: 12 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.lightGray, alignItems: 'center', justifyContent: 'center' },
   progress: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: 12, backgroundColor: Colors.black },
   progressDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
   progressDotActive: { backgroundColor: Colors.white, width: 24 },

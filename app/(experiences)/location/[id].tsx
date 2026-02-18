@@ -69,23 +69,22 @@ export default function LocationDetail() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={goBack} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={Colors.white} />
-        </Pressable>
-        <Text style={styles.headerTitle} numberOfLines={1}>{location.name}</Text>
-      </View>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Hero */}
-        {location.hero_image ? (
-          <Image source={{ uri: location.hero_image }} style={styles.hero} />
-        ) : (
-          <View style={[styles.hero, styles.heroPlaceholder]}>
-            <Ionicons name="location-outline" size={48} color={Colors.gray} />
+        {/* Hero with back button overlay */}
+        <View>
+          {location.hero_image ? (
+            <Image source={{ uri: location.hero_image }} style={styles.hero} />
+          ) : (
+            <View style={[styles.hero, styles.heroPlaceholder]}>
+              <Ionicons name="location-outline" size={48} color={Colors.gray} />
+            </View>
+          )}
+          <View style={styles.backBtnOverlay}>
+            <Pressable onPress={goBack} style={styles.backBtn}>
+              <Ionicons name="chevron-back" size={20} color={Colors.white} />
+            </Pressable>
           </View>
-        )}
+        </View>
 
         {/* Info */}
         <View style={styles.infoSection}>
@@ -241,21 +240,13 @@ export default function LocationDetail() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
-  header: {
-    backgroundColor: Colors.black,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
+  backBtnOverlay: {
+    position: 'absolute', top: 12, left: 16, zIndex: 10,
   },
   backBtn: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center', justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white, flex: 1,
   },
   scrollContent: { paddingBottom: 100 },
   hero: { width: '100%', height: 220 },
