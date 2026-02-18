@@ -52,36 +52,36 @@ export default function ExperiencesHome() {
         ]}
         buttonLabel="Let's Go"
       />
-      {/* Header */}
-      <View style={styles.header}>
-        <LetterSpacedHeader text="EXPERIENCES" size={28} variant="experiences" />
-        <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
-          {user?.image ? (
-            <Image source={{ uri: user.image }} style={styles.profileImage} />
-          ) : (
-            <View style={styles.profilePlaceholder}>
-              <Ionicons name="person" size={16} color={Colors.white} />
-            </View>
-          )}
-        </Pressable>
-      </View>
-
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero Banner */}
+        {/* Hero Banner with header overlay */}
         <View style={styles.heroBanner}>
           <Image
             source={require('@/assets/images/experiences-hero.jpg')}
             style={styles.heroImage}
           />
-          <View style={styles.heroOverlay}>
-            <Text style={styles.heroTitle}>Curated Golf Experiences</Text>
-            <Text style={styles.heroSubtitle}>
-              Book lodging, tee times, and curated packages at the best courses in the country.
-            </Text>
+          <View style={styles.heroContent}>
+            <View style={styles.headerRow}>
+              <LetterSpacedHeader text="EXPERIENCES" size={28} variant="experiences" />
+              <Pressable onPress={() => router.push('/profile')} style={styles.profileBtn}>
+                {user?.image ? (
+                  <Image source={{ uri: user.image }} style={styles.profileImage} />
+                ) : (
+                  <View style={styles.profilePlaceholder}>
+                    <Ionicons name="person" size={16} color={Colors.white} />
+                  </View>
+                )}
+              </Pressable>
+            </View>
+            <View style={styles.heroTextBlock}>
+              <Text style={styles.heroTitle}>Curated Golf Experiences</Text>
+              <Text style={styles.heroSubtitle}>
+                Book lodging, tee times, and curated packages at the best courses in the country.
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -218,13 +218,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
-  header: {
-    backgroundColor: Colors.black,
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingTop: 8,
   },
   profileBtn: {
     width: 36,
@@ -237,6 +236,8 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: 15,
+    borderWidth: 2,
+    borderColor: Colors.white,
   },
   profilePlaceholder: {
     width: 30,
@@ -255,18 +256,21 @@ const styles = StyleSheet.create({
 
   // Hero
   heroBanner: {
-    height: 220,
+    height: 280,
     backgroundColor: Colors.black,
-    justifyContent: 'flex-end',
   },
   heroImage: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
-    opacity: 0.6,
+    opacity: 0.55,
   } as any,
-  heroOverlay: {
+  heroContent: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  heroTextBlock: {
     padding: 20,
   },
   heroTitle: {
