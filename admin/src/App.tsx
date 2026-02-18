@@ -37,6 +37,12 @@ import PackageList from './PackageList';
 import PackageEditor from './PackageEditor';
 import ReservationList from './ReservationList';
 import ReservationDetail from './ReservationDetail';
+import EventsDashboard from './EventsDashboard';
+import EventList from './EventList';
+import EventEditor from './EventEditor';
+import EventBookingList from './EventBookingList';
+import EventBookingDetail from './EventBookingDetail';
+import EventWaitlist from './EventWaitlist';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -134,6 +140,13 @@ export default function App() {
         <Route path="experiences/packages/:id/edit" element={<PackageEditor />} />
         <Route path="experiences/reservations" element={<ReservationList />} />
         <Route path="experiences/reservations/:id" element={<ReservationDetail />} />
+        <Route path="events" element={<EventsDashboard />} />
+        <Route path="events/list" element={<EventList />} />
+        <Route path="events/new" element={<EventEditor />} />
+        <Route path="events/:id/edit" element={<EventEditor />} />
+        <Route path="events/:id/bookings" element={<EventBookingList />} />
+        <Route path="events/:id/bookings/:bid" element={<EventBookingDetail />} />
+        <Route path="events/:id/waitlist" element={<EventWaitlist />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

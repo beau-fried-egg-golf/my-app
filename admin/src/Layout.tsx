@@ -60,6 +60,7 @@ const BUCKETS = [
       { to: '/experiences/packages', label: 'Packages' },
       { to: '/experiences/tee-times', label: 'Tee Times' },
       { to: '/experiences/reservations', label: 'Reservations' },
+      { to: '/events', label: 'Events' },
     ],
   },
 ] satisfies readonly { key: string; label: string; icon: ReactNode; firstRoute: string; items: { to: string; label: string; end?: boolean }[] }[];
@@ -67,6 +68,7 @@ const BUCKETS = [
 function getActiveBucket(pathname: string) {
   if (pathname.startsWith('/hole-annotations')) return 'content';
   if (pathname.startsWith('/experiences')) return 'experiences';
+  if (pathname.startsWith('/events')) return 'experiences';
   return 'community';
 }
 

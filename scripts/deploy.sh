@@ -17,6 +17,10 @@ rm -rf dist/admin
 cp -r admin/dist dist/admin
 
 echo ""
+echo "==> Building events embed widget..."
+cd events-embed && npm run build && cd "$ROOT"
+
+echo ""
 echo "==> Preparing dist for deploy..."
 cp vercel.json dist/vercel.json
 mkdir -p dist/.vercel

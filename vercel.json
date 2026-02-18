@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/admin/:path*", "destination": "/admin/index.html" },
+    { "source": "/embed/:path*", "destination": "/embed/index.html" },
 
     { "source": "/course/:id", "destination": "/course/[id].html" },
     { "source": "/post/:id", "destination": "/post/[id].html" },
