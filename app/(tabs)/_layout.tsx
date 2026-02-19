@@ -3,9 +3,10 @@ import { Tabs, Redirect } from 'expo-router';
 import { Image, Linking, Modal, Platform, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { CommonActions } from '@react-navigation/native';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
-import { useRouter, usePathname } from 'expo-router';
+import { useRouter, usePathname, useNavigation } from 'expo-router';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, MessagingIcon, NotificationsIcon, GolfBagIcon } from '@/components/icons/CustomIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,6 +86,7 @@ function BackButton() {
 export default function TabLayout() {
   const { session, isLoading, isAdmin } = useStore();
   const router = useRouter();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const TAB_BAR_WIDTH = 340;
@@ -232,7 +234,12 @@ export default function TabLayout() {
                   style={styles.moreOption}
                   onPress={() => {
                     setShowMore(false);
-                    router.push('/(experiences)/');
+                    navigation.dispatch(
+                      CommonActions.reset({
+                        index: 0,
+                        routes: [{ name: '(experiences)' }],
+                      })
+                    );
                   }}
                 >
                   <View style={[styles.moreIconBox, { backgroundColor: Colors.orange }]}>
