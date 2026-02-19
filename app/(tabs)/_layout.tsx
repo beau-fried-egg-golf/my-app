@@ -194,9 +194,9 @@ export default function TabLayout() {
               <Ionicons name="ellipsis-horizontal" size={24} color={color} />
             </TabIconBox>
           ),
-          tabBarButton: (props) => (
+          tabBarButton: ({ href, onPress, ...rest }: any) => (
             <Pressable
-              {...props}
+              {...rest}
               onPress={() => setShowMore(true)}
             />
           ),

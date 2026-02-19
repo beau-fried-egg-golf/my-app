@@ -1,6 +1,7 @@
-import { View } from 'react-native';
+import { Redirect } from 'expo-router';
 
-// Placeholder — the "More" tab never navigates here; it opens a popup instead.
+// The "More" tab opens a modal overlay instead of navigating here.
+// If a user lands on this route (e.g. web deep-link), redirect home.
 export default function MoreScreen() {
-  return <View />;
+  return <Redirect href="/" />;
 }

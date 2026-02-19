@@ -340,9 +340,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(profileToUser(profile));
     }
-    // Check admin status
-    const { data: adminFlag } = await supabase.rpc('is_admin');
-    setIsAdmin(adminFlag === true);
+    // Check admin status (non-critical — default to false on error)
+    try {
+      const { data: adminFlag } = await supabase.rpc('is_admin');
+      setIsAdmin(adminFlag === true);
+    } catch {
+      setIsAdmin(false);
+    }
   }
 
   async function loadData() {
