@@ -66,6 +66,7 @@ export default function MemberProfileScreen() {
           {profile.is_verified && <VerifiedBadge size={18} />}
         </View>
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
+        {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         {!isOwnProfile && (
           <View style={styles.actionRow}>
             <Pressable
@@ -194,6 +195,7 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 22, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginTop: 12 },
   location: { fontSize: 14, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
+  bio: { fontSize: 14, color: Colors.black, marginTop: 8, fontFamily: Fonts!.sans, textAlign: 'center' },
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 14 },
   actionBtn: {
     backgroundColor: Colors.black, borderRadius: 20,

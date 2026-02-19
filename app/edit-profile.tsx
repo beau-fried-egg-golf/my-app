@@ -38,6 +38,7 @@ export default function EditProfileScreen() {
   const goBack = useGoBack();
 
   const [name, setName] = useState(user?.name ?? '');
+  const [bio, setBio] = useState(user?.bio ?? '');
   const [image, setImage] = useState(user?.image ?? null);
   const [streetAddress, setStreetAddress] = useState(user?.streetAddress ?? '');
   const [city, setCity] = useState(user?.city ?? '');
@@ -103,6 +104,7 @@ export default function EditProfileScreen() {
       id: user!.id,
       memberSince: user!.memberSince,
       name: name.trim(),
+      bio: bio.trim() || null,
       image,
       streetAddress: streetAddress.trim(),
       city: city.trim(),
@@ -146,6 +148,19 @@ export default function EditProfileScreen() {
               value={name}
               onChangeText={setName}
               placeholderTextColor={Colors.gray}
+            />
+          </View>
+
+          <View style={styles.field}>
+            <Text style={styles.label}>Bio</Text>
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Write a short bio..."
+              placeholderTextColor={Colors.gray}
+              multiline
+              maxLength={200}
             />
           </View>
 

@@ -2,6 +2,7 @@ export interface Profile {
   id: string; // uuid from auth.users
   name: string;
   image: string | null;
+  bio: string | null;
   street_address: string;
   city: string;
   state: string;
@@ -66,6 +67,7 @@ export interface User {
   id: string;
   name: string;
   image: string | null;
+  bio: string | null;
   streetAddress: string;
   city: string;
   state: string;
@@ -240,6 +242,7 @@ export function profileToUser(p: Profile): User {
     id: p.id,
     name: p.name,
     image: p.image,
+    bio: p.bio,
     streetAddress: p.street_address,
     city: p.city,
     state: p.state,
@@ -425,6 +428,7 @@ export function userToProfile(u: User): Omit<Profile, 'id'> {
   return {
     name: u.name,
     image: u.image,
+    bio: u.bio,
     street_address: u.streetAddress,
     city: u.city,
     state: u.state,

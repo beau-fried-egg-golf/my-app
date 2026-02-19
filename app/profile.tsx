@@ -58,6 +58,7 @@ export default function ProfileScreen() {
         )}
         <Text style={styles.name}>{user.name}</Text>
         {(user.city || user.state) ? <Text style={styles.location}>{[user.city, user.state].filter(Boolean).join(', ')}</Text> : null}
+        {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
       </View>
 
       <View style={styles.stats}>
@@ -276,6 +277,13 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 2,
     fontFamily: Fonts!.sans,
+  },
+  bio: {
+    fontSize: 14,
+    color: Colors.black,
+    marginTop: 8,
+    fontFamily: Fonts!.sans,
+    textAlign: 'center',
   },
   stats: {
     flexDirection: 'row',

@@ -885,6 +885,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .update({
         name: u.name,
         image: u.image,
+        bio: u.bio,
         street_address: u.streetAddress,
         city: u.city,
         state: u.state,
