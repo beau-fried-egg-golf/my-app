@@ -49,6 +49,19 @@ export default function GroupDetailScreen() {
     setMembers(m);
   };
 
+  const handleShare = () => {
+    router.push({
+      pathname: '/create-post',
+      params: {
+        shareType: 'group',
+        shareId: group.id,
+        shareTitle: group.name,
+        shareDescription: group.description || group.location_name || '',
+        shareImage: group.image || '',
+      },
+    });
+  };
+
   const creator = members.find(m => m.role === 'creator');
 
   return (
@@ -120,6 +133,9 @@ export default function GroupDetailScreen() {
               <Text style={styles.actionBtnPrimaryText}>Join Group</Text>
             </Pressable>
           )}
+          <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+            <Ionicons name="share-outline" size={16} color={Colors.black} />
+          </Pressable>
         </View>
 
         {/* Creator */}

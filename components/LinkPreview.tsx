@@ -1,6 +1,19 @@
 import { useState } from 'react';
 import { Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+
+function isInAppUrl(url: string): boolean {
+  return url.startsWith('app://');
+}
+
+function parseInAppUrl(url: string): { type: string; id: string } | null {
+  if (!isInAppUrl(url)) return null;
+  const path = url.replace('app://', '');
+  const [type, id] = path.split('/');
+  if (type && id) return { type, id };
+  return null;
+}
 
 interface LinkPreviewProps {
   url: string;
@@ -21,6 +34,13 @@ function decodeEntities(str: string): string {
 }
 
 function getDomain(url: string): string {
+  if (isInAppUrl(url)) {
+    const parsed = parseInAppUrl(url);
+    if (parsed?.type === 'writeup') return 'Review';
+    if (parsed?.type === 'group') return 'Group';
+    if (parsed?.type === 'meetup') return 'Meetup';
+    return '';
+  }
   try {
     const host = new URL(url).hostname.replace('www.', '');
     if (host.includes('youtube.com') || host.includes('youtu.be')) return 'YouTube';
@@ -33,10 +53,16 @@ function getDomain(url: string): string {
 }
 
 export default function LinkPreview({ url, title, description, image }: LinkPreviewProps) {
+  const router = useRouter();
   const domain = getDomain(url);
   const [aspectRatio, setAspectRatio] = useState(1.91); // default OG image ratio (1200x630)
 
   function handlePress() {
+    const parsed = parseInAppUrl(url);
+    if (parsed) {
+      router.push(`/${parsed.type}/${parsed.id}`);
+      return;
+    }
     if (Platform.OS === 'web') {
       window.open(url, '_blank', 'noopener,noreferrer');
     } else {

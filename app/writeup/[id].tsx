@@ -150,6 +150,23 @@ export default function WriteupDetailScreen() {
     ]);
   }
 
+  function handleShare() {
+    const description = course?.short_name
+      ? `${writeup!.title} - ${course.short_name}`
+      : writeup!.title;
+    const image = visiblePhotos.length > 0 ? visiblePhotos[0].url : '';
+    router.push({
+      pathname: '/create-post',
+      params: {
+        shareType: 'writeup',
+        shareId: writeup!.id,
+        shareTitle: writeup!.title,
+        shareDescription: description,
+        shareImage: image,
+      },
+    });
+  }
+
   function handleFlag() {
     Alert.alert('Flag Review', 'Are you sure you want to flag this review as inappropriate?', [
       { text: 'Cancel', style: 'cancel' },
@@ -244,7 +261,8 @@ export default function WriteupDetailScreen() {
     );
   }
 
-  const visiblePhotos = writeup.photos.filter((p) => !p.hidden);
+  const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
+  const visiblePhotos = writeup.photos.filter((p) => !p.hidden && !brokenPhotoIds.has(p.id));
 
   const headerContent = (
     <>
@@ -270,7 +288,11 @@ export default function WriteupDetailScreen() {
             const photoUpvoted = photo.user_has_upvoted ?? false;
             return (
               <View key={photo.id} style={styles.photoContainer}>
-                <Image source={{ uri: photo.url }} style={styles.photo} />
+                <Image
+                  source={{ uri: photo.url }}
+                  style={styles.photo}
+                  onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
+                />
                 {photo.caption ? (
                   <Text style={styles.photoCaption}>{photo.caption}</Text>
                 ) : null}
@@ -315,6 +337,11 @@ export default function WriteupDetailScreen() {
       </View>
 
       <View style={styles.actions}>
+        <Pressable style={styles.flagButton} onPress={handleShare}>
+          <Ionicons name="share-outline" size={14} color={Colors.gray} />
+          <Text style={styles.flagText}>Share</Text>
+        </Pressable>
+
         {!isOwner && (
           <Pressable style={styles.flagButton} onPress={handleFlag}>
             <Ionicons name="flag-outline" size={14} color={Colors.gray} />

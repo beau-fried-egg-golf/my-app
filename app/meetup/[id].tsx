@@ -123,6 +123,20 @@ export default function MeetupDetailScreen() {
     setMembers(m);
   };
 
+  const handleShare = () => {
+    const description = `${formatMeetupDate(meetup.meetup_date)} · ${meetup.location_name}`;
+    router.push({
+      pathname: '/create-post',
+      params: {
+        shareType: 'meetup',
+        shareId: meetup.id,
+        shareTitle: meetup.name,
+        shareDescription: description,
+        shareImage: meetup.image || '',
+      },
+    });
+  };
+
   const renderActionButtons = () => {
     if (isFeMeetupWithPayment) {
       // FE-coordinated meetup with Stripe payment
@@ -408,6 +422,9 @@ export default function MeetupDetailScreen() {
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           {renderActionButtons()}
+          <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+            <Ionicons name="share-outline" size={16} color={Colors.black} />
+          </Pressable>
         </View>
 
         {isFeMeetupWithPayment && (

@@ -11,7 +11,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -44,13 +44,27 @@ function extractUrl(text: string): string | null {
 
 export default function CreatePostScreen() {
   const router = useRouter();
+  const { shareType, shareId, shareTitle, shareDescription, shareImage } = useLocalSearchParams<{
+    shareType?: string;
+    shareId?: string;
+    shareTitle?: string;
+    shareDescription?: string;
+    shareImage?: string;
+  }>();
   const { user, addPost } = useStore();
   const [content, setContent] = useState('');
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
-  const [linkUrl, setLinkUrl] = useState<string | null>(null);
-  const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(null);
+  const hasShareParams = !!(shareType && shareId);
+  const [linkUrl, setLinkUrl] = useState<string | null>(
+    hasShareParams ? `app://${shareType}/${shareId}` : null,
+  );
+  const [linkMeta, setLinkMeta] = useState<LinkMeta | null>(
+    hasShareParams
+      ? { title: shareTitle ?? '', description: shareDescription ?? '', image: shareImage ?? '' }
+      : null,
+  );
   const [fetchingMeta, setFetchingMeta] = useState(false);
   const [linkDismissed, setLinkDismissed] = useState(false);
   const fetchAbortRef = useRef<AbortController | null>(null);
@@ -98,6 +112,9 @@ export default function CreatePostScreen() {
 
   function handleContentChange(text: string) {
     setContent(text);
+
+    // Skip URL auto-detection when a shared card is attached and not dismissed
+    if (hasShareParams && !linkDismissed) return;
 
     const detected = extractUrl(text);
 
