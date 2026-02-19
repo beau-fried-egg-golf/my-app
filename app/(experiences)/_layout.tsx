@@ -1,9 +1,25 @@
-import { Stack } from 'expo-router';
-import { Platform, View } from 'react-native';
+import { Stack, Redirect } from 'expo-router';
+import { Image, Platform, View } from 'react-native';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { useStore } from '@/data/store';
 import ExperiencesTabBar from '@/components/experiences/ExperiencesTabBar';
 
 export default function ExperiencesLayout() {
+  const { session, isLoading } = useStore();
+
+  if (isLoading) return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.black }}>
+      <Image
+        source={require('../../assets/images/fegc-app-icon.png')}
+        style={{ width: 120, height: 120 }}
+      />
+    </View>
+  );
+
+  if (!session) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   return (
     <View style={{ flex: 1 }}>
       <Stack

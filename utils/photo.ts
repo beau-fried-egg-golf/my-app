@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { supabase } from '@/data/supabase';
 
 const MAX_DIMENSION = 800;
@@ -50,33 +51,44 @@ function resizeImageOnWeb(uri: string): Promise<Blob> {
  * GIFs are uploaded as-is to preserve animation.
  */
 export async function uploadPhoto(uri: string, userId: string): Promise<string> {
-  // Fetch the original blob to detect type
-  const originalResponse = await fetch(uri);
-  const originalBlob = await originalResponse.blob();
-  const isGif = originalBlob.type === 'image/gif';
-
+  const isGif = uri.toLowerCase().endsWith('.gif');
   const ext = isGif ? 'gif' : 'jpg';
   const contentType = isGif ? 'image/gif' : 'image/jpeg';
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-  let blob: Blob;
-  if (isGif) {
-    blob = originalBlob;
-  } else if (Platform.OS === 'web') {
-    try {
-      blob = await resizeImageOnWeb(uri);
-    } catch {
+  if (Platform.OS === 'web') {
+    // Web: use blob approach with optional resize
+    const response = await fetch(uri);
+    const originalBlob = await response.blob();
+    let blob: Blob;
+    if (isGif || originalBlob.type === 'image/gif') {
       blob = originalBlob;
+    } else {
+      try {
+        blob = await resizeImageOnWeb(uri);
+      } catch {
+        blob = originalBlob;
+      }
     }
+    const { error } = await supabase.storage
+      .from('photos')
+      .upload(fileName, blob, { contentType });
+    if (error) throw error;
   } else {
-    blob = originalBlob;
+    // Native: read file as base64 via expo-file-system (fetch().blob() returns 0 bytes on Hermes)
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const binaryStr = atob(base64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
+    const { error } = await supabase.storage
+      .from('photos')
+      .upload(fileName, bytes, { contentType });
+    if (error) throw error;
   }
-
-  const { error } = await supabase.storage
-    .from('photos')
-    .upload(fileName, blob, { contentType });
-
-  if (error) throw error;
 
   const { data } = supabase.storage.from('photos').getPublicUrl(fileName);
   return data.publicUrl;

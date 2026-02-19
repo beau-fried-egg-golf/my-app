@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+
+const fegcIcon = require('@/assets/images/fegc-app-icon.png');
 
 interface TutorialPopupProps {
   storageKey: string;
@@ -31,8 +34,9 @@ export default function TutorialPopup({ storageKey, title, paragraphs, buttonLab
       <Pressable style={styles.backdrop} onPress={dismiss}>
         <Pressable style={styles.card} onPress={e => e.stopPropagation()}>
           <Image
-            source={require('@/assets/images/FEGC App Icon.png')}
+            source={fegcIcon}
             style={styles.icon}
+            contentFit="cover"
           />
           <Text style={styles.title}>{title}</Text>
           <ScrollView style={styles.body} bounces={false}>

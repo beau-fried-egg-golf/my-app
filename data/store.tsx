@@ -927,6 +927,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           user_id: userId,
           url: p.url,
           caption: p.caption,
+          hidden: false,
         }));
 
         const { data: photoData } = await supabase
@@ -1142,42 +1143,52 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session, writeups],
   );
 
+  const markPlayedInFlight = useRef<Set<string>>(new Set());
+
   const markCoursePlayed = useCallback(
     async (courseId: string, datePlayed?: string) => {
       if (!session) return;
       const userId = session.user.id;
 
-      const dateValue = datePlayed || null;
+      // Prevent duplicate calls (double-tap / StrictMode)
+      if (markPlayedInFlight.current.has(courseId)) return;
+      markPlayedInFlight.current.add(courseId);
 
-      // Optimistic update
-      const optimistic: CoursePlayed = {
-        id: generateId(),
-        user_id: userId,
-        course_id: courseId,
-        created_at: new Date().toISOString(),
-        date_played: dateValue,
-      };
-      setCoursesPlayed(prev => [...prev, optimistic]);
+      try {
+        const dateValue = datePlayed || null;
 
-      const { data } = await supabase
-        .from('courses_played')
-        .insert({ user_id: userId, course_id: courseId, date_played: dateValue })
-        .select()
-        .single();
+        // Optimistic update
+        const optimistic: CoursePlayed = {
+          id: generateId(),
+          user_id: userId,
+          course_id: courseId,
+          created_at: new Date().toISOString(),
+          date_played: dateValue,
+        };
+        setCoursesPlayed(prev => [...prev, optimistic]);
 
-      if (data) {
-        setCoursesPlayed(prev => prev.map(cp => cp.id === optimistic.id ? data : cp));
+        const { data } = await supabase
+          .from('courses_played')
+          .insert({ user_id: userId, course_id: courseId, date_played: dateValue })
+          .select()
+          .single();
+
+        if (data) {
+          setCoursesPlayed(prev => prev.map(cp => cp.id === optimistic.id ? data : cp));
+        }
+
+        // Insert activity
+        await supabase.from('activities').insert({
+          type: 'played',
+          user_id: userId,
+          course_id: courseId,
+        });
+
+        const newActivities = await loadActivities();
+        setActivities(newActivities);
+      } finally {
+        markPlayedInFlight.current.delete(courseId);
       }
-
-      // Insert activity
-      await supabase.from('activities').insert({
-        type: 'played',
-        user_id: userId,
-        course_id: courseId,
-      });
-
-      const newActivities = await loadActivities();
-      setActivities(newActivities);
     },
     [session, courses],
   );

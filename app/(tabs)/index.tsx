@@ -311,8 +311,8 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <Text style={styles.activityTextBold}>{name}</Text>
           {isVerified && <VerifiedBadge size={12} />}
           <Text style={styles.activityText}> liked </Text>
-          <Text style={styles.activityTextBold}>{targetName}</Text>
-          <Text style={styles.activityText}>{'\'s review on'}</Text>
+          <Text style={styles.activityTextBold}>{targetName}{'\'s'}</Text>
+          <Text style={styles.activityText}> review on</Text>
         </View>
         <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
         <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>

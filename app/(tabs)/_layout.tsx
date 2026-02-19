@@ -94,7 +94,7 @@ export default function TabLayout() {
 
   if (isLoading) return (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
-      <Image source={require('../../assets/images/FEGC App Icon.png')} style={{ width: 120, height: 120 }} />
+      <Image source={require('../../assets/images/fegc-app-icon.png')} style={{ width: 120, height: 120 }} />
     </View>
   );
 

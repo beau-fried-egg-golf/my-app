@@ -58,6 +58,7 @@ export default function RootLayout() {
       <PasswordResetNavigator />
       <StatusBar style="dark" />
       <Stack
+        initialRouteName="(tabs)"
         screenOptions={{
           animation: Platform.OS === 'android' ? 'fade_from_bottom' : 'default',
           headerStyle: { backgroundColor: Colors.white },
@@ -70,8 +71,8 @@ export default function RootLayout() {
           },
         }}
       >
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(experiences)" options={{ headerShown: false }} />
         <Stack.Screen
           name="profile"

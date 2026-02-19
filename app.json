@@ -4,7 +4,7 @@
     "slug": "my-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/FEGC App Icon.png",
+    "icon": "./assets/images/fegc-app-icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -28,7 +28,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/FEGC App Icon.png"
+      "favicon": "./assets/images/fegc-app-icon.png"
     },
     "plugins": [
       "expo-router",
