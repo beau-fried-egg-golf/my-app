@@ -1,4 +1,5 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef } from 'react';
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useGoBack } from '@/hooks/useGoBack';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +8,62 @@ import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { EditIcon, SignOutIcon } from '@/components/icons/CustomIcons';
 import PassportBook from '@/components/PassportBook';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function ProfileScreen() {
   const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, updatePushPreferences } = useStore();
   const router = useRouter();
   const goBack = useGoBack();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
 
   if (!user) return null;
 
@@ -31,23 +83,34 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <Pressable onPress={goBack} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.headerCenter}>
-          <LetterSpacedHeader text="PROFILE" size={32} />
+    <ResponsiveContainer>
+    <ScrollView style={styles.container} contentContainerStyle={styles.content} {...desktopScrollProps}>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={goBack} />
+          <View style={styles.desktopManageRight}>
+            <DesktopBackStyleButton label="EDIT" onPress={() => router.push('/edit-profile')} />
+            <DesktopBackStyleButton label="SIGN OUT" onPress={handleSignOut} />
+          </View>
         </View>
-        <View style={styles.headerPill}>
-          <Pressable onPress={() => router.push('/edit-profile')} style={styles.headerPillBtn}>
-            <EditIcon size={28} color={Colors.black} />
+      ) : (
+        <View style={styles.headerRow}>
+          <Pressable onPress={goBack} style={styles.backArrow}>
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
           </Pressable>
-          <Pressable onPress={handleSignOut} style={styles.headerPillBtn}>
-            <SignOutIcon size={28} color={Colors.gray} />
-          </Pressable>
+          <View style={styles.headerCenter}>
+            <LetterSpacedHeader text="PROFILE" size={32} />
+          </View>
+          <View style={styles.headerPill}>
+            <Pressable onPress={() => router.push('/edit-profile')} style={styles.headerPillBtn}>
+              <EditIcon size={28} color={Colors.black} />
+            </Pressable>
+            <Pressable onPress={handleSignOut} style={styles.headerPillBtn}>
+              <SignOutIcon size={28} color={Colors.gray} />
+            </Pressable>
+          </View>
         </View>
-      </View>
+      )}
       <View style={styles.avatarSection}>
         {user.image ? (
           <Image source={{ uri: user.image }} style={styles.avatar} />
@@ -190,6 +253,7 @@ export default function ProfileScreen() {
       )}
 
     </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
@@ -397,4 +461,10 @@ const styles = StyleSheet.create({
     color: Colors.black,
     marginBottom: 12,
   },
+  desktopTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 4, marginBottom: 24 },
+  desktopManageRight: { flexDirection: 'row', gap: 8 },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackBtnInner: { paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

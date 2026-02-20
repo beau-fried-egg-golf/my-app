@@ -154,7 +154,8 @@ export function SearchIcon({ size = 24, color = '#1B1A1A' }: IconProps) {
       <Path
         d="M32 32L27.65 27.65M30 22C30 26.4183 26.4183 30 22 30C17.5817 30 14 26.4183 14 22C14 17.5817 17.5817 14 22 14C26.4183 14 30 17.5817 30 22Z"
         stroke={color}
-        strokeWidth={1.5}
+        strokeWidth={2.5}
+        strokeLinecap="round"
         strokeLinejoin="round"
       />
     </Svg>

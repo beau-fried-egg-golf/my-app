@@ -1,11 +1,125 @@
-import { useEffect, useState } from 'react';
-import { Alert, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Dimensions, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { GroupMember } from '@/types';
 import DetailHeader from '@/components/DetailHeader';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBlackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.black, Colors.orange] });
+  return (
+    <Animated.View style={[styles.dtBlackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={[styles.dtBlackBtnText, { color: Colors.black }]}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopShareButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="share-outline" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>SHARE</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>SHARE</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.dtOutlineBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -14,6 +128,8 @@ export default function GroupDetailScreen() {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
 
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const group = groups.find(g => g.id === id);
   const currentUserId = session?.user?.id;
   const isMember = group?.is_member ?? false;
@@ -66,16 +182,33 @@ export default function GroupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <DetailHeader title="GROUP" />
+      <ResponsiveContainer>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={() => router.canGoBack() ? router.back() : router.push('/groups')} />
+          {isCreator && (
+            <View style={styles.desktopManageRight}>
+              <DesktopBackStyleButton label="EDIT" onPress={() => router.push(`/create-group?groupId=${group.id}`)} />
+              <DesktopBackStyleButton label="DELETE" onPress={() => {
+                if (confirm('Delete this group? This cannot be undone.')) {
+                  deleteGroup(group.id).then(() => router.back());
+                }
+              }} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <DetailHeader title="GROUP" />
+      )}
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView {...desktopScrollProps} contentContainerStyle={styles.scrollContent}>
         {/* Group Image & Info */}
         <View style={styles.heroSection}>
           {group.image ? (
-            <Image source={{ uri: group.image }} style={styles.groupImage} />
+            <Image source={{ uri: group.image }} style={isDesktop ? styles.groupImageDesktop : styles.groupImage} resizeMode={isDesktop ? 'cover' : undefined} />
           ) : (
-            <View style={styles.groupImagePlaceholder}>
-              <Ionicons name="people" size={40} color={Colors.gray} />
+            <View style={isDesktop ? styles.groupImagePlaceholderDesktop : styles.groupImagePlaceholder}>
+              <Ionicons name="people" size={isDesktop ? 60 : 40} color={Colors.gray} />
             </View>
           )}
           <Text style={styles.groupName}>{group.name}</Text>
@@ -87,7 +220,7 @@ export default function GroupDetailScreen() {
           </Text>
         </View>
 
-        {isCreator && (
+        {!isDesktop && isCreator && (
           <View style={styles.manageRow}>
             <Pressable style={styles.manageBtn} onPress={() => router.push(`/create-group?groupId=${group.id}`)}>
               <Text style={styles.manageBtnText}>Edit</Text>
@@ -114,28 +247,46 @@ export default function GroupDetailScreen() {
 
         {/* Action Buttons */}
         <View style={styles.actionRow}>
-          {isMember ? (
+          {isDesktop ? (
             <>
-              <Pressable
-                style={styles.actionBtnPrimary}
-                onPress={() => router.push(`/group-chat/${group.id}`)}
-              >
-                <Text style={styles.actionBtnPrimaryText}>Group Chat</Text>
-              </Pressable>
-              {!isCreator && (
-                <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
-                  <Text style={styles.actionBtnOutlineText}>Leave</Text>
-                </Pressable>
+              {isMember ? (
+                <>
+                  <DesktopBlackButton label="GROUP CHAT" onPress={() => router.push(`/group-chat/${group.id}`)} />
+                  {!isCreator && (
+                    <DesktopOutlineButton label="LEAVE" onPress={handleLeave} />
+                  )}
+                </>
+              ) : (
+                <DesktopBlackButton label="JOIN GROUP" onPress={handleJoin} />
               )}
+              <DesktopShareButton onPress={handleShare} />
             </>
           ) : (
-            <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
-              <Text style={styles.actionBtnPrimaryText}>Join Group</Text>
-            </Pressable>
+            <>
+              {isMember ? (
+                <>
+                  <Pressable
+                    style={styles.actionBtnPrimary}
+                    onPress={() => router.push(`/group-chat/${group.id}`)}
+                  >
+                    <Text style={styles.actionBtnPrimaryText}>Group Chat</Text>
+                  </Pressable>
+                  {!isCreator && (
+                    <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
+                      <Text style={styles.actionBtnOutlineText}>Leave</Text>
+                    </Pressable>
+                  )}
+                </>
+              ) : (
+                <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
+                  <Text style={styles.actionBtnPrimaryText}>Join Group</Text>
+                </Pressable>
+              )}
+              <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+                <Ionicons name="share-outline" size={16} color={Colors.black} />
+              </Pressable>
+            </>
           )}
-          <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
-            <Ionicons name="share-outline" size={16} color={Colors.black} />
-          </Pressable>
         </View>
 
         {/* Creator */}
@@ -211,6 +362,7 @@ export default function GroupDetailScreen() {
           ))}
         </View>
       </ScrollView>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -371,4 +523,25 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.white,
   },
+  desktopTopBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
+  desktopManageRight: { flexDirection: 'row', gap: 10 },
+  groupImageDesktop: { width: '42%', aspectRatio: 1, borderRadius: 8, alignSelf: 'center' } as any,
+  groupImagePlaceholderDesktop: {
+    width: '60%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  } as any,
+  desktopBackBtn: { alignSelf: 'flex-start', borderRadius: 8, overflow: 'hidden', marginLeft: 16 },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  desktopBackBtnInner: { paddingHorizontal: 16, paddingVertical: 14 },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtBlackBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0 },
+  dtBlackBtnInner: { paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtOutlineBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0, borderWidth: 1.5, borderColor: Colors.black },
+  dtOutlineBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

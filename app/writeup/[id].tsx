@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -19,11 +20,81 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Photo, WriteupReply } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
-import WordHighlight from '@/components/WordHighlight';
 import DetailHeader from '@/components/DetailHeader';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopShareButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="share-outline" size={16} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>SHARE</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>SHARE</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -78,6 +149,8 @@ export default function WriteupDetailScreen() {
 
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const writeup = writeups.find((w) => w.id === id);
 
   const [editing, setEditing] = useState(false);
@@ -100,7 +173,6 @@ export default function WriteupDetailScreen() {
   const course = courses.find((c) => c.id === writeup.course_id);
   const isOwner = user?.id === writeup.user_id;
   const authorName = writeup.author_name ?? getUserName(writeup.user_id);
-  const authorParts = authorName.split(' ').filter(Boolean);
 
   function startEditing() {
     setEditTitle(writeup!.title);
@@ -136,18 +208,24 @@ export default function WriteupDetailScreen() {
     }
   }
 
-  function handleDelete() {
-    Alert.alert('Delete Review', 'Are you sure you want to delete this review?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteWriteup(writeup!.id);
-          router.back();
+  async function handleDelete() {
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Are you sure you want to delete this review?')) return;
+      await deleteWriteup(writeup!.id);
+      router.back();
+    } else {
+      Alert.alert('Delete Review', 'Are you sure you want to delete this review?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteWriteup(writeup!.id);
+            router.back();
+          },
         },
-      },
-    ]);
+      ]);
+    }
   }
 
   function handleShare() {
@@ -168,16 +246,21 @@ export default function WriteupDetailScreen() {
   }
 
   function handleFlag() {
-    Alert.alert('Flag Review', 'Are you sure you want to flag this review as inappropriate?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Flag',
-        style: 'destructive',
-        onPress: async () => {
-          await flagContent('writeup', writeup!.id);
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Are you sure you want to flag this review as inappropriate?')) return;
+      flagContent('writeup', writeup!.id);
+    } else {
+      Alert.alert('Flag Review', 'Are you sure you want to flag this review as inappropriate?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Flag',
+          style: 'destructive',
+          onPress: async () => {
+            await flagContent('writeup', writeup!.id);
+          },
         },
-      },
-    ]);
+      ]);
+    }
   }
 
   async function handleSendReply() {
@@ -274,7 +357,7 @@ export default function WriteupDetailScreen() {
 
       <View style={styles.authorRow}>
         <Pressable onPress={() => router.push(`/member/${writeup.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <WordHighlight words={authorParts} size={12} />
+          <Text style={styles.authorName}>{authorName}</Text>
           {writeup.author_verified && <VerifiedBadge size={14} />}
         </Pressable>
         <Text style={styles.date}> · {formatDate(writeup.created_at)}</Text>
@@ -336,30 +419,36 @@ export default function WriteupDetailScreen() {
         </View>
       </View>
 
-      <View style={styles.actions}>
-        <Pressable style={styles.flagButton} onPress={handleShare}>
-          <Ionicons name="share-outline" size={14} color={Colors.gray} />
-          <Text style={styles.flagText}>Share</Text>
-        </Pressable>
-
-        {!isOwner && (
-          <Pressable style={styles.flagButton} onPress={handleFlag}>
-            <Ionicons name="flag-outline" size={14} color={Colors.gray} />
-            <Text style={styles.flagText}>Flag</Text>
+      {isDesktop ? (
+        <View style={styles.desktopActionsRow}>
+          <DesktopShareButton onPress={handleShare} />
+        </View>
+      ) : (
+        <View style={styles.actions}>
+          <Pressable style={styles.flagButton} onPress={handleShare}>
+            <Ionicons name="share-outline" size={14} color={Colors.gray} />
+            <Text style={styles.flagText}>Share</Text>
           </Pressable>
-        )}
 
-        {isOwner && (
-          <View style={styles.ownerActions}>
-            <Pressable style={styles.ownerButton} onPress={startEditing}>
-              <Text style={styles.ownerButtonText}>Edit</Text>
+          {!isOwner && (
+            <Pressable style={styles.flagButton} onPress={handleFlag}>
+              <Ionicons name="flag-outline" size={14} color={Colors.gray} />
+              <Text style={styles.flagText}>Flag</Text>
             </Pressable>
-            <Pressable style={styles.ownerButton} onPress={handleDelete}>
-              <Text style={styles.ownerButtonText}>Delete</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
+          )}
+
+          {isOwner && (
+            <View style={styles.ownerActions}>
+              <Pressable style={styles.ownerButton} onPress={startEditing}>
+                <Text style={styles.ownerButtonText}>Edit</Text>
+              </Pressable>
+              <Pressable style={styles.ownerButton} onPress={handleDelete}>
+                <Text style={styles.ownerButtonText}>Delete</Text>
+              </Pressable>
+            </View>
+          )}
+        </View>
+      )}
 
       <View style={styles.repliesHeader}>
         <Text style={styles.repliesTitle}>Replies ({replies.length})</Text>
@@ -373,19 +462,32 @@ export default function WriteupDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <DetailHeader title="REVIEW" />
+      <ResponsiveContainer>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={() => router.back()} />
+          {isOwner && (
+            <View style={styles.desktopManageRight}>
+              <DesktopBackStyleButton label="EDIT" onPress={startEditing} />
+              <DesktopBackStyleButton label="DELETE" onPress={handleDelete} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <DetailHeader title="REVIEW" />
+      )}
       <FlatList
         data={replies}
         keyExtractor={item => item.id}
         ListHeaderComponent={headerContent}
         contentContainerStyle={styles.content}
+        {...desktopScrollProps}
         renderItem={({ item }) => {
-          const replyAuthorParts = (item.author_name ?? 'Member').split(' ').filter(Boolean);
           return (
             <View style={styles.replyItem}>
               <View style={styles.replyAuthorRow}>
                 <Pressable onPress={() => router.push(`/member/${item.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <WordHighlight words={replyAuthorParts} size={11} />
+                  <Text style={styles.replyAuthorName}>{item.author_name ?? 'Member'}</Text>
                   {item.author_verified && <VerifiedBadge size={12} />}
                 </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
@@ -426,6 +528,7 @@ export default function WriteupDetailScreen() {
           )}
         </View>
       </View>
+      </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
 }
@@ -436,6 +539,7 @@ const styles = StyleSheet.create({
   courseName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.gray, letterSpacing: 1, marginBottom: 8 },
   title: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, lineHeight: 32 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 20, flexWrap: 'wrap' },
+  authorName: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
   body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
   photos: { marginTop: 20, gap: 16 },
@@ -465,6 +569,7 @@ const styles = StyleSheet.create({
   repliesTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   replyAuthorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  replyAuthorName: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
@@ -486,4 +591,11 @@ const styles = StyleSheet.create({
   editCaptionInput: { flex: 1, fontSize: 16, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   editRemovePhoto: { alignSelf: 'flex-start' },
   removeText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
+  desktopTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  desktopManageRight: { flexDirection: 'row', gap: 8 },
+  desktopActionsRow: { flexDirection: 'row', gap: 8, marginTop: 16 },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackBtnInner: { paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

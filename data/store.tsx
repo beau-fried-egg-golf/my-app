@@ -515,7 +515,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .from('activities')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(50);
+      .limit(200);
 
     if (!data || data.length === 0) return [];
 

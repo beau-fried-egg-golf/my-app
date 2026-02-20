@@ -19,6 +19,9 @@ import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import DetailHeader from '@/components/DetailHeader';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { DesktopActionPane } from '@/components/desktop';
+import { useActionPane } from '@/hooks/useActionPane';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -46,6 +49,9 @@ export default function CreateGroupScreen() {
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const isDesktop = useIsDesktop();
+  const { activePane, closeActionPane } = useActionPane();
+  const isInline = isDesktop && activePane === 'group';
 
   const isEditing = !!groupId;
 
@@ -129,32 +135,16 @@ export default function CreateGroupScreen() {
       } else {
         await createGroup(groupPayload);
       }
-      router.back();
+      if (isInline) closeActionPane();
+      else router.back();
     } catch (e) {
       console.error(isEditing ? 'Failed to update group' : 'Failed to create group', e);
       setSubmitting(false);
     }
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Stack.Screen options={{ headerShown: false }} />
-      <DetailHeader
-        title=""
-        right={
-          <Pressable
-            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-          >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          </Pressable>
-        }
-      />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  const formFields = (
+    <>
         <Pressable style={styles.imageSection} onPress={pickImage}>
           {displayImage ? (
             <Image source={{ uri: displayImage }} style={styles.imagePreview} />
@@ -266,7 +256,43 @@ export default function CreateGroupScreen() {
             placeholderTextColor={Colors.gray}
           />
         </View>
+    </>
+  );
 
+  if (isDesktop) {
+    return (
+      <DesktopActionPane
+        title={isEditing ? 'EDIT GROUP' : 'NEW GROUP'}
+        onClose={() => isInline ? closeActionPane() : router.back()}
+        onSubmit={handleSubmit}
+        submitLabel={submitting ? 'SAVING...' : isEditing ? 'SAVE CHANGES' : 'CREATE GROUP'}
+        submitDisabled={!canSubmit}
+      >
+        {formFields}
+      </DesktopActionPane>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <DetailHeader
+        title=""
+        right={
+          <Pressable
+            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+          </Pressable>
+        }
+      />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {formFields}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -299,10 +325,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontSize: 18,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
+    fontSize: 16,
+    fontFamily: Fonts!.sans,
+    fontWeight: FontWeights.regular,
     color: Colors.black,
+    backgroundColor: Colors.white,
   },
   descriptionInput: {
     borderWidth: 1,
@@ -315,6 +342,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
     lineHeight: 24,
     fontFamily: Fonts!.sans,
+    backgroundColor: Colors.white,
   },
   coursePicker: {
     flexDirection: 'row',
@@ -326,6 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 14,
     marginBottom: 12,
+    backgroundColor: Colors.white,
   },
   coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
   placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
@@ -346,6 +375,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts!.sans,
     color: Colors.black,
+    backgroundColor: Colors.white,
     outlineStyle: 'none',
   } as any,
   pickerSortToggle: {
@@ -369,7 +399,7 @@ const styles = StyleSheet.create({
   pickerSortBtnTextActive: {
     color: Colors.black,
   },
-  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginBottom: 12, maxHeight: 250 },
+  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginBottom: 12, maxHeight: 250, backgroundColor: Colors.white },
   courseOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -392,6 +422,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: Fonts!.sans,
     color: Colors.black,
+    backgroundColor: Colors.white,
   },
   headerSubmitBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: Colors.orange, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.12, shadowRadius: 4, elevation: 2 },
 });

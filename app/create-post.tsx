@@ -21,6 +21,9 @@ import { supabase } from '@/data/supabase';
 import LinkPreview from '@/components/LinkPreview';
 import DetailHeader from '@/components/DetailHeader';
 import TutorialPopup from '@/components/TutorialPopup';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { DesktopActionPane } from '@/components/desktop';
+import { useActionPane } from '@/hooks/useActionPane';
 
 interface PhotoDraft {
   uri: string;
@@ -68,6 +71,10 @@ export default function CreatePostScreen() {
   const [fetchingMeta, setFetchingMeta] = useState(false);
   const [linkDismissed, setLinkDismissed] = useState(false);
   const fetchAbortRef = useRef<AbortController | null>(null);
+
+  const isDesktop = useIsDesktop();
+  const { activePane, closeActionPane } = useActionPane();
+  const isInline = isDesktop && activePane === 'post';
 
   if (!user) return null;
 
@@ -197,7 +204,8 @@ export default function CreatePostScreen() {
           link_image: linkMeta?.image || undefined,
         }),
       });
-      router.back();
+      if (isInline) closeActionPane();
+      else router.back();
     } catch (e) {
       console.error('Failed to create post', e);
       setSubmitting(false);
@@ -206,25 +214,8 @@ export default function CreatePostScreen() {
 
   const showLinkPreview = linkUrl && !linkDismissed;
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Stack.Screen options={{ headerShown: false }} />
-      <DetailHeader
-        title=""
-        right={
-          <Pressable
-            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-          >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          </Pressable>
-        }
-      />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  const formFields = (
+    <>
         <View style={styles.field}>
           <TextInput
             style={styles.contentInput}
@@ -290,7 +281,43 @@ export default function CreatePostScreen() {
             </View>
           ))}
         </View>
+    </>
+  );
 
+  if (isDesktop) {
+    return (
+      <DesktopActionPane
+        title="COMMUNITY FORUM"
+        onClose={() => isInline ? closeActionPane() : router.back()}
+        onSubmit={handleSubmit}
+        submitLabel={submitting ? 'SUBMITTING...' : 'SUBMIT'}
+        submitDisabled={!canSubmit}
+      >
+        {formFields}
+      </DesktopActionPane>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <DetailHeader
+        title=""
+        right={
+          <Pressable
+            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+          </Pressable>
+        }
+      />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {formFields}
       </ScrollView>
 
       <TutorialPopup
@@ -309,7 +336,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 40 },
   field: { marginBottom: 12 },
-  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 160, lineHeight: 24, fontFamily: Fonts!.sans },
+  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 160, lineHeight: 24, fontFamily: Fonts!.sans, backgroundColor: Colors.white },
   linkPreviewSection: { marginBottom: 12 },
   linkLoading: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
   linkLoadingText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },

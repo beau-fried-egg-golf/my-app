@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
   Dimensions,
   Image,
   Linking,
@@ -22,8 +23,11 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import EggRating from '@/components/EggRating';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -58,8 +62,6 @@ function WriteupCard({
   isVerified?: boolean;
   verifiedFeatured?: boolean;
 }) {
-  const nameParts = userName.split(' ').filter(Boolean);
-
   return (
     <Pressable style={[styles.writeupCard, isFeatured && styles.featuredCard, verifiedFeatured && styles.verifiedFeaturedCard]} onPress={onPress}>
       {isFeatured && !verifiedFeatured && (
@@ -79,7 +81,7 @@ function WriteupCard({
         {writeup.content}
       </Text>
       <View style={styles.writeupMeta}>
-        <WordHighlight words={nameParts} size={10} />
+        <Text style={styles.writeupAuthorName}>{userName}</Text>
         {isVerified && <VerifiedBadge size={12} />}
         <Text style={styles.writeupDot}> · </Text>
         <Text style={styles.writeupTime}>{formatTime(writeup.created_at)}</Text>
@@ -102,6 +104,80 @@ interface GalleryPhoto extends Photo {
   writeupId: string;
 }
 
+const BACK_TEXT_HEIGHT = 18;
+const BACK_SCROLL_GAP = 14;
+
+function DesktopBlackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  function onHoverIn() {
+    Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+  }
+  function onHoverOut() {
+    Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+  }
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -(BACK_TEXT_HEIGHT + BACK_SCROLL_GAP)],
+  });
+
+  const bgColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [Colors.black, Colors.orange],
+  });
+
+  return (
+    <Animated.View style={[styles.dtBlackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: BACK_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+            <View style={{ height: BACK_SCROLL_GAP }} />
+            <Text style={[styles.dtBlackBtnText, { color: Colors.black }]}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  function onHoverIn() {
+    Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+  }
+  function onHoverOut() {
+    Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+  }
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -(BACK_TEXT_HEIGHT + BACK_SCROLL_GAP)],
+  });
+
+  const bgColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [Colors.white, Colors.cream],
+  });
+
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: BACK_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: BACK_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -115,9 +191,12 @@ export default function CourseDetailScreen() {
   const [showAllRecent, setShowAllRecent] = useState(false);
   const [markPlayedVisible, setMarkPlayedVisible] = useState(false);
   const [markPlayedDate, setMarkPlayedDate] = useState('');
+  const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
   const galleryScrollRef = useRef<ScrollView>(null);
 
   const insets = useSafeAreaInsets();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const course = courses.find((c) => c.id === id);
   if (!course) return null;
 
@@ -155,13 +234,13 @@ export default function CourseDetailScreen() {
     () =>
       courseWriteups.flatMap((w) =>
         w.photos
-          .filter((p) => !p.hidden)
+          .filter((p) => !p.hidden && !brokenPhotoIds.has(p.id))
           .map((p) => ({
             ...p,
             writeupId: w.id,
           })),
       ),
-    [courseWriteups],
+    [courseWriteups, brokenPhotoIds],
   );
 
   const sortedPhotos = useMemo(() => {
@@ -181,15 +260,24 @@ export default function CourseDetailScreen() {
   }, [loadMeetups]);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={[styles.courseNameBlock, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
-        <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backArrow}>
-          <Ionicons name="chevron-back" size={20} color={Colors.black} />
-        </Pressable>
-        <View style={styles.courseNameContent}>
-          <LetterSpacedHeader text={course.short_name} size={32} />
+    <ResponsiveContainer>
+    <ScrollView {...desktopScrollProps} style={styles.container} contentContainerStyle={styles.content}>
+      {/* Desktop: back button above hero */}
+      {isDesktop && (
+        <DesktopBackButton onPress={() => router.canGoBack() ? router.back() : router.push('/courses')} />
+      )}
+
+      {/* Mobile: title above hero */}
+      {!isDesktop && (
+        <View style={[styles.courseNameBlock, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
+          <Pressable onPress={() => router.canGoBack() ? router.back() : router.replace('/')} style={styles.backArrow}>
+            <Ionicons name="chevron-back" size={20} color={Colors.black} />
+          </Pressable>
+          <View style={styles.courseNameContent}>
+            <LetterSpacedHeader text={course.short_name} size={32} />
+          </View>
         </View>
-      </View>
+      )}
 
       {(() => {
         const heroUrl = course.fe_hero_image
@@ -213,6 +301,13 @@ export default function CourseDetailScreen() {
         );
       })()}
 
+      {/* Desktop: title below hero, left-aligned */}
+      {isDesktop && (
+        <View style={styles.desktopCourseNameBlock}>
+          <LetterSpacedHeader text={course.short_name} size={32} />
+        </View>
+      )}
+
       <View style={styles.courseHeader}>
         <View style={styles.courseDetailsRow}>
           <View style={styles.courseDetails}>
@@ -233,20 +328,35 @@ export default function CourseDetailScreen() {
           </View>
           {user && (
             coursesPlayed.some(cp => cp.course_id === course.id && cp.user_id === user.id) ? (
-              <Pressable style={styles.playedButtonActive} onPress={() => unmarkCoursePlayed(course.id)}>
-                <Text style={styles.playedButtonActiveText}>Played</Text>
-              </Pressable>
+              isDesktop ? (
+                <DesktopBlackButton label="PLAYED" onPress={() => unmarkCoursePlayed(course.id)} />
+              ) : (
+                <Pressable style={styles.playedButtonActive} onPress={() => unmarkCoursePlayed(course.id)}>
+                  <Text style={styles.playedButtonActiveText}>Played</Text>
+                </Pressable>
+              )
             ) : (
-              <Pressable style={styles.playedButton} onPress={() => {
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                const dd = String(today.getDate()).padStart(2, '0');
-                setMarkPlayedDate(`${yyyy}-${mm}-${dd}`);
-                setMarkPlayedVisible(true);
-              }}>
-                <Text style={styles.playedButtonText}>Mark Played</Text>
-              </Pressable>
+              isDesktop ? (
+                <DesktopBlackButton label="MARK PLAYED" onPress={() => {
+                  const today = new Date();
+                  const yyyy = today.getFullYear();
+                  const mm = String(today.getMonth() + 1).padStart(2, '0');
+                  const dd = String(today.getDate()).padStart(2, '0');
+                  setMarkPlayedDate(`${yyyy}-${mm}-${dd}`);
+                  setMarkPlayedVisible(true);
+                }} />
+              ) : (
+                <Pressable style={styles.playedButton} onPress={() => {
+                  const today = new Date();
+                  const yyyy = today.getFullYear();
+                  const mm = String(today.getMonth() + 1).padStart(2, '0');
+                  const dd = String(today.getDate()).padStart(2, '0');
+                  setMarkPlayedDate(`${yyyy}-${mm}-${dd}`);
+                  setMarkPlayedVisible(true);
+                }}>
+                  <Text style={styles.playedButtonText}>Mark Played</Text>
+                </Pressable>
+              )
             )
           )}
         </View>
@@ -373,17 +483,27 @@ export default function CourseDetailScreen() {
           )}
 
           <View style={styles.addWriteupRow}>
-            <Pressable
-              style={styles.writeButton}
-              onPress={() => router.push(`/create-writeup?courseId=${id}`)}
-            >
-              <Text style={styles.writeButtonText}>Post a review</Text>
-            </Pressable>
+            {isDesktop ? (
+              <DesktopBlackButton label="POST A REVIEW" onPress={() => router.push(`/create-writeup?courseId=${id}`)} />
+            ) : (
+              <Pressable
+                style={styles.writeButton}
+                onPress={() => router.push(`/create-writeup?courseId=${id}`)}
+              >
+                <Text style={styles.writeButtonText}>Post a review</Text>
+              </Pressable>
+            )}
           </View>
         </>
       )}
 
-      {activeTab === 'photos' && (
+      {activeTab === 'photos' && (() => {
+        const cols = isDesktop ? 4 : 3;
+        const gridPadding = 24;
+        const totalGap = (cols - 1) * 8;
+        const baseWidth = isDesktop ? Math.min(960 - 40, SCREEN_WIDTH - 40) : SCREEN_WIDTH;
+        const thumbSize = (baseWidth - gridPadding - totalGap) / cols;
+        return (
         <>
           {sortedPhotos.length > 0 ? (
             <View style={styles.photoGrid}>
@@ -396,7 +516,11 @@ export default function CourseDetailScreen() {
                   }}
                 >
                   <View style={styles.photoGridItem}>
-                    <Image source={{ uri: photo.url }} style={styles.photoGridThumb} />
+                    <Image
+                      source={{ uri: photo.url }}
+                      style={{ width: thumbSize, height: thumbSize, borderRadius: 4 }}
+                      onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
+                    />
                     {(photo.upvote_count ?? 0) > 0 && (
                       <View style={styles.thumbUpvoteBadge}>
                         <Text style={styles.thumbUpvoteText}>{photo.upvote_count}</Text>
@@ -412,7 +536,8 @@ export default function CourseDetailScreen() {
             </View>
           )}
         </>
-      )}
+        );
+      })()}
 
       {activeTab === 'meetups' && (
         <>
@@ -599,6 +724,7 @@ export default function CourseDetailScreen() {
                     source={{ uri: photo.url }}
                     style={styles.modalImage}
                     resizeMode="contain"
+                    onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
                   />
                   <View style={styles.modalBelow}>
                     <Pressable
@@ -620,6 +746,7 @@ export default function CourseDetailScreen() {
         </View>
       </Modal>
     </ScrollView>
+    </ResponsiveContainer>
   );
 }
 
@@ -627,6 +754,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { paddingBottom: 40 },
   courseNameBlock: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16 },
+  dtBlackBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0 },
+  dtBlackBtnInner: { paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: BACK_TEXT_HEIGHT },
+  desktopBackBtn: { alignSelf: 'flex-start', borderRadius: 8, overflow: 'hidden', marginLeft: 16 },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: BACK_TEXT_HEIGHT },
+  desktopCourseNameBlock: { paddingHorizontal: 16, paddingTop: 16 },
   backArrow: {
     width: 36,
     height: 36,
@@ -674,6 +808,7 @@ const styles = StyleSheet.create({
   writeupTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   writeupPreview: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, marginTop: 4, fontFamily: Fonts!.sans },
   writeupMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4, flexWrap: 'wrap' },
+  writeupAuthorName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   writeupDot: { color: Colors.gray, fontSize: 12, fontFamily: Fonts!.sans },
   writeupTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   writeupUpvotes: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },

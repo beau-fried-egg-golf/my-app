@@ -4,6 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Notification } from '@/types';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -168,6 +171,8 @@ function NotificationItem({
 export default function NotificationsScreen() {
   const router = useRouter();
   const { notifications, hasUnreadNotifications, markNotificationRead, markAllNotificationsRead } = useStore();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
 
   const handlePress = async (item: Notification) => {
     if (!item.is_read) {
@@ -180,7 +185,15 @@ export default function NotificationsScreen() {
   };
 
   return (
+    <ResponsiveContainer>
     <View style={styles.container}>
+      {isDesktop && (
+        <View style={styles.desktopPageTitle}>
+          <View style={styles.desktopPagePill}>
+            <Text style={styles.desktopPagePillText}>ALERTS</Text>
+          </View>
+        </View>
+      )}
       {hasUnreadNotifications && (
         <View style={styles.markAllRow}>
           <Pressable onPress={markAllNotificationsRead} style={styles.markAllBtn}>
@@ -191,6 +204,7 @@ export default function NotificationsScreen() {
       <FlatList
         data={notifications}
         keyExtractor={item => item.id}
+        {...desktopScrollProps}
         renderItem={({ item }) => (
           <NotificationItem item={item} onPress={() => handlePress(item)} />
         )}
@@ -203,6 +217,7 @@ export default function NotificationsScreen() {
         contentContainerStyle={notifications.length === 0 ? styles.emptyList : undefined}
       />
     </View>
+    </ResponsiveContainer>
   );
 }
 
@@ -297,4 +312,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.gray,
   },
+  desktopPageTitle: { alignItems: 'center', paddingTop: 18, paddingBottom: 18 },
+  desktopPagePill: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
+  desktopPagePillText: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black, letterSpacing: 0.5, textTransform: 'uppercase' },
 });

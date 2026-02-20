@@ -1,11 +1,146 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, AppState, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, AppState, Dimensions, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { CancellationRequest, MeetupMember, WaitlistEntry } from '@/types';
 import DetailHeader from '@/components/DetailHeader';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const SCREEN_HEIGHT = Dimensions.get('window').height;
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBlackButton({ label, onPress, disabled, style }: { label: string; onPress: () => void; disabled?: boolean; style?: any }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.black, Colors.orange] });
+  return (
+    <Animated.View style={[styles.dtBlackBtn, { backgroundColor: bgColor, opacity: disabled ? 0.6 : 1 }, style]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner} disabled={disabled}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={[styles.dtBlackBtnText, { color: Colors.black }]}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopShareButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="share-outline" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>SHARE</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>SHARE</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.dtOutlineBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopStripeButton({ label, onPress, disabled }: { label: string; onPress: () => void; disabled?: boolean }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: ['#635BFF', '#7A73FF'] });
+  return (
+    <Animated.View style={[styles.dtBlackBtn, { backgroundColor: bgColor, opacity: disabled ? 0.6 : 1 }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner} disabled={disabled}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={[styles.dtBlackBtnText, { color: Colors.white }]}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 function formatMeetupDate(iso: string): string {
   const d = new Date(iso);
@@ -35,6 +170,8 @@ export default function MeetupDetailScreen() {
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
 
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const meetup = meetups.find(m => m.id === id);
   const currentUserId = session?.user?.id;
   const isMember = meetup?.is_member ?? false;
@@ -137,11 +274,153 @@ export default function MeetupDetailScreen() {
     });
   };
 
-  const renderActionButtons = () => {
+  const renderDesktopActionButtons = () => {
     if (isFeMeetupWithPayment) {
-      // FE-coordinated meetup with Stripe payment
       if (!isMember) {
-        // Not yet joined — single "Reserve & Pay" button or waitlist
+        if (isFull) {
+          if (waitlistPosition != null) {
+            return (
+              <>
+                <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
+                  <Text style={[styles.paidBadgeText, { color: '#0C5460' }]}>Waitlist #{waitlistPosition}</Text>
+                </View>
+                <DesktopOutlineButton label="LEAVE WAITLIST" onPress={async () => {
+                  await leaveWaitlist(meetup.id);
+                  setWaitlistPosition(null);
+                  setWaitlistEntries(prev => prev.filter(e => e.user_id !== currentUserId));
+                }} />
+              </>
+            );
+          }
+          return (
+            <DesktopBlackButton
+              label={`JOIN WAITLIST${(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} WAITING)` : ''}`}
+              onPress={async () => {
+                await joinWaitlist(meetup.id);
+                const pos = await getWaitlistPosition(meetup.id);
+                setWaitlistPosition(pos);
+                const entries = await getWaitlistEntries(meetup.id);
+                setWaitlistEntries(entries);
+              }}
+              style={{ backgroundColor: '#6C757D' }}
+            />
+          );
+        }
+        return (
+          <DesktopStripeButton label={checkoutLoading ? 'LOADING...' : 'RESERVE & PAY'} onPress={handleJoin} disabled={checkoutLoading} />
+        );
+      }
+
+      if (currentPaymentStatus === 'paid' || currentPaymentStatus === 'waived') {
+        const badgeColor = PAYMENT_BADGE_COLORS[currentPaymentStatus];
+
+        const renderCancellationButton = () => {
+          if (isHost || currentPaymentStatus !== 'paid' || !currentUserMember) return null;
+          if (canAutoRefund) {
+            return (
+              <DesktopOutlineButton label="WITHDRAW & REFUND" onPress={async () => {
+                if (!window.confirm('Are you sure you want to withdraw? Your payment will be refunded.')) return;
+                const prevMembers = members;
+                setMembers(prev => prev.filter(m => m.id !== currentUserMember.id));
+                const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
+                if (!success) {
+                  setMembers(prevMembers);
+                  window.alert('Failed to process refund. Please try again.');
+                }
+              }} />
+            );
+          }
+          if (cancellationRequest?.status === 'pending') {
+            return (
+              <View style={[styles.paidBadge, { backgroundColor: '#FFF3CD' }]}>
+                <Text style={[styles.paidBadgeText, { color: '#856404' }]}>Cancellation Request Pending</Text>
+              </View>
+            );
+          }
+          if (cancellationRequest?.status === 'denied') {
+            return (
+              <View style={[styles.paidBadge, { backgroundColor: '#F8D7DA' }]}>
+                <Text style={[styles.paidBadgeText, { color: '#721C24' }]}>Cancellation Denied</Text>
+              </View>
+            );
+          }
+          return <DesktopOutlineButton label="REQUEST CANCELLATION" onPress={() => setShowCancellationForm(true)} />;
+        };
+
+        return (
+          <>
+            <DesktopBlackButton label="MEETUP CHAT" onPress={() => router.push(`/meetup-chat/${meetup.id}`)} />
+            <View style={[styles.paidBadge, { backgroundColor: badgeColor.bg }]}>
+              <Text style={[styles.paidBadgeText, { color: badgeColor.text }]}>
+                {currentPaymentStatus === 'paid' ? 'Paid' : 'Waived'}
+              </Text>
+            </View>
+            {renderCancellationButton()}
+            {!isHost && currentPaymentStatus === 'waived' && (
+              <DesktopOutlineButton label="LEAVE" onPress={handleLeave} />
+            )}
+          </>
+        );
+      }
+
+      return (
+        <>
+          <DesktopBlackButton label="MEETUP CHAT" onPress={() => router.push(`/meetup-chat/${meetup.id}`)} />
+          {!isHost && (
+            <DesktopStripeButton label={checkoutLoading ? 'LOADING...' : 'PAY NOW'} onPress={() => currentUserMember && openCheckout(currentUserMember.id)} disabled={checkoutLoading} />
+          )}
+          {!isHost && (
+            <DesktopOutlineButton label="LEAVE & REQUEST REFUND" onPress={handleLeave} />
+          )}
+        </>
+      );
+    }
+
+    if (isMember) {
+      return (
+        <>
+          <DesktopBlackButton label="MEETUP CHAT" onPress={() => router.push(`/meetup-chat/${meetup.id}`)} />
+          {!isHost && (
+            <DesktopOutlineButton label="LEAVE" onPress={handleLeave} />
+          )}
+        </>
+      );
+    }
+    if (isFull) {
+      if (waitlistPosition != null) {
+        return (
+          <>
+            <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
+              <Text style={[styles.paidBadgeText, { color: '#0C5460' }]}>Waitlist #{waitlistPosition}</Text>
+            </View>
+            <DesktopOutlineButton label="LEAVE WAITLIST" onPress={async () => {
+              await leaveWaitlist(meetup.id);
+              setWaitlistPosition(null);
+              setWaitlistEntries(prev => prev.filter(e => e.user_id !== currentUserId));
+            }} />
+          </>
+        );
+      }
+      return (
+        <DesktopBlackButton
+          label={`JOIN WAITLIST${(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} WAITING)` : ''}`}
+          onPress={async () => {
+            await joinWaitlist(meetup.id);
+            const pos = await getWaitlistPosition(meetup.id);
+            setWaitlistPosition(pos);
+            const entries = await getWaitlistEntries(meetup.id);
+            setWaitlistEntries(entries);
+          }}
+          style={{ backgroundColor: '#6C757D' }}
+        />
+      );
+    }
+    return <DesktopBlackButton label="JOIN MEETUP" onPress={handleJoin} />;
+  };
+
+  const renderMobileActionButtons = () => {
+    if (isFeMeetupWithPayment) {
+      if (!isMember) {
         if (isFull) {
           if (waitlistPosition != null) {
             return (
@@ -186,15 +465,11 @@ export default function MeetupDetailScreen() {
         );
       }
 
-      // Already joined
       if (currentPaymentStatus === 'paid' || currentPaymentStatus === 'waived') {
-        // Paid or waived — show badge
         const badgeColor = PAYMENT_BADGE_COLORS[currentPaymentStatus];
 
         const renderCancellationButton = () => {
           if (isHost || currentPaymentStatus !== 'paid' || !currentUserMember) return null;
-
-          // Auto-refund path (>7 days out)
           if (canAutoRefund) {
             return (
               <Pressable
@@ -230,8 +505,6 @@ export default function MeetupDetailScreen() {
               </Pressable>
             );
           }
-
-          // Within 7 days — cancellation request flow
           if (cancellationRequest?.status === 'pending') {
             return (
               <View style={[styles.paidBadge, { backgroundColor: '#FFF3CD' }]}>
@@ -246,7 +519,6 @@ export default function MeetupDetailScreen() {
               </View>
             );
           }
-
           return (
             <Pressable
               style={styles.actionBtnOutline}
@@ -280,7 +552,6 @@ export default function MeetupDetailScreen() {
         );
       }
 
-      // Payment pending — show "Pay Now" button
       return (
         <>
           <Pressable
@@ -307,7 +578,6 @@ export default function MeetupDetailScreen() {
       );
     }
 
-    // Non-FE meetup: existing flow
     if (isMember) {
       return (
         <>
@@ -371,16 +641,33 @@ export default function MeetupDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <DetailHeader title="MEETUP" />
+      <ResponsiveContainer>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={() => router.canGoBack() ? router.back() : router.push('/meetups')} />
+          {canManage && (
+            <View style={styles.desktopManageRight}>
+              <DesktopBackStyleButton label="EDIT" onPress={() => router.push(`/create-meetup?meetupId=${meetup.id}`)} />
+              <DesktopBackStyleButton label="DELETE" onPress={() => {
+                if (confirm('Delete this meetup? This cannot be undone.')) {
+                  deleteMeetup(meetup.id).then(() => router.back());
+                }
+              }} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <DetailHeader title="MEETUP" />
+      )}
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView {...desktopScrollProps} contentContainerStyle={styles.content}>
         {/* Hero */}
         <View style={styles.heroSection}>
           {meetup.image ? (
-            <Image source={{ uri: meetup.image }} style={styles.meetupImage} />
+            <Image source={{ uri: meetup.image }} style={isDesktop ? styles.meetupImageDesktop : styles.meetupImage} resizeMode={isDesktop ? 'cover' : undefined} />
           ) : (
-            <View style={styles.meetupImagePlaceholder}>
-              <Ionicons name="calendar" size={40} color={Colors.gray} />
+            <View style={isDesktop ? styles.meetupImagePlaceholderDesktop : styles.meetupImagePlaceholder}>
+              <Ionicons name="calendar" size={isDesktop ? 60 : 40} color={Colors.gray} />
             </View>
           )}
           <Text style={styles.meetupName}>{meetup.name}</Text>
@@ -394,7 +681,7 @@ export default function MeetupDetailScreen() {
           <Text style={styles.meetupLocation}>{meetup.location_name}</Text>
         </View>
 
-        {canManage && (
+        {!isDesktop && canManage && (
           <View style={styles.manageRow}>
             <Pressable style={styles.manageBtn} onPress={() => router.push(`/create-meetup?meetupId=${meetup.id}`)}>
               <Text style={styles.manageBtnText}>Edit</Text>
@@ -420,11 +707,20 @@ export default function MeetupDetailScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          {renderActionButtons()}
-          <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
-            <Ionicons name="share-outline" size={16} color={Colors.black} />
-          </Pressable>
+        <View style={[styles.actionRow, isDesktop && styles.actionRowDesktop]}>
+          {isDesktop ? (
+            <>
+              {renderDesktopActionButtons()}
+              <DesktopShareButton onPress={handleShare} />
+            </>
+          ) : (
+            <>
+              {renderMobileActionButtons()}
+              <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+                <Ionicons name="share-outline" size={16} color={Colors.black} />
+              </Pressable>
+            </>
+          )}
         </View>
 
         {isFeMeetupWithPayment && (
@@ -650,6 +946,7 @@ export default function MeetupDetailScreen() {
           </View>
         )}
       </ScrollView>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -935,4 +1232,26 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
+  actionRowDesktop: { flexWrap: 'wrap' },
+  desktopTopBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 16 },
+  desktopManageRight: { flexDirection: 'row', gap: 10 },
+  meetupImageDesktop: { width: '42%', aspectRatio: 1, borderRadius: 8, alignSelf: 'center' } as any,
+  meetupImagePlaceholderDesktop: {
+    width: '60%',
+    aspectRatio: 1,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+  } as any,
+  desktopBackBtn: { alignSelf: 'flex-start', borderRadius: 8, overflow: 'hidden', marginLeft: 16 },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 14 },
+  desktopBackBtnInner: { paddingHorizontal: 16, paddingVertical: 14 },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtBlackBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0 },
+  dtBlackBtnInner: { paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtOutlineBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0, borderWidth: 1.5, borderColor: Colors.black },
+  dtOutlineBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

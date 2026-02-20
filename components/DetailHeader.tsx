@@ -1,10 +1,11 @@
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { useGoBack } from '@/hooks/useGoBack';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 interface DetailHeaderProps {
   title: string;
@@ -16,6 +17,22 @@ export default function DetailHeader({ title, onBack, right }: DetailHeaderProps
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const goBack = useGoBack();
+  const isDesktop = useIsDesktop();
+
+  if (isDesktop) {
+    return (
+      <View style={styles.desktopContainer}>
+        <Pressable onPress={onBack ?? goBack} style={styles.desktopBack}>
+          <Ionicons name="chevron-back" size={16} color={Colors.black} />
+          <Text style={styles.desktopBackText}>Back</Text>
+        </Pressable>
+        <View style={styles.desktopTitleContainer}>
+          <LetterSpacedHeader text={title} size={28} />
+        </View>
+        {right && <View style={styles.rightSlot}>{right}</View>}
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
@@ -60,5 +77,31 @@ const styles = StyleSheet.create({
   },
   rightSlot: {
     marginLeft: 'auto',
+  },
+  desktopContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+    backgroundColor: Colors.white,
+  },
+  desktopBack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  desktopBackText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.black,
+  },
+  desktopTitleContainer: {
+    marginLeft: 12,
+    flex: 1,
   },
 });

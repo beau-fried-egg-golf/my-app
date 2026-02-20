@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -11,8 +11,35 @@ import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
 import MentionAutocomplete from '@/components/chat/MentionAutocomplete';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -39,6 +66,7 @@ export default function GroupChatScreen() {
 
   const group = groups.find(g => g.id === id);
   const currentUserId = session?.user?.id;
+  const isDesktop = useIsDesktop();
 
   const loadMessages = useCallback(async () => {
     if (!id) return;
@@ -170,16 +198,12 @@ export default function GroupChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
+      <ResponsiveContainer>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={20} color={Colors.black} />
-          </Pressable>
-          <Pressable
-            style={styles.headerTitleArea}
-            onPress={() => router.push(`/group/${id}`)}
-          >
+      {isDesktop ? (
+        <View style={styles.desktopHeader}>
+          <DesktopBackButton onPress={() => router.push('/conversations')} />
+          <Pressable style={styles.desktopHeaderCenter} onPress={() => router.push(`/group/${id}`)}>
             {group?.image ? (
               <Image source={{ uri: group.image }} style={styles.headerThumbnail} />
             ) : (
@@ -187,11 +211,33 @@ export default function GroupChatScreen() {
             )}
             <Text style={styles.headerTitle} numberOfLines={1}>{group?.name ?? 'Group'}</Text>
           </Pressable>
-          <Pressable onPress={() => router.push(`/group/${id}`)} style={styles.headerMenu}>
+          <Pressable onPress={() => router.push(`/group/${id}`)} style={styles.desktopMenuBtn}>
             <Ionicons name="information-circle-outline" size={20} color={Colors.black} />
           </Pressable>
         </View>
-      </View>
+      ) : (
+        <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
+          <View style={styles.headerRow}>
+            <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
+              <Ionicons name="chevron-back" size={20} color={Colors.black} />
+            </Pressable>
+            <Pressable
+              style={styles.headerTitleArea}
+              onPress={() => router.push(`/group/${id}`)}
+            >
+              {group?.image ? (
+                <Image source={{ uri: group.image }} style={styles.headerThumbnail} />
+              ) : (
+                <GroupsIcon size={34} color={Colors.black} />
+              )}
+              <Text style={styles.headerTitle} numberOfLines={1}>{group?.name ?? 'Group'}</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push(`/group/${id}`)} style={styles.headerMenu}>
+              <Ionicons name="information-circle-outline" size={20} color={Colors.black} />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Messages */}
       <FlatList
@@ -289,6 +335,7 @@ export default function GroupChatScreen() {
         onReply={handleReply}
         onClose={() => setContextMenu({ visible: false, messageId: '', position: { x: 0, y: 0 } })}
       />
+      </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
 }
@@ -353,6 +400,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  desktopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  desktopHeaderCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 12,
+  },
+  desktopMenuBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
   messagesList: {
     padding: 16,
     flexGrow: 1,

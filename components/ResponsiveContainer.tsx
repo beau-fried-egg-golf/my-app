@@ -9,19 +9,30 @@ interface Props {
 export default function ResponsiveContainer({ children, style }: Props) {
   const isDesktop = useIsDesktop();
 
+  if (!isDesktop) {
+    return (
+      <View style={[{ flex: 1, backgroundColor: '#FFFFFF' }, style]}>
+        {children}
+      </View>
+    );
+  }
+
   return (
-    <View
-      style={[
-        { flex: 1 },
-        isDesktop && {
-          maxWidth: 840,
-          width: '100%',
-          alignSelf: 'center' as const,
-        },
-        style,
-      ]}
-    >
-      {children}
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+      <View
+        style={[
+          {
+            flex: 1,
+            maxWidth: 960,
+            width: '100%',
+            alignSelf: 'center' as const,
+            paddingHorizontal: 20,
+          },
+          style,
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 }

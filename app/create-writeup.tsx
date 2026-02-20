@@ -19,8 +19,10 @@ import { useStore } from '@/data/store';
 import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import DetailHeader from '@/components/DetailHeader';
-import WordHighlight from '@/components/WordHighlight';
 import TutorialPopup from '@/components/TutorialPopup';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { DesktopActionPane } from '@/components/desktop';
+import { useActionPane } from '@/hooks/useActionPane';
 
 function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8;
@@ -51,6 +53,9 @@ export default function CreateWriteupScreen() {
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const isDesktop = useIsDesktop();
+  const { activePane, closeActionPane } = useActionPane();
+  const isInline = isDesktop && activePane === 'writeup';
 
   useEffect(() => {
     (async () => {
@@ -128,35 +133,19 @@ export default function CreateWriteupScreen() {
         content: content.trim(),
         photos: uploadedPhotos,
       });
-      router.back();
+      if (isInline) closeActionPane();
+      else router.back();
     } catch (e) {
       console.error('Failed to create writeup', e);
       setSubmitting(false);
     }
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <Stack.Screen options={{ headerShown: false }} />
-      <DetailHeader
-        title=""
-        right={
-          <Pressable
-            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
-            onPress={handleSubmit}
-            disabled={!canSubmit}
-          >
-            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-          </Pressable>
-        }
-      />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+  const formFields = (
+    <>
         <Pressable style={styles.coursePicker} onPress={() => setShowPicker(!showPicker)}>
           {selectedCourse ? (
-            <WordHighlight words={selectedCourse.short_name.split(' ')} size={14} />
+            <Text style={styles.coursePickerText}>{selectedCourse.short_name}</Text>
           ) : (
             <Text style={styles.placeholder}>Select a course</Text>
           )}
@@ -271,7 +260,43 @@ export default function CreateWriteupScreen() {
             </View>
           ))}
         </View>
+    </>
+  );
 
+  if (isDesktop) {
+    return (
+      <DesktopActionPane
+        title="NEW REVIEW"
+        onClose={() => isInline ? closeActionPane() : router.back()}
+        onSubmit={handleSubmit}
+        submitLabel={submitting ? 'SUBMITTING...' : 'SUBMIT REVIEW'}
+        submitDisabled={!canSubmit}
+      >
+        {formFields}
+      </DesktopActionPane>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <Stack.Screen options={{ headerShown: false }} />
+      <DetailHeader
+        title=""
+        right={
+          <Pressable
+            style={[styles.headerSubmitBtn, !canSubmit && { opacity: 0.4 }]}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+          </Pressable>
+        }
+      />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {formFields}
       </ScrollView>
 
       <TutorialPopup
@@ -290,25 +315,25 @@ export default function CreateWriteupScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 40 },
-  coursePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 12 },
+  coursePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 12, backgroundColor: Colors.white },
   coursePickerText: { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium },
   placeholder: { color: Colors.gray, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular },
   pickerToolbar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  courseSearchInput: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 16, fontFamily: Fonts!.sans, color: Colors.black, outlineStyle: 'none' } as any,
+  courseSearchInput: { flex: 1, borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 16, fontFamily: Fonts!.sans, color: Colors.black, backgroundColor: Colors.white, outlineStyle: 'none' } as any,
   pickerSortToggle: { flexDirection: 'row', gap: 4 },
   pickerSortBtn: { paddingHorizontal: 6, paddingVertical: 5 },
   pickerSortBtnActive: { backgroundColor: Colors.orange },
   pickerSortBtnText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, letterSpacing: 0.5 },
   pickerSortBtnTextActive: { color: Colors.black },
-  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginBottom: 12, maxHeight: 250 },
+  courseList: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, marginBottom: 12, maxHeight: 250, backgroundColor: Colors.white },
   courseOption: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   courseOptionSelected: { backgroundColor: Colors.orange },
   courseOptionText: { fontSize: 15, color: Colors.black, fontFamily: Fonts!.sans },
   courseOptionTextSelected: { color: Colors.white, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   courseOptionCity: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   field: { marginBottom: 12 },
-  titleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24, fontFamily: Fonts!.sans },
+  titleInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, backgroundColor: Colors.white },
+  contentInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, minHeight: 200, lineHeight: 24, fontFamily: Fonts!.sans, backgroundColor: Colors.white },
   photosSection: { marginBottom: 24, gap: 12 },
   addPhotoButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
   addPhotoText: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },

@@ -9,6 +9,10 @@ export const Colors = {
   border: '#D0D0D0',
   orange: '#FE4D12',
   feYellow: '#FFEE54',
+  // Desktop-specific tokens
+  cream: '#F5F0E8',
+  borderLight: '#E5E0D6',
+  accentRed: '#FF4500',
 };
 
 const greyLLStack = "'Grey LL', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";

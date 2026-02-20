@@ -28,7 +28,7 @@ export default function CourseMapSheet({ course, writeupCount, distance, upcomin
       <Pressable style={styles.body} onPress={() => router.push(`/course/${course.id}`)}>
         <View style={styles.courseHeader}>
           <View style={styles.courseInfo}>
-            <WordHighlight words={course.short_name.split(' ')} size={16} />
+            <Text style={styles.courseNameText}>{course.short_name}</Text>
             <Text style={styles.courseCity}>{course.city}{course.state ? `, ${course.state}` : ''}</Text>
             <View style={styles.tagsRow}>
               <WordHighlight
@@ -126,6 +126,12 @@ const styles = StyleSheet.create({
   },
   courseInfo: {
     flex: 1,
+  },
+  courseNameText: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
   },
   courseCity: {
     fontSize: 13,

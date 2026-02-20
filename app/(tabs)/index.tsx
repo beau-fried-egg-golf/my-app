@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, FlatList, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, FlatList, Image, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { supabase } from '@/data/supabase';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
@@ -8,10 +8,18 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Activity, Profile, Writeup, Post } from '@/types';
-import WordHighlight from '@/components/WordHighlight';
 import LinkPreview from '@/components/LinkPreview';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import TutorialPopup from '@/components/TutorialPopup';
+import { SearchIcon } from '@/components/icons/CustomIcons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { DesktopFeedToolbar } from '@/components/desktop';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { useActionPane } from '@/hooks/useActionPane';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
 function decodeEntities(str: string): string {
   return str
@@ -22,6 +30,32 @@ function decodeEntities(str: string): string {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&apos;/g, "'");
+}
+
+const LM_TEXT_HEIGHT = 18;
+const LM_SCROLL_GAP = 14;
+
+function HoverLoadMore({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(LM_TEXT_HEIGHT + LM_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.black, Colors.orange] });
+  return (
+    <View style={styles.loadMoreDesktop}>
+      <Animated.View style={[styles.loadMoreDesktopBtn, { backgroundColor: bgColor }]}>
+        <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.loadMoreDesktopInner}>
+          <View style={{ height: LM_TEXT_HEIGHT, overflow: 'hidden' }}>
+            <Animated.View style={{ transform: [{ translateY }] }}>
+              <Text style={styles.loadMoreDesktopText}>{label}</Text>
+              <View style={{ height: LM_SCROLL_GAP }} />
+              <Text style={[styles.loadMoreDesktopText, { color: Colors.black }]}>{label}</Text>
+            </Animated.View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
 }
 
 const REACTION_EMOJI: Record<string, string> = {
@@ -146,7 +180,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
             <Text style={styles.activityText}> commented on </Text>
             <Text style={styles.activityTextBold}>{writeupDisplayName}</Text>
           </View>
-          <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+          <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </PlatformPressable>
@@ -200,7 +234,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           {item.course_name ? (
             <View style={styles.activityRow}>
               <Text style={styles.activityText}>at </Text>
-              <WordHighlight words={(item.course_name).split(' ')} size={12} />
+              <Text style={styles.activityTextBold}>{item.course_name}</Text>
             </View>
           ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
@@ -231,7 +265,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           {item.course_name ? (
             <View style={styles.activityRow}>
               <Text style={styles.activityText}>at </Text>
-              <WordHighlight words={(item.course_name).split(' ')} size={12} />
+              <Text style={styles.activityTextBold}>{item.course_name}</Text>
             </View>
           ) : null}
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
@@ -256,7 +290,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
             {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> posted a review on{' '}</Text>
           </View>
-          <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+          <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
           {writeup && writeup.reply_count > 0 ? (
             <View style={styles.commentCount}>
               <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
@@ -287,7 +321,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
             {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> played{' '}</Text>
           </View>
-          <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+          <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </PlatformPressable>
@@ -314,7 +348,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <Text style={styles.activityTextBold}>{targetName}{'\'s'}</Text>
           <Text style={styles.activityText}> review on</Text>
         </View>
-        <WordHighlight words={(item.course_name ?? '').split(' ')} size={12} />
+        <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
         <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
       </View>
     </PlatformPressable>
@@ -335,6 +369,13 @@ function formatTime(iso: string): string {
 export default function FeedScreen() {
   const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount } = useStore();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = useIsDesktop();
+  const { openActionPane } = useActionPane();
+  const desktopScrollProps = useDesktopScrollProps();
+  const fabRight = (screenWidth - 340) / 2;
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -343,6 +384,57 @@ export default function FeedScreen() {
   const [feedFilter, setFeedFilter] = useState<'ALL' | 'FOLLOWING'>('ALL');
   const [activityFilter, setActivityFilter] = useState<'all' | 'posts' | 'reviews'>('all');
   const [showFollowRibbon, setShowFollowRibbon] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [displayCount, setDisplayCount] = useState(20);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const searchInputRef = useRef<TextInput>(null);
+
+  const defaultBottom = Math.max(16, insets.bottom) + 56 + 12;
+  const searchBarBottom = keyboardHeight > 0 ? keyboardHeight + 12 : defaultBottom;
+
+  function expandSearch() {
+    setIsSearchExpanded(true);
+    Animated.timing(expandAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: false,
+    }).start(() => {
+      searchInputRef.current?.focus();
+    });
+  }
+
+  function collapseSearch() {
+    Keyboard.dismiss();
+    Animated.timing(expandAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start(() => {
+      setIsSearchExpanded(false);
+    });
+  }
+
+  const animatedWidth = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [52, screenWidth - 32],
+  });
+  const animatedHeight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [52, 44],
+  });
+  const animatedBorderRadius = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [26, 22],
+  });
+  const animatedRight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [fabRight, 16],
+  });
+  const contentOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
 
   useEffect(() => {
     AsyncStorage.getItem('followRibbonDismissed').then(val => {
@@ -385,28 +477,53 @@ export default function FeedScreen() {
     reviews: ['writeup'],
   };
 
-  const filteredActivities = activities.filter(a => {
-    if (feedFilter === 'FOLLOWING' && !followingIds.has(a.user_id)) return false;
-    if (activityFilter !== 'all' && !ACTIVITY_TYPE_MAP[activityFilter]?.includes(a.type)) return false;
-    return true;
-  });
+  const filteredActivities = useMemo(() => {
+    return activities.filter(a => {
+      if (feedFilter === 'FOLLOWING' && !followingIds.has(a.user_id)) return false;
+      if (activityFilter !== 'all' && !ACTIVITY_TYPE_MAP[activityFilter]?.includes(a.type)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const fields = [a.user_name, a.course_name, a.meetup_name, a.group_name, a.post_content, a.writeup_title, a.target_user_name];
+        if (!fields.some(f => f?.toLowerCase().includes(q))) return false;
+      }
+      return true;
+    });
+  }, [activities, feedFilter, followingIds, activityFilter, searchQuery]);
 
   return (
+    <ResponsiveContainer>
     <View style={styles.container}>
-      <View style={styles.filterRow}>
-        <PlatformPressable
-          style={[styles.filterTab, feedFilter === 'ALL' && styles.filterTabActive]}
-          onPress={() => setFeedFilter('ALL')}
-        >
-          <Text style={[styles.filterTabText, feedFilter === 'ALL' && styles.filterTabTextActive]}>ALL</Text>
-        </PlatformPressable>
-        <PlatformPressable
-          style={[styles.filterTab, feedFilter === 'FOLLOWING' && styles.filterTabActive]}
-          onPress={() => setFeedFilter('FOLLOWING')}
-        >
-          <Text style={[styles.filterTabText, feedFilter === 'FOLLOWING' && styles.filterTabTextActive]}>FOLLOWING</Text>
-        </PlatformPressable>
-      </View>
+      {isDesktop && (
+        <View style={styles.desktopPageTitle}>
+          <View style={styles.desktopPagePill}>
+            <Text style={styles.desktopPagePillText}>HOME</Text>
+          </View>
+        </View>
+      )}
+      {isDesktop ? (
+        <DesktopFeedToolbar
+          feedFilter={feedFilter}
+          onFeedFilterChange={setFeedFilter}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onCreatePress={() => openActionPane('create')}
+        />
+      ) : (
+        <View style={styles.filterRow}>
+          <PlatformPressable
+            style={[styles.filterTab, feedFilter === 'ALL' && styles.filterTabActive]}
+            onPress={() => setFeedFilter('ALL')}
+          >
+            <Text style={[styles.filterTabText, feedFilter === 'ALL' && styles.filterTabTextActive]}>ALL</Text>
+          </PlatformPressable>
+          <PlatformPressable
+            style={[styles.filterTab, feedFilter === 'FOLLOWING' && styles.filterTabActive]}
+            onPress={() => setFeedFilter('FOLLOWING')}
+          >
+            <Text style={[styles.filterTabText, feedFilter === 'FOLLOWING' && styles.filterTabTextActive]}>FOLLOWING</Text>
+          </PlatformPressable>
+        </View>
+      )}
       {/* Activity type filter chips — hidden for now, revisit later
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.typeFilterRow} contentContainerStyle={styles.typeFilterContent}>
         {([['all', 'ALL'], ['posts', 'POSTS ONLY'], ['reviews', 'REVIEWS ONLY']] as const).map(([val, label]) => (
@@ -423,9 +540,11 @@ export default function FeedScreen() {
       </ScrollView>
       */}
       <FlatList
-        data={filteredActivities}
+        {...desktopScrollProps}
+        data={filteredActivities.slice(0, displayCount)}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
+          <View style={isDesktop ? styles.desktopCard : undefined}>
           <ActivityItem
             item={item}
             writeups={writeups}
@@ -441,6 +560,7 @@ export default function FeedScreen() {
               else if (item.type === 'played' && item.course_id) router.push(`/course/${item.course_id}`);
             }}
           />
+          </View>
         )}
         ListHeaderComponent={!ribbonHidden && recommendedMembers.length > 0 ? (
           <View style={styles.ribbonContainer}>
@@ -487,15 +607,66 @@ export default function FeedScreen() {
           </View>
         }
         contentContainerStyle={filteredActivities.length === 0 ? styles.emptyContainer : styles.list}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={isDesktop ? null : () => <View style={styles.separator} />}
+        ListFooterComponent={
+          displayCount < filteredActivities.length ? (
+            isDesktop ? (
+              <HoverLoadMore
+                label={`LOAD MORE (${filteredActivities.length - displayCount} remaining)`}
+                onPress={() => setDisplayCount(displayCount + 20)}
+              />
+            ) : null
+          ) : null
+        }
+        onEndReached={!isDesktop && displayCount < filteredActivities.length ? () => setDisplayCount(prev => prev + 20) : undefined}
+        onEndReachedThreshold={0.5}
       />
-      <PlatformPressable
-        style={styles.fab}
-        onPress={() => setShowFabMenu(true)}
-      >
-        <Ionicons name="add" size={28} color={Colors.black} />
-      </PlatformPressable>
+      {!isDesktop && !isSearchExpanded && (
+        <PlatformPressable
+          style={[styles.fab, { right: fabRight, bottom: 161 }]}
+          onPress={() => setShowFabMenu(true)}
+        >
+          <Ionicons name="add" size={28} color={Colors.black} />
+        </PlatformPressable>
+      )}
+      {!isDesktop && (
+        <Animated.View style={[styles.searchFab, {
+          width: animatedWidth,
+          height: animatedHeight,
+          borderRadius: animatedBorderRadius,
+          right: animatedRight,
+          bottom: isSearchExpanded ? searchBarBottom : 97,
+        }]}>
+          {!isSearchExpanded ? (
+            <PlatformPressable style={styles.searchFabButton} onPress={expandSearch}>
+              <SearchIcon size={28} color={Colors.black} />
+            </PlatformPressable>
+          ) : (
+            <Animated.View style={[styles.searchBarContent, { opacity: contentOpacity }]}>
+              <SearchIcon size={28} color={Colors.gray} />
+              <TextInput
+                ref={searchInputRef}
+                style={styles.searchBarInput}
+                placeholder="Search feed..."
+                placeholderTextColor={Colors.gray}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                autoCapitalize="none"
+                autoCorrect={false}
+                onBlur={() => {
+                  if (!searchQuery.trim()) collapseSearch();
+                }}
+              />
+              <PlatformPressable onPress={() => { setSearchQuery(''); collapseSearch(); }} style={{ padding: 4 }}>
+                <Ionicons name="close-circle" size={18} color={Colors.gray} />
+              </PlatformPressable>
+            </Animated.View>
+          )}
+        </Animated.View>
+      )}
 
+      {/* Mobile: bottom sheet modal */}
+      {!isDesktop && (
       <Modal
         visible={showFabMenu}
         transparent
@@ -554,6 +725,7 @@ export default function FeedScreen() {
           </View>
         </PlatformPressable>
       </Modal>
+      )}
 
       <Modal
         visible={showInvite}
@@ -646,6 +818,7 @@ export default function FeedScreen() {
         ]}
       />
     </View>
+    </ResponsiveContainer>
   );
 }
 
@@ -837,6 +1010,37 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
   },
+  searchFab: {
+    position: 'absolute',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 8,
+    zIndex: 10,
+  },
+  searchFabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchBarContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+  },
+  searchBarInput: {
+    flex: 1,
+    fontSize: 16,
+    color: Colors.black,
+    fontWeight: '300',
+    paddingVertical: 0,
+    fontFamily: Fonts!.sans,
+    outlineStyle: 'none',
+  } as any,
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.3)',
@@ -1027,4 +1231,82 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
   },
+  desktopPageTitle: {
+    alignItems: 'center',
+    paddingTop: 18,
+    paddingBottom: 18,
+  },
+  desktopPagePill: {
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.black,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  desktopPagePillText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.black,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  desktopCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
+  },
+  desktopMenuBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 99,
+  } as any,
+  desktopCreateMenu: {
+    position: 'absolute',
+    top: 56,
+    right: 16,
+    width: 220,
+    backgroundColor: Colors.cream,
+    borderWidth: 1.5,
+    borderColor: Colors.black,
+    borderRadius: 8,
+    paddingVertical: 4,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  } as any,
+  desktopMenuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    height: 44,
+    paddingHorizontal: 16,
+  },
+  desktopMenuText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.black,
+    letterSpacing: 0.5,
+  },
+  desktopMenuSeparator: {
+    height: 1,
+    backgroundColor: Colors.borderLight,
+    marginHorizontal: 16,
+  },
+  loadMoreDesktop: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16 },
+  loadMoreDesktopBtn: { borderRadius: 8, overflow: 'hidden' },
+  loadMoreDesktopInner: { paddingHorizontal: 24, paddingVertical: LM_SCROLL_GAP, alignItems: 'center' },
+  loadMoreDesktopText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: LM_TEXT_HEIGHT },
 });

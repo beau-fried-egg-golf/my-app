@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Animated, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -9,8 +9,35 @@ import MessageBubble from '@/components/chat/MessageBubble';
 import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,6 +49,7 @@ export default function ConversationScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
+  const isDesktop = useIsDesktop();
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState('');
@@ -162,25 +190,45 @@ export default function ConversationScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
+      <ResponsiveContainer>
       {/* Header */}
-      <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
-        <View style={styles.headerRow}>
-          <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
-            <Ionicons name="chevron-back" size={20} color={Colors.black} />
-          </Pressable>
-          {otherProfile?.image ? (
-            <Image source={{ uri: otherProfile.image }} style={styles.headerAvatar} />
-          ) : (
-            <View style={styles.headerAvatarPlaceholder}>
-              <Ionicons name="person" size={16} color={Colors.gray} />
-            </View>
-          )}
-          <Text style={styles.headerTitle}>{otherName}</Text>
-          <Pressable onPress={() => setShowMenu(!showMenu)} style={styles.headerMenu}>
+      {isDesktop ? (
+        <View style={styles.desktopHeader}>
+          <DesktopBackButton onPress={() => router.push('/conversations')} />
+          <View style={styles.desktopHeaderCenter}>
+            {otherProfile?.image ? (
+              <Image source={{ uri: otherProfile.image }} style={styles.headerAvatar} />
+            ) : (
+              <View style={styles.headerAvatarPlaceholder}>
+                <Ionicons name="person" size={16} color={Colors.gray} />
+              </View>
+            )}
+            <Text style={styles.headerTitle}>{otherName}</Text>
+          </View>
+          <Pressable onPress={() => setShowMenu(!showMenu)} style={styles.desktopMenuBtn}>
             <Ionicons name="ellipsis-vertical" size={20} color={Colors.black} />
           </Pressable>
         </View>
-      </View>
+      ) : (
+        <View style={[styles.header, { paddingTop: Platform.OS === 'web' ? 16 : insets.top }]}>
+          <View style={styles.headerRow}>
+            <Pressable onPress={() => router.push('/conversations')} style={styles.backArrow}>
+              <Ionicons name="chevron-back" size={20} color={Colors.black} />
+            </Pressable>
+            {otherProfile?.image ? (
+              <Image source={{ uri: otherProfile.image }} style={styles.headerAvatar} />
+            ) : (
+              <View style={styles.headerAvatarPlaceholder}>
+                <Ionicons name="person" size={16} color={Colors.gray} />
+              </View>
+            )}
+            <Text style={styles.headerTitle}>{otherName}</Text>
+            <Pressable onPress={() => setShowMenu(!showMenu)} style={styles.headerMenu}>
+              <Ionicons name="ellipsis-vertical" size={20} color={Colors.black} />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {showMenu && (
         <View style={styles.menuDropdown}>
@@ -284,6 +332,7 @@ export default function ConversationScreen() {
         onReply={handleReply}
         onClose={() => setContextMenu({ visible: false, messageId: '', position: { x: 0, y: 0 } })}
       />
+      </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
 }
@@ -440,4 +489,29 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
     color: Colors.gray,
   },
+  desktopHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  desktopHeaderCenter: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginLeft: 12,
+  },
+  desktopMenuBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

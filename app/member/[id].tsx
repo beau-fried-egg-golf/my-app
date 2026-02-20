@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -7,12 +7,84 @@ import { useStore } from '@/data/store';
 import { supabase } from '@/data/supabase';
 import PassportBook from '@/components/PassportBook';
 import DetailHeader from '@/components/DetailHeader';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBlackButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.black, Colors.orange] });
+  return (
+    <Animated.View style={[styles.dtBlackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.dtBlackBtnText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.dtOutlineBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtBlackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.dtOutlineBtnText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy } = useStore();
   const router = useRouter();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const isOwnProfile = session?.user?.id === id;
 
   const profile = profiles.find((p) => p.id === id);
@@ -34,7 +106,13 @@ export default function MemberProfileScreen() {
   if (!profile) {
     return (
       <View style={styles.container}>
-        <DetailHeader title="MEMBER" />
+        {isDesktop ? (
+          <View style={styles.desktopTopBar}>
+            <DesktopBackButton onPress={() => router.back()} />
+          </View>
+        ) : (
+          <DetailHeader title="MEMBER" />
+        )}
         <Text style={styles.emptyText}>Member not found</Text>
       </View>
     );
@@ -51,8 +129,15 @@ export default function MemberProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <DetailHeader title="MEMBER" />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ResponsiveContainer>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={() => router.back()} />
+        </View>
+      ) : (
+        <DetailHeader title="MEMBER" />
+      )}
+      <ScrollView contentContainerStyle={styles.content} {...desktopScrollProps}>
       <View style={styles.avatarSection}>
         {profile.image ? (
           <Image source={{ uri: profile.image }} style={styles.avatar} />
@@ -67,7 +152,25 @@ export default function MemberProfileScreen() {
         </View>
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-        {!isOwnProfile && (
+        {!isOwnProfile && isDesktop && (
+          <View style={styles.actionRow}>
+            {isFollowing(profile.id) ? (
+              <DesktopOutlineButton label="FOLLOWING" onPress={() => toggleFollow(profile.id)} />
+            ) : (
+              <DesktopBlackButton label="FOLLOW" onPress={() => toggleFollow(profile.id)} />
+            )}
+            {!isBlockedBy(profile.id) && !profile.dms_disabled && (
+              <DesktopBlackButton
+                label="MESSAGE"
+                onPress={async () => {
+                  const convoId = await getOrCreateConversation(profile.id);
+                  router.push(`/conversation/${convoId}`);
+                }}
+              />
+            )}
+          </View>
+        )}
+        {!isOwnProfile && !isDesktop && (
           <View style={styles.actionRow}>
             <Pressable
               style={[styles.actionBtn, isFollowing(profile.id) && styles.actionBtnActive]}
@@ -179,6 +282,7 @@ export default function MemberProfileScreen() {
         </View>
       )}
       </ScrollView>
+      </ResponsiveContainer>
     </View>
   );
 }
@@ -227,4 +331,13 @@ const styles = StyleSheet.create({
   groupMemberCount: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 1 },
   passportSection: { marginTop: 24 },
   passportTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black, marginBottom: 12 },
+  desktopTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtBlackBtn: { borderRadius: 8, overflow: 'hidden' },
+  dtBlackBtnInner: { paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  dtOutlineBtn: { borderRadius: 8, overflow: 'hidden', borderWidth: 1.5, borderColor: Colors.black },
+  dtOutlineBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

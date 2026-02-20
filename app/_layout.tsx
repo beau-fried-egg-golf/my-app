@@ -1,15 +1,44 @@
-import { useEffect } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Image, Platform, View } from 'react-native';
+import { Animated, Platform, View } from 'react-native';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { Ionicons } from '@expo/vector-icons';
 import { StoreProvider, useStore } from '@/data/store';
 import { ExperienceStoreProvider } from '@/data/experienceStore';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { DesktopHeader, DesktopNav, DesktopDropdownMenu } from '@/components/desktop';
+import { ActionPaneContext, ActionPaneType } from '@/hooks/useActionPane';
+import { DesktopScrollContext, DESKTOP_HEADER_HEIGHT } from '@/hooks/useDesktopScroll';
 
+const LazyCreatePost = React.lazy(() => import('./create-post'));
+const LazyCreateWriteup = React.lazy(() => import('./create-writeup'));
+const LazyCreateMeetup = React.lazy(() => import('./create-meetup'));
+const LazyCreateGroup = React.lazy(() => import('./create-group'));
+const LazyCreateChooser = React.lazy(() => import('@/components/desktop/CreateChooser'));
+
+SplashScreen.preventAutoHideAsync();
+
+
+export const unstable_settings = {
+  initialRouteName: '(tabs)',
+};
+
+function InitialRouteEnforcer() {
+  const router = useRouter();
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      router.replace('/(tabs)');
+    });
+  }, []);
+
+  return null;
+}
 
 function PushNotificationRegistrar() {
   const { session } = useStore();
@@ -30,33 +59,38 @@ function PasswordResetNavigator() {
   return null;
 }
 
-export default function RootLayout() {
-  const [fontsLoaded] = useFonts({
-    ...Ionicons.font,
-    'GreyLL-Regular': require('../public/fonts/GreyLLTT-Regular.ttf'),
-    'GreyLL-Medium': require('../public/fonts/GreyLLTT-Medium.ttf'),
-    'GreyLL-Bold': require('../public/fonts/GreyLLTT-Bold.ttf'),
+function AppShell() {
+  const isDesktop = useIsDesktop();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [actionPane, setActionPane] = useState<ActionPaneType | null>(null);
+  const desktopScrollY = useRef(new Animated.Value(0)).current;
+
+  const headerMarginTop = desktopScrollY.interpolate({
+    inputRange: [0, DESKTOP_HEADER_HEIGHT],
+    outputRange: [0, -DESKTOP_HEADER_HEIGHT],
+    extrapolate: 'clamp',
   });
 
-  if (!fontsLoaded) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000' }}>
-        <Image
-          source={require('../assets/images/new welcome screen.png')}
-          style={{ width: '100%', height: '100%' }}
-          resizeMode="contain"
-        />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaProvider>
-    <StoreProvider>
-    <ExperienceStoreProvider>
-      <PushNotificationRegistrar />
-      <PasswordResetNavigator />
-      <StatusBar style="dark" />
+    <ActionPaneContext.Provider
+      value={{
+        activePane: actionPane,
+        openActionPane: (type) => setActionPane(type),
+        closeActionPane: () => setActionPane(null),
+      }}
+    >
+    <DesktopScrollContext.Provider value={desktopScrollY}>
+    <View style={{ flex: 1, backgroundColor: '#FFFFFF', overflow: 'hidden' }}>
+      {isDesktop && (
+        <Animated.View style={{ marginTop: headerMarginTop }}>
+          <DesktopHeader onMenuPress={() => setShowDropdown(v => !v)} />
+          <DesktopNav />
+          <DesktopDropdownMenu
+            visible={showDropdown}
+            onClose={() => setShowDropdown(false)}
+          />
+        </Animated.View>
+      )}
       <Stack
         initialRouteName="(tabs)"
         screenOptions={{
@@ -76,7 +110,7 @@ export default function RootLayout() {
         <Stack.Screen name="(experiences)" options={{ headerShown: false }} />
         <Stack.Screen
           name="profile"
-          options={{ headerShown: false, presentation: 'modal' }}
+          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal' }}
         />
         <Stack.Screen
           name="edit-profile"
@@ -84,11 +118,11 @@ export default function RootLayout() {
         />
         <Stack.Screen
           name="create-writeup"
-          options={{ headerShown: false, presentation: 'modal' }}
+          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal', ...(isDesktop && { contentStyle: { backgroundColor: 'transparent' } }) }}
         />
         <Stack.Screen
           name="create-post"
-          options={{ headerShown: false, presentation: 'modal' }}
+          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal', ...(isDesktop && { contentStyle: { backgroundColor: 'transparent' } }) }}
         />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="writeup/[id]" options={{ headerShown: false }} />
@@ -97,13 +131,13 @@ export default function RootLayout() {
         <Stack.Screen name="conversation/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-group"
-          options={{ headerShown: false, presentation: 'modal' }}
+          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal', ...(isDesktop && { contentStyle: { backgroundColor: 'transparent' } }) }}
         />
         <Stack.Screen name="group/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="group-chat/[id]" options={{ headerShown: false }} />
         <Stack.Screen
           name="create-meetup"
-          options={{ headerShown: false, presentation: 'modal' }}
+          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal', ...(isDesktop && { contentStyle: { backgroundColor: 'transparent' } }) }}
         />
         <Stack.Screen name="meetup/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="meetup-chat/[id]" options={{ headerShown: false }} />
@@ -116,6 +150,47 @@ export default function RootLayout() {
           options={{ headerShown: false }}
         />
       </Stack>
+      {isDesktop && actionPane && (
+        <Suspense fallback={null}>
+          {actionPane === 'create' && <LazyCreateChooser />}
+          {actionPane === 'review-only' && <LazyCreateChooser />}
+          {actionPane === 'post' && <LazyCreatePost />}
+          {actionPane === 'writeup' && <LazyCreateWriteup />}
+          {actionPane === 'meetup' && <LazyCreateMeetup />}
+          {actionPane === 'group' && <LazyCreateGroup />}
+        </Suspense>
+      )}
+    </View>
+    </DesktopScrollContext.Provider>
+    </ActionPaneContext.Provider>
+  );
+}
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    ...Ionicons.font,
+    'GreyLL-Regular': require('../public/fonts/GreyLLTT-Regular.ttf'),
+    'GreyLL-Medium': require('../public/fonts/GreyLLTT-Medium.ttf'),
+    'GreyLL-Bold': require('../public/fonts/GreyLLTT-Bold.ttf'),
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <SafeAreaProvider>
+    <StoreProvider>
+    <ExperienceStoreProvider>
+      <InitialRouteEnforcer />
+      <PushNotificationRegistrar />
+      <PasswordResetNavigator />
+      <StatusBar style="dark" />
+      <AppShell />
     </ExperienceStoreProvider>
     </StoreProvider>
     </SafeAreaProvider>

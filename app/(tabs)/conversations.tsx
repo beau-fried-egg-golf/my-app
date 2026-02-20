@@ -6,6 +6,9 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { ConversationListItem } from '@/types';
 import TutorialPopup from '@/components/TutorialPopup';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
 function formatTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -54,6 +57,8 @@ type TabType = 'dms' | 'groups' | 'meetups';
 export default function ConversationsScreen() {
   const { conversationListItems, loadConversations, loadGroups, loadMeetups } = useStore();
   const router = useRouter();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const [activeTab, setActiveTab] = useState<TabType>('dms');
 
   const hasUnreadDms = conversationListItems.some(i => i.type === 'dm' && i.unread);
@@ -115,7 +120,15 @@ export default function ConversationsScreen() {
   );
 
   return (
+    <ResponsiveContainer>
     <View style={styles.container}>
+      {isDesktop && (
+        <View style={styles.desktopPageTitle}>
+          <View style={styles.desktopPagePill}>
+            <Text style={styles.desktopPagePillText}>MESSAGES</Text>
+          </View>
+        </View>
+      )}
       <View style={styles.tabBar}>
         {(['dms', 'groups', 'meetups'] as TabType[]).map(tab => (
           <Pressable
@@ -136,6 +149,7 @@ export default function ConversationsScreen() {
         <SectionList
           sections={meetupSections}
           keyExtractor={(item) => `meetup-${item.id}`}
+          {...desktopScrollProps}
           renderSectionHeader={({ section }) => (
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionHeaderText}>{section.title}</Text>
@@ -153,6 +167,7 @@ export default function ConversationsScreen() {
         <FlatList
           data={filteredItems}
           keyExtractor={(item) => `${item.type}-${item.id}`}
+          {...desktopScrollProps}
           renderItem={({ item }) => (
             <ConversationRow item={item} onPress={() => handlePress(item)} />
           )}
@@ -171,6 +186,7 @@ export default function ConversationsScreen() {
         ]}
       />
     </View>
+    </ResponsiveContainer>
   );
 }
 
@@ -305,4 +321,7 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     textAlign: 'center',
   },
+  desktopPageTitle: { alignItems: 'center', paddingTop: 18, paddingBottom: 18 },
+  desktopPagePill: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },
+  desktopPagePillText: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black, letterSpacing: 0.5, textTransform: 'uppercase' },
 });

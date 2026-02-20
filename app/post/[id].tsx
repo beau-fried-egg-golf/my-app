@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
   FlatList,
   Image,
   KeyboardAvoidingView,
@@ -15,12 +16,60 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
-import WordHighlight from '@/components/WordHighlight';
 import LinkPreview from '@/components/LinkPreview';
 import DetailHeader from '@/components/DetailHeader';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+
+const DT_TEXT_HEIGHT = 18;
+const DT_SCROLL_GAP = 14;
+
+function DesktopBackButton({ onPress }: { onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackInner}>
+        <Ionicons name="chevron-back" size={18} color={Colors.black} />
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>BACK</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>BACK</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(DT_TEXT_HEIGHT + DT_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.white, Colors.cream] });
+  return (
+    <Animated.View style={[styles.desktopBackBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.desktopBackBtnInner}>
+        <View style={{ height: DT_TEXT_HEIGHT }}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.desktopBackText}>{label}</Text>
+            <View style={{ height: DT_SCROLL_GAP }} />
+            <Text style={styles.desktopBackText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 const REACTION_EMOJI: Record<string, string> = {
   like: '\uD83D\uDC4D',
@@ -58,9 +107,12 @@ export default function PostDetailScreen() {
   const [replies, setReplies] = useState<PostReply[]>([]);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
 
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
+  const isDesktop = useIsDesktop();
+  const desktopScrollProps = useDesktopScrollProps();
   const post = posts.find(p => p.id === id);
 
   useEffect(() => {
@@ -72,7 +124,6 @@ export default function PostDetailScreen() {
   if (!post) return null;
 
   const isOwner = user?.id === post.user_id;
-  const authorParts = (post.author_name ?? 'Member').split(' ').filter(Boolean);
 
   async function handleSendReply() {
     if (!replyText.trim() || sendingReply) return;
@@ -130,7 +181,7 @@ export default function PostDetailScreen() {
     <>
       <View style={styles.authorRow}>
         <Pressable onPress={() => router.push(`/member/${post.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <WordHighlight words={authorParts} size={12} />
+          <Text style={styles.authorName}>{post.author_name ?? 'Member'}</Text>
           {post.author_verified && <VerifiedBadge size={14} />}
         </Pressable>
         <Text style={styles.date}> · {formatDate(post.created_at)}</Text>
@@ -147,11 +198,15 @@ export default function PostDetailScreen() {
         />
       ) : null}
 
-      {post.photos.length > 0 && (
+      {post.photos.filter(p => !brokenPhotoIds.has(p.id)).length > 0 && (
         <View style={styles.photos}>
-          {post.photos.map((photo) => (
+          {post.photos.filter(p => !brokenPhotoIds.has(p.id)).map((photo) => (
             <View key={photo.id} style={styles.photoContainer}>
-              <Image source={{ uri: photo.url }} style={styles.photo} />
+              <Image
+                source={{ uri: photo.url }}
+                style={styles.photo}
+                onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
+              />
               {photo.caption ? (
                 <Text style={styles.photoCaption}>{photo.caption}</Text>
               ) : null}
@@ -192,7 +247,7 @@ export default function PostDetailScreen() {
           </Pressable>
         )}
 
-        {isOwner && (
+        {isOwner && !isDesktop && (
           <View style={styles.ownerActions}>
             <Pressable style={styles.ownerButton} onPress={handleDelete}>
               <Text style={styles.ownerButtonText}>Delete</Text>
@@ -213,19 +268,31 @@ export default function PostDetailScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <DetailHeader title="POST" />
+      <ResponsiveContainer>
+      {isDesktop ? (
+        <View style={styles.desktopTopBar}>
+          <DesktopBackButton onPress={() => router.back()} />
+          {isOwner && (
+            <View style={styles.desktopManageRight}>
+              <DesktopBackStyleButton label="DELETE" onPress={handleDelete} />
+            </View>
+          )}
+        </View>
+      ) : (
+        <DetailHeader title="POST" />
+      )}
       <FlatList
         data={replies}
         keyExtractor={item => item.id}
         ListHeaderComponent={headerContent}
         contentContainerStyle={styles.content}
+        {...desktopScrollProps}
         renderItem={({ item }) => {
-          const replyAuthorParts = (item.author_name ?? 'Member').split(' ').filter(Boolean);
           return (
             <View style={styles.replyItem}>
               <View style={styles.replyAuthorRow}>
                 <Pressable onPress={() => router.push(`/member/${item.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <WordHighlight words={replyAuthorParts} size={11} />
+                  <Text style={styles.replyAuthorName}>{item.author_name ?? 'Member'}</Text>
                   {item.author_verified && <VerifiedBadge size={12} />}
                 </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
@@ -266,6 +333,7 @@ export default function PostDetailScreen() {
           )}
         </View>
       </View>
+      </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
 }
@@ -274,6 +342,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 16 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
+  authorName: { fontSize: 15, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   date: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans },
   body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
   photos: { marginTop: 16, gap: 12 },
@@ -298,6 +367,7 @@ const styles = StyleSheet.create({
   repliesTitle: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyItem: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.lightGray },
   replyAuthorRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
+  replyAuthorName: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
@@ -305,4 +375,10 @@ const styles = StyleSheet.create({
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
   replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
   sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },
+  desktopTopBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  desktopManageRight: { flexDirection: 'row', gap: 8 },
+  desktopBackBtn: { borderRadius: 8, overflow: 'hidden' },
+  desktopBackInner: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackBtnInner: { paddingHorizontal: 14, paddingVertical: DT_SCROLL_GAP },
+  desktopBackText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
 });

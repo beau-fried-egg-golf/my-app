@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, FlatList, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -8,11 +8,16 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Course, Meetup } from '@/types';
 import CourseMapSheet from '@/components/course-map-sheet';
-import WordHighlight from '@/components/WordHighlight';
 import CourseMap from '@/components/course-map';
 import { SearchIcon } from '@/components/icons/CustomIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
+import ResponsiveContainer from '@/components/ResponsiveContainer';
+import { DesktopPageToolbar } from '@/components/desktop';
+import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { useActionPane } from '@/hooks/useActionPane';
+import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -53,15 +58,140 @@ type WriteupFilter = 'all' | 'has_writeups';
 type FEFilter = 'all' | 'has_fe';
 type SortOrder = 'alpha' | 'distance';
 
+const TOGGLE_TEXT_HEIGHT = 18;
+const TOGGLE_SCROLL_GAP = 6;
+
+function HoverFilterBtn({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  function onHoverIn() {
+    Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+  }
+  function onHoverOut() {
+    Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+  }
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -(TOGGLE_TEXT_HEIGHT + TOGGLE_SCROLL_GAP)],
+  });
+
+  const bgColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [Colors.black, Colors.orange],
+  });
+
+  return (
+    <Animated.View style={[styles.dtFilterBtn, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtFilterBtnInner}>
+        <View style={styles.dtToggleTextClip}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={styles.dtFilterText}>{label}</Text>
+            <View style={{ height: TOGGLE_SCROLL_GAP }} />
+            <Text style={[styles.dtFilterText, { color: Colors.black }]}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function HoverToggleBtn({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  function onHoverIn() {
+    Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start();
+  }
+  function onHoverOut() {
+    Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+  }
+
+  const translateY = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, -(TOGGLE_TEXT_HEIGHT + TOGGLE_SCROLL_GAP)],
+  });
+
+  const bgColor = anim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [active ? Colors.black : 'transparent', Colors.white],
+  });
+
+  return (
+    <Animated.View style={[styles.dtToggle, { backgroundColor: bgColor }]}>
+      <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.dtToggleInner}>
+        <View style={styles.dtToggleTextClip}>
+          <Animated.View style={{ transform: [{ translateY }] }}>
+            <Text style={[styles.dtToggleText, active && styles.dtToggleTextActive]}>{label}</Text>
+            <View style={{ height: TOGGLE_SCROLL_GAP }} />
+            <Text style={styles.dtToggleText}>{label}</Text>
+          </Animated.View>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function CoursesScreen() {
   const { courses, writeups, meetups } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
+  const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = useIsDesktop();
+  const { openActionPane } = useActionPane();
+  const desktopScrollProps = useDesktopScrollProps();
 
   // Tab bar bottom = Math.max(16, insets.bottom), height = 56, gap = 12
   const defaultBottom = Math.max(16, insets.bottom) + 56 + 12;
   const searchBarBottom = keyboardHeight > 0 ? keyboardHeight + 12 : defaultBottom;
+
+  const fabRight = (screenWidth - 340) / 2;
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const expandAnim = useRef(new Animated.Value(0)).current;
+  const searchInputRef = useRef<TextInput>(null);
+
+  function expandSearch() {
+    setIsSearchExpanded(true);
+    Animated.timing(expandAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: false,
+    }).start(() => {
+      searchInputRef.current?.focus();
+    });
+  }
+
+  function collapseSearch() {
+    Keyboard.dismiss();
+    Animated.timing(expandAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start(() => {
+      setIsSearchExpanded(false);
+    });
+  }
+
+  const animatedWidth = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [52, screenWidth - 32],
+  });
+  const animatedHeight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [52, 44],
+  });
+  const animatedBorderRadius = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [26, 22],
+  });
+  const animatedRight = expandAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [fabRight, 16],
+  });
+  const contentOpacity = expandAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 0, 1],
+  });
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [accessFilter, setAccessFilter] = useState<AccessFilter>('all');
@@ -196,83 +326,130 @@ export default function CoursesScreen() {
     const upcoming = getUpcomingMeetup(item.id);
 
     return (
-      <PlatformPressable
-        style={styles.courseItem}
-        onPress={() => router.push(`/course/${item.id}`)}
-      >
-        <View style={styles.courseHeader}>
-          <View style={styles.courseInfo}>
-            <WordHighlight words={item.short_name.split(' ')} size={16} />
-            <Text style={styles.courseCity}>{item.city}{item.state ? `, ${item.state}` : ''}</Text>
+      <View style={isDesktop ? styles.desktopCard : undefined}>
+        <PlatformPressable
+          style={styles.courseItem}
+          onPress={() => router.push(`/course/${item.id}`)}
+        >
+          <View style={styles.courseHeader}>
+            <View style={styles.courseInfo}>
+              <Text style={styles.courseNameText}>{item.short_name}</Text>
+              <Text style={styles.courseCity}>{item.city}{item.state ? `, ${item.state}` : ''}</Text>
+            </View>
+            <View style={styles.courseMeta}>
+              {distance !== null ? (
+                <Text style={styles.distanceText}>{Math.round(distance)} mi</Text>
+              ) : (
+                <Text style={styles.distanceText}>--</Text>
+              )}
+            </View>
           </View>
-          <View style={styles.courseMeta}>
-            {distance !== null ? (
-              <Text style={styles.distanceText}>{Math.round(distance)} mi</Text>
-            ) : (
-              <Text style={styles.distanceText}>--</Text>
+          <View style={styles.courseStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statText}>
+                {count} review{count !== 1 ? 's' : ''}
+              </Text>
+              {!!item.fe_profile_url && (
+                <Text style={styles.feBlurb}> · Has a Fried Egg course profile</Text>
+              )}
+            </View>
+            {recent && (
+              <Text style={styles.recentText}>
+                Latest: "{recent.title}" · {formatTime(recent.created_at)}
+              </Text>
             )}
           </View>
-        </View>
-        <View style={styles.courseStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statText}>
-              {count} review{count !== 1 ? 's' : ''}
-            </Text>
-            {!!item.fe_profile_url && (
-              <Text style={styles.feBlurb}> · Has a Fried Egg course profile</Text>
-            )}
-          </View>
-          {recent && (
-            <Text style={styles.recentText}>
-              Latest: "{recent.title}" · {formatTime(recent.created_at)}
-            </Text>
-          )}
-        </View>
-        {upcoming && renderMeetupCallout(upcoming)}
-      </PlatformPressable>
+          {upcoming && renderMeetupCallout(upcoming)}
+        </PlatformPressable>
+      </View>
     );
   }
 
 
   return (
+    <ResponsiveContainer>
     <View style={styles.container}>
-      <View style={styles.toolBar}>
-        <PlatformPressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
-          <Text style={styles.filterBarText}>{showFilters ? 'CLOSE FILTERS' : 'OPEN FILTERS'}</Text>
-          {activeFilterCount > 0 && (
-            <View style={styles.filterCount}>
-              <Text style={styles.filterCountText}>{activeFilterCount}</Text>
-            </View>
-          )}
-        </PlatformPressable>
-        <View style={styles.toolBarRight}>
-          <View style={styles.viewToggle}>
-            <PlatformPressable
-              style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
-              onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
-            >
-              <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
-            </PlatformPressable>
-            <PlatformPressable
-              style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
-              onPress={() => setViewMode('map')}
-            >
-              <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
-            </PlatformPressable>
+      {isDesktop && (
+        <View style={{ alignItems: 'center', paddingTop: 18, paddingBottom: 18 }}>
+          <View style={{ backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 }}>
+            <Text style={{ fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black, letterSpacing: 0.5, textTransform: 'uppercase' }}>COURSES</Text>
           </View>
+        </View>
+      )}
+      {isDesktop && (
+        <DesktopPageToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchPlaceholder="SEARCH COURSES"
+          ctaLabel="CREATE A REVIEW"
+          onCtaPress={() => openActionPane('review-only')}
+        />
+      )}
+      <View style={styles.toolBar}>
+        {isDesktop ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <HoverFilterBtn
+              label={showFilters ? 'CLOSE FILTERS' : 'OPEN FILTERS'}
+              onPress={() => setShowFilters(!showFilters)}
+            />
+            {activeFilterCount > 0 && (
+              <View style={styles.filterCount}>
+                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </View>
+        ) : (
+          <PlatformPressable style={styles.filterBarLeft} onPress={() => setShowFilters(!showFilters)}>
+            <Text style={styles.filterBarText}>{showFilters ? 'CLOSE FILTERS' : 'OPEN FILTERS'}</Text>
+            {activeFilterCount > 0 && (
+              <View style={styles.filterCount}>
+                <Text style={styles.filterCountText}>{activeFilterCount}</Text>
+              </View>
+            )}
+          </PlatformPressable>
+        )}
+        <View style={styles.toolBarRight}>
           {viewMode === 'list' && (
-            <View style={styles.sortToggle}>
+            isDesktop ? (
+              <View style={styles.dtToggleGroup}>
+                <HoverToggleBtn label="A-Z" active={sortOrder === 'alpha'} onPress={() => setSortOrder('alpha')} />
+                <HoverToggleBtn label="NEARBY" active={sortOrder === 'distance'} onPress={() => setSortOrder('distance')} />
+              </View>
+            ) : (
+              <View style={styles.sortToggle}>
+                <PlatformPressable
+                  style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
+                  onPress={() => setSortOrder('alpha')}
+                >
+                  <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
+                </PlatformPressable>
+                <PlatformPressable
+                  style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
+                  onPress={() => setSortOrder('distance')}
+                >
+                  <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
+                </PlatformPressable>
+              </View>
+            )
+          )}
+          {isDesktop ? (
+            <View style={styles.dtToggleGroup}>
+              <HoverToggleBtn label="LIST" active={viewMode === 'list'} onPress={() => { setViewMode('list'); setSelectedCourse(null); }} />
+              <HoverToggleBtn label="MAP" active={viewMode === 'map'} onPress={() => setViewMode('map')} />
+            </View>
+          ) : (
+            <View style={styles.viewToggle}>
               <PlatformPressable
-                style={[styles.sortBtn, sortOrder === 'alpha' && styles.sortBtnActive]}
-                onPress={() => setSortOrder('alpha')}
+                style={[styles.sortBtn, viewMode === 'list' && styles.sortBtnActive]}
+                onPress={() => { setViewMode('list'); setSelectedCourse(null); }}
               >
-                <Text style={[styles.sortBtnText, sortOrder === 'alpha' && styles.sortBtnTextActive]}>A-Z</Text>
+                <Text style={[styles.sortBtnText, viewMode === 'list' && styles.sortBtnTextActive]}>LIST</Text>
               </PlatformPressable>
               <PlatformPressable
-                style={[styles.sortBtn, sortOrder === 'distance' && styles.sortBtnActive]}
-                onPress={() => setSortOrder('distance')}
+                style={[styles.sortBtn, viewMode === 'map' && styles.sortBtnActive]}
+                onPress={() => setViewMode('map')}
               >
-                <Text style={[styles.sortBtnText, sortOrder === 'distance' && styles.sortBtnTextActive]}>NEARBY</Text>
+                <Text style={[styles.sortBtnText, viewMode === 'map' && styles.sortBtnTextActive]}>MAP</Text>
               </PlatformPressable>
             </View>
           )}
@@ -387,11 +564,12 @@ export default function CoursesScreen() {
       {viewMode === 'list' ? (
         <>
           <FlatList
+            {...desktopScrollProps}
             data={filteredCourses.slice(0, displayCount)}
             keyExtractor={(item) => item.id}
             renderItem={renderCourse}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-            contentContainerStyle={[styles.list, { paddingBottom: searchBarBottom + 56 }]}
+            ItemSeparatorComponent={isDesktop ? null : () => <View style={styles.separator} />}
+            contentContainerStyle={[styles.list, { paddingBottom: isSearchExpanded ? searchBarBottom + 56 : 160 }]}
             ListEmptyComponent={
               <View style={styles.empty}>
                 <Text style={styles.emptyText}>No courses match your filters</Text>
@@ -408,23 +586,41 @@ export default function CoursesScreen() {
               ) : null
             }
           />
-          <View style={[styles.bottomSearchBar, { bottom: searchBarBottom }]}>
-            <SearchIcon size={28} color={Colors.gray} />
-            <TextInput
-              style={styles.bottomSearchInput}
-              placeholder="Search courses..."
-              placeholderTextColor={Colors.gray}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            {searchQuery.length > 0 && (
-              <PlatformPressable onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-                <Ionicons name="close-circle" size={18} color={Colors.gray} />
-              </PlatformPressable>
-            )}
-          </View>
+          {!isDesktop && (
+            <Animated.View style={[styles.searchFab, {
+              width: animatedWidth,
+              height: animatedHeight,
+              borderRadius: animatedBorderRadius,
+              right: animatedRight,
+              bottom: isSearchExpanded ? searchBarBottom : 97,
+            }]}>
+              {!isSearchExpanded ? (
+                <PlatformPressable style={styles.searchFabButton} onPress={expandSearch}>
+                  <SearchIcon size={28} color={Colors.black} />
+                </PlatformPressable>
+              ) : (
+                <Animated.View style={[styles.searchBarContent, { opacity: contentOpacity }]}>
+                  <SearchIcon size={28} color={Colors.gray} />
+                  <TextInput
+                    ref={searchInputRef}
+                    style={styles.searchBarInput}
+                    placeholder="Search courses..."
+                    placeholderTextColor={Colors.gray}
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onBlur={() => {
+                      if (!searchQuery.trim()) collapseSearch();
+                    }}
+                  />
+                  <PlatformPressable onPress={() => { setSearchQuery(''); collapseSearch(); }} style={{ padding: 4 }}>
+                    <Ionicons name="close-circle" size={18} color={Colors.gray} />
+                  </PlatformPressable>
+                </Animated.View>
+              )}
+            </Animated.View>
+          )}
         </>
       ) : (
         <View style={styles.mapContainer}>
@@ -446,6 +642,7 @@ export default function CoursesScreen() {
         </View>
       )}
     </View>
+    </ResponsiveContainer>
   );
 }
 
@@ -473,12 +670,15 @@ const styles = StyleSheet.create({
   chipTextActive: { color: Colors.black },
   clearFilters: { alignSelf: 'flex-start' },
   clearFiltersText: { fontSize: 13, color: Colors.gray, textDecorationLine: 'underline', fontFamily: Fonts!.sans },
-  bottomSearchBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFFFF', borderRadius: 22, paddingHorizontal: 14, height: 44, borderWidth: 0, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
-  bottomSearchInput: { flex: 1, fontSize: 16, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
+  searchFab: { position: 'absolute', backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 8, zIndex: 10 },
+  searchFabButton: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  searchBarContent: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14 },
+  searchBarInput: { flex: 1, fontSize: 16, color: Colors.black, fontWeight: '300', paddingVertical: 0, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
   list: { paddingVertical: 8 },
   courseItem: { paddingHorizontal: 16, paddingVertical: 14 },
   courseHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   courseInfo: { flex: 1 },
+  courseNameText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   courseCity: { fontSize: 13, color: Colors.black, marginTop: 6, fontFamily: Fonts!.sans },
   courseMeta: { marginLeft: 12, alignItems: 'flex-end' },
   distanceText: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
@@ -492,9 +692,19 @@ const styles = StyleSheet.create({
   loadMoreButton: { alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginHorizontal: 16 },
   loadMoreText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange, letterSpacing: 0.5 },
   mapContainer: { flex: 1, position: 'relative' },
+  desktopCard: { borderWidth: 1, borderColor: Colors.borderLight, borderRadius: 10, marginHorizontal: 16, marginVertical: 8, backgroundColor: Colors.white, overflow: 'hidden' },
   feBlurb: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
   meetupCallout: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8 },
   meetupCalloutText: { flex: 1 },
   meetupName: { fontSize: 13, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   meetupDate: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, marginTop: 2 },
+  dtFilterBtn: { borderRadius: 8, overflow: 'hidden' },
+  dtFilterBtnInner: { paddingHorizontal: 16, paddingVertical: 6 },
+  dtFilterText: { fontSize: 13, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: TOGGLE_TEXT_HEIGHT },
+  dtToggleGroup: { flexDirection: 'row', borderRadius: 8, backgroundColor: Colors.cream, borderWidth: 1, borderColor: Colors.black, padding: 3, gap: 2 },
+  dtToggle: { borderRadius: 6, overflow: 'hidden' },
+  dtToggleInner: { paddingHorizontal: 12, paddingVertical: 6 },
+  dtToggleTextClip: { height: TOGGLE_TEXT_HEIGHT },
+  dtToggleText: { fontSize: 13, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: TOGGLE_TEXT_HEIGHT },
+  dtToggleTextActive: { color: Colors.white },
 });

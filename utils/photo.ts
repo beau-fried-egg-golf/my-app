@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import { File as ExpoFile } from 'expo-file-system';
 import { supabase } from '@/data/supabase';
 
 const MAX_DIMENSION = 800;
@@ -75,18 +75,12 @@ export async function uploadPhoto(uri: string, userId: string): Promise<string> 
       .upload(fileName, blob, { contentType });
     if (error) throw error;
   } else {
-    // Native: read file as base64 via expo-file-system (fetch().blob() returns 0 bytes on Hermes)
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-    const binaryStr = atob(base64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    // Native: use expo-file-system File class which implements Blob (fetch().blob() returns 0 bytes on Hermes)
+    const file = new ExpoFile(uri);
+    const bytes = await file.arrayBuffer();
     const { error } = await supabase.storage
       .from('photos')
-      .upload(fileName, bytes, { contentType });
+      .upload(fileName, new Uint8Array(bytes), { contentType });
     if (error) throw error;
   }
 

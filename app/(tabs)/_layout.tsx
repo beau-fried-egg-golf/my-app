@@ -12,6 +12,7 @@ import { ClubhouseIcon, CoursesIcon, MeetupsIcon, GroupsIcon, MembersIcon, Messa
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HapticTab } from '@/components/haptic-tab';
 import PlatformPressable from '@/components/PlatformPressable';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 function TabIconBox({ children }: { children: React.ReactNode }) {
   return (
@@ -89,6 +90,7 @@ export default function TabLayout() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const isDesktop = useIsDesktop();
   const TAB_BAR_WIDTH = 340;
   const [showMore, setShowMore] = useState(false);
 
@@ -110,11 +112,14 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors.orange,
         tabBarInactiveTintColor: Colors.gray,
         tabBarShowLabel: false,
-        tabBarStyle: [styles.tabBar, { bottom: Math.max(16, insets.bottom), transform: [{ translateX: (screenWidth - TAB_BAR_WIDTH) / 2 }] }],
+        tabBarStyle: isDesktop
+          ? { display: 'none' }
+          : [styles.tabBar, { bottom: Math.max(16, insets.bottom), transform: [{ translateX: (screenWidth - TAB_BAR_WIDTH) / 2 }] }],
         tabBarItemStyle: styles.tabBarItem,
         tabBarButton: HapticTab,
         tabBarIconStyle: { flex: 1, justifyContent: 'center', alignItems: 'center' },
         tabBarBackground: () => <TabBarBackground />,
+        headerShown: !isDesktop,
         headerStyle: { backgroundColor: Colors.white, height: 100 },
         headerTintColor: Colors.black,
         headerShadowVisible: false,
@@ -221,7 +226,7 @@ export default function TabLayout() {
     </Tabs>
 
       <Modal
-        visible={showMore}
+        visible={showMore && !isDesktop}
         transparent
         animationType="fade"
         onRequestClose={() => setShowMore(false)}
