@@ -46,6 +46,88 @@ export default function PinEditor({
     .filter(p => p.pin_id === selectedPinId)
     .sort((a, b) => a.sort_order - b.sort_order);
 
+  if (selectedPin && isInteractive) {
+    return (
+      <div className="ha-sidebar-panel">
+        <button className="btn btn-sm" onClick={onDeselectPin} style={{ marginBottom: 16 }}>
+          &larr; Back to list
+        </button>
+
+        <div className="form-group">
+          <label className="form-label">Hole Name &amp; Number</label>
+          <input
+            className="form-input"
+            value={selectedPin.headline}
+            onChange={(e) => onPinChange(selectedPin.id, 'headline', e.target.value)}
+            placeholder="e.g. Hole 1 — The Opening"
+          />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label className="form-label">Par</label>
+            <input
+              className="form-input"
+              value={selectedPin.par}
+              onChange={(e) => onPinChange(selectedPin.id, 'par', e.target.value)}
+              placeholder="e.g. Par 5"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Yardage</label>
+            <input
+              className="form-input"
+              value={selectedPin.yardage}
+              onChange={(e) => onPinChange(selectedPin.id, 'yardage', e.target.value)}
+              placeholder="e.g. 456 yds"
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Handicap <span style={{ fontWeight: 400, color: '#999' }}>(optional)</span></label>
+          <input
+            className="form-input"
+            value={selectedPin.handicap}
+            onChange={(e) => onPinChange(selectedPin.id, 'handicap', e.target.value)}
+            placeholder="e.g. HCP 3"
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Description</label>
+          <textarea
+            className="form-input form-textarea"
+            value={selectedPin.body_text}
+            onChange={(e) => onPinChange(selectedPin.id, 'body_text', e.target.value)}
+            placeholder="Short description of the hole..."
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">Link URL</label>
+          <input
+            className="form-input"
+            value={selectedPin.link_url}
+            onChange={(e) => onPinChange(selectedPin.id, 'link_url', e.target.value)}
+            placeholder="https://... (optional 'Find out more' link)"
+          />
+        </div>
+
+        <div style={{ marginTop: 24 }}>
+          <button
+            className="btn btn-sm btn-danger"
+            onClick={() => {
+              if (confirm('Delete this hole?')) onPinDelete(selectedPin.id);
+            }}
+          >
+            Delete Hole
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (selectedPin) {
     return (
       <div className="ha-sidebar-panel">
@@ -59,7 +141,7 @@ export default function PinEditor({
             className="form-input"
             value={selectedPin.headline}
             onChange={(e) => onPinChange(selectedPin.id, 'headline', e.target.value)}
-            placeholder={isInteractive ? 'Hole name...' : 'Pin headline...'}
+            placeholder="Pin headline..."
           />
         </div>
 
@@ -94,36 +176,34 @@ export default function PinEditor({
           />
         </div>
 
-        {!isInteractive && (
-          <div className="form-group">
-            <label className="form-label">Scroll Direction</label>
-            <div className="ha-type-toggle">
-              {([
-                ['bottom', '\u2193 Bottom'],
-                ['top', '\u2191 Top'],
-                ['left', '\u2190 Left'],
-                ['right', '\u2192 Right'],
-              ] as const).map(([dir, label]) => (
-                <button
-                  key={dir}
-                  className={`ha-type-btn${(selectedPin.scroll_direction || 'bottom') === dir ? ' active' : ''}`}
-                  onClick={() => onPinChange(selectedPin.id, 'scroll_direction', dir)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+        <div className="form-group">
+          <label className="form-label">Scroll Direction</label>
+          <div className="ha-type-toggle">
+            {([
+              ['bottom', '\u2193 Bottom'],
+              ['top', '\u2191 Top'],
+              ['left', '\u2190 Left'],
+              ['right', '\u2192 Right'],
+            ] as const).map(([dir, label]) => (
+              <button
+                key={dir}
+                className={`ha-type-btn${(selectedPin.scroll_direction || 'bottom') === dir ? ' active' : ''}`}
+                onClick={() => onPinChange(selectedPin.id, 'scroll_direction', dir)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
         <div style={{ marginTop: 24 }}>
           <button
             className="btn btn-sm btn-danger"
             onClick={() => {
-              if (confirm(`Delete this ${pinLabel}?`)) onPinDelete(selectedPin.id);
+              if (confirm('Delete this pin?')) onPinDelete(selectedPin.id);
             }}
           >
-            Delete {pinLabel.charAt(0).toUpperCase() + pinLabel.slice(1)}
+            Delete Pin
           </button>
         </div>
       </div>
@@ -149,6 +229,28 @@ export default function PinEditor({
           </button>
         </div>
       </div>
+
+      {isInteractive && (
+        <div className="form-group">
+          <label className="form-label">Pin Color</label>
+          <div className="ha-color-toggle">
+            <button
+              className={`ha-color-btn ha-color-black${annotation.pin_color === 'black' ? ' active' : ''}`}
+              onClick={() => onAnnotationChange('pin_color', 'black')}
+            >
+              <span className="ha-color-swatch ha-swatch-black" />
+              Black
+            </button>
+            <button
+              className={`ha-color-btn ha-color-yellow${annotation.pin_color === 'yellow' ? ' active' : ''}`}
+              onClick={() => onAnnotationChange('pin_color', 'yellow')}
+            >
+              <span className="ha-color-swatch ha-swatch-yellow" />
+              Yellow
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="form-group">
         <label className="form-label">Title</label>

@@ -119,6 +119,9 @@ export default function AnnotationEditor() {
       headline: '',
       body_text: '',
       link_url: '',
+      par: '',
+      yardage: '',
+      handicap: '',
       scroll_direction: 'bottom',
       created_at: new Date().toISOString(),
     };
@@ -258,6 +261,8 @@ export default function AnnotationEditor() {
           aerialImageUrl={annotation.aerial_image_url}
           pins={pins}
           selectedPinId={selectedPinId}
+          annotationType={annotation.annotation_type}
+          pinColor={annotation.pin_color}
           onPinAdd={handlePinAdd}
           onPinMove={handlePinMove}
           onPinSelect={handlePinSelect}

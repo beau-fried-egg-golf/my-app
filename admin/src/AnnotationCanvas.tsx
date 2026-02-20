@@ -6,16 +6,24 @@ interface AnnotationCanvasProps {
   aerialImageUrl: string | null;
   pins: AnnotationPin[];
   selectedPinId: string | null;
+  annotationType: 'scroll' | 'interactive';
+  pinColor: 'black' | 'yellow';
   onPinAdd: (x: number, y: number) => void;
   onPinMove: (pinId: string, x: number, y: number) => void;
   onPinSelect: (pinId: string) => void;
   onImageUpload: (url: string) => void;
 }
 
+const YELLOW_BUBBLE = `<svg width="38" height="33" viewBox="0 0 38 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.67 0.673C24.811-1.561 34.895 1.948 37.194 8.512 39.316 14.569 34.066 21.11 25.275 23.84L20.565 32c-.77 1.334-2.695 1.334-3.465 0L12.963 24.834C6.89 23.935 1.986 20.935.47 16.605-1.829 10.041 4.529 2.908 14.67.673Z" fill="#FFEE54" stroke="#1B1A1A" stroke-width="1.5"/></svg>`;
+
+const BLACK_BUBBLE = `<svg width="38" height="33" viewBox="0 0 38 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.67 0.673C24.811-1.561 34.895 1.948 37.194 8.512 39.316 14.569 34.066 21.11 25.275 23.84L20.565 32c-.77 1.334-2.695 1.334-3.465 0L12.963 24.834C6.89 23.935 1.986 20.935.47 16.605-1.829 10.041 4.529 2.908 14.67.673Z" fill="black" stroke="#F3F1E7" stroke-width="1.5"/></svg>`;
+
 export default function AnnotationCanvas({
   aerialImageUrl,
   pins,
   selectedPinId,
+  annotationType,
+  pinColor,
   onPinAdd,
   onPinMove,
   onPinSelect,
@@ -36,7 +44,6 @@ export default function AnnotationCanvas({
 
   function handleContainerClick(e: React.MouseEvent) {
     if (draggingPinId) return;
-    // Only add pin if clicking directly on the image area, not on a pin
     if ((e.target as HTMLElement).closest('.ha-pin-marker')) return;
     const { x, y } = getPercentCoords(e.clientX, e.clientY);
     onPinAdd(x, y);
@@ -82,8 +89,8 @@ export default function AnnotationCanvas({
     }
   }
 
-  // Sort pins for display numbering
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
+  const isInteractive = annotationType === 'interactive';
 
   if (!aerialImageUrl) {
     return (
@@ -128,20 +135,41 @@ export default function AnnotationCanvas({
           className="ha-canvas-img"
           draggable={false}
         />
-        {sortedPins.map((pin, index) => (
-          <div
-            key={pin.id}
-            className={`ha-pin-marker${pin.id === selectedPinId ? ' selected' : ''}${pin.id === draggingPinId ? ' dragging' : ''}`}
-            style={{
-              left: `${pin.position_x}%`,
-              top: `${pin.position_y}%`,
-            }}
-            onMouseDown={(e) => handlePinMouseDown(e, pin.id)}
-            onTouchStart={(e) => handlePinMouseDown(e, pin.id)}
-          >
-            {index + 1}
-          </div>
-        ))}
+        {sortedPins.map((pin, index) => {
+          if (isInteractive) {
+            const bubbleSvg = pinColor === 'yellow' ? YELLOW_BUBBLE : BLACK_BUBBLE;
+            const numColor = pinColor === 'yellow' ? '#1B1A1A' : '#F3F1E7';
+            return (
+              <div
+                key={pin.id}
+                className={`ha-pin-marker ha-pin-bubble${pin.id === selectedPinId ? ' selected' : ''}${pin.id === draggingPinId ? ' dragging' : ''}`}
+                style={{
+                  left: `${pin.position_x}%`,
+                  top: `${pin.position_y}%`,
+                }}
+                onMouseDown={(e) => handlePinMouseDown(e, pin.id)}
+                onTouchStart={(e) => handlePinMouseDown(e, pin.id)}
+              >
+                <span className="ha-pin-bubble-svg" dangerouslySetInnerHTML={{ __html: bubbleSvg }} />
+                <span className="ha-pin-bubble-num" style={{ color: numColor }}>{index + 1}</span>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={pin.id}
+              className={`ha-pin-marker${pin.id === selectedPinId ? ' selected' : ''}${pin.id === draggingPinId ? ' dragging' : ''}`}
+              style={{
+                left: `${pin.position_x}%`,
+                top: `${pin.position_y}%`,
+              }}
+              onMouseDown={(e) => handlePinMouseDown(e, pin.id)}
+              onTouchStart={(e) => handlePinMouseDown(e, pin.id)}
+            >
+              {index + 1}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

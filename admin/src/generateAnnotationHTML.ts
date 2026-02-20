@@ -440,30 +440,26 @@ function buildOverlayCard(
 
 function buildCompactCard(
   pin: AnnotationPin,
-  photos: PinPhoto[],
 ): string {
-  let imageHtml = '';
+  const pills: string[] = [];
+  if (pin.par) pills.push(`<span class="ha-compact-pill">${escapeHtml(pin.par)}</span>`);
+  if (pin.yardage) pills.push(`<span class="ha-compact-pill">${escapeHtml(pin.yardage)}</span>`);
+  if (pin.handicap) pills.push(`<span class="ha-compact-pill">${escapeHtml(pin.handicap)}</span>`);
+  const pillsHtml = pills.length > 0 ? `<div class="ha-compact-pills">${pills.join('')}</div>` : '';
 
-  if (photos.length > 0) {
-    const photosJson = escapeHtml(JSON.stringify(photos.map(p => ({ url: p.photo_url, caption: p.caption }))));
-    imageHtml = `
-    <div class="ha-compact-img card-gallery" data-photos="${photosJson}" data-active-index="0">
-      <img src="${escapeHtml(photos[0].photo_url)}"
-        alt="${escapeHtml(photos[0].caption || pin.headline)}" loading="lazy"
-        onclick="haLightboxOpen(this.closest('.card-gallery'))" />
-    </div>`;
-  }
+  const bodyText = pin.body_text.replace(/<[^>]*>/g, '').trim();
+  const bodyHtml = bodyText ? `<div class="ha-compact-body"><p>${escapeHtml(bodyText)}</p></div>` : '';
 
   const linkHtml = pin.link_url
-    ? `<a class="ha-compact-link" href="${escapeHtml(pin.link_url)}" target="_blank" rel="noopener">Find out more</a>`
+    ? `<div class="ha-compact-footer"><a class="ha-compact-link" href="${escapeHtml(pin.link_url)}" target="_blank" rel="noopener">Find out more</a></div>`
     : '';
 
   return `
   <div class="ha-compact-card">
-    ${imageHtml}
     <div class="ha-compact-content">
       <h3 class="ha-compact-title">${escapeHtml(pin.headline)}</h3>
-      <div class="ha-compact-body">${renderBodyHtml(pin.body_text)}</div>
+      ${pillsHtml}
+      ${bodyHtml}
       ${linkHtml}
     </div>
   </div>`;
@@ -772,19 +768,23 @@ function generateInteractiveHTML(
   pinPhotos: PinPhoto[],
 ): string {
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
+  const color = annotation.pin_color || 'black';
+
+  const yellowBubble = `<svg class="ha-ipin-bubble" width="38" height="33" viewBox="0 0 38 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.67 0.673C24.811-1.561 34.895 1.948 37.194 8.512 39.316 14.569 34.066 21.11 25.275 23.84L20.565 32c-.77 1.334-2.695 1.334-3.465 0L12.963 24.834C6.89 23.935 1.986 20.935.47 16.605-1.829 10.041 4.529 2.908 14.67.673Z" fill="#FFEE54" stroke="#1B1A1A" stroke-width="1.5"/></svg>`;
+  const blackBubble = `<svg class="ha-ipin-bubble" width="38" height="33" viewBox="0 0 38 33" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.67 0.673C24.811-1.561 34.895 1.948 37.194 8.512 39.316 14.569 34.066 21.11 25.275 23.84L20.565 32c-.77 1.334-2.695 1.334-3.465 0L12.963 24.834C6.89 23.935 1.986 20.935.47 16.605-1.829 10.041 4.529 2.908 14.67.673Z" fill="black" stroke="#F3F1E7" stroke-width="1.5"/></svg>`;
+
+  const bubbleSvg = color === 'yellow' ? yellowBubble : blackBubble;
+  const numColor = color === 'yellow' ? '#1B1A1A' : '#F3F1E7';
 
   const pinMarkersHtml = sortedPins.map((pin, index) => `
     <button class="ha-ipin" data-pin-index="${index}" style="left:${pin.position_x}%;top:${pin.position_y}%">
-      ${index + 1}
+      ${bubbleSvg}
+      <span class="ha-ipin-num" style="color:${numColor}">${index + 1}</span>
     </button>`
   ).join('');
 
   const pinPanelsHtml = sortedPins.map((pin, index) => {
-    const photos = pinPhotos
-      .filter(p => p.pin_id === pin.id)
-      .sort((a, b) => a.sort_order - b.sort_order);
-
-    const cardHtml = buildCompactCard(pin, photos);
+    const cardHtml = buildCompactCard(pin);
 
     return `
     <div class="ha-ipanel" data-panel-index="${index}">
@@ -822,131 +822,116 @@ ${LIGHTBOX_CSS}
 }
 .ha-ipin {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(26, 26, 26, 0.85);
-  color: #fff;
-  font-family: var(--card-font);
-  font-size: 14px;
-  font-weight: 700;
+  transform: translate(-50%, -100%);
+  width: 29px;
+  height: 25px;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+  z-index: 3;
+  display: block;
+}
+.ha-ipin-bubble {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.25));
+}
+.ha-ipin-num {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 18px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid rgba(255,255,255,0.7);
-  cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  z-index: 3;
-}
-.ha-ipin:hover {
-  transform: translate(-50%, -50%) scale(1.2);
-  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-  background: rgba(26, 26, 26, 0.95);
+  font-family: var(--card-font);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
 }
 .ha-ipin.ha-ipin-active {
-  transform: translate(-50%, -50%) scale(1.25);
-  box-shadow: 0 0 0 4px rgba(255,255,255,0.8), 0 4px 16px rgba(0,0,0,0.4);
-  background: #1a1a1a;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.6)) drop-shadow(0 4px 8px rgba(0,0,0,0.3));
   z-index: 5;
 }
-.ha-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-  z-index: 4;
-}
-.ha-overlay.ha-overlay-visible {
-  opacity: 1;
-  pointer-events: auto;
+.ha-detail-area {
+  overflow: hidden;
 }
 .ha-ipanel {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.92);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease;
-  z-index: 6;
-  width: 90%;
-  max-width: 560px;
-}
-.ha-ipanel.ha-ipanel-visible {
-  opacity: 1;
-  transform: translate(-50%, -50%) scale(1);
-  pointer-events: auto;
+  display: none;
 }
 .ha-compact-card {
-  display: flex;
-  background: #ede8df;
-  border-radius: 10px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  background: #fff;
   font-family: var(--card-font);
   cursor: default;
 }
-.ha-compact-img {
-  width: 140px;
-  min-height: 110px;
-  flex-shrink: 0;
-}
-.ha-compact-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  cursor: pointer;
-}
 .ha-compact-content {
-  padding: 16px 22px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-width: 0;
+  padding: 22px 24px;
 }
 .ha-compact-title {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1.35rem;
+  font-weight: 400;
   color: #1a1a1a;
-  margin: 0 0 6px 0;
-  line-height: 1.3;
+  margin: 0 0 12px 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+.ha-compact-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.ha-compact-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #F3F1E7;
+  border-radius: 20px;
+  font-family: var(--card-font);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1a1a1a;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 .ha-compact-body {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   font-weight: 400;
-  color: #3a3a3a;
-  line-height: 1.55;
+  color: #1a1a1a;
+  line-height: 1.65;
 }
 .ha-compact-body p { margin: 0; }
-.ha-compact-body p + p { margin-top: 0.5em; }
+.ha-compact-body p + p { margin-top: 0.75em; }
+.ha-compact-footer {
+  padding: 0;
+  margin-top: 14px;
+}
 .ha-compact-link {
-  font-size: 0.84rem;
+  font-family: var(--card-font);
+  font-size: 0.88rem;
+  font-weight: 400;
   color: #1a1a1a;
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
-  margin-top: 12px;
-  display: inline-block;
   transition: color 0.2s;
 }
 .ha-compact-link:hover { color: #3a6a3a; }
 @media (max-width: 600px) {
-  .ha-ipanel { width: 94%; }
-  .ha-compact-img { width: 100px; min-height: 90px; }
-  .ha-compact-content { padding: 12px 14px; }
-  .ha-compact-title { font-size: 0.95rem; }
-  .ha-compact-body { font-size: 0.82rem; }
+  .ha-compact-content { padding: 18px 18px; }
+  .ha-compact-title { font-size: 1.15rem; }
+  .ha-compact-body { font-size: 0.88rem; }
 }
 </style>
 <div class="ha-interactive-container">
   <img class="ha-aerial-img" src="${escapeHtml(annotation.aerial_image_url ?? '')}" alt="${escapeHtml(annotation.title)}" />
   ${pinMarkersHtml}
-  <div class="ha-overlay"></div>
+</div>
+<div class="ha-detail-area">
   ${pinPanelsHtml}
 </div>
 ${LIGHTBOX_HTML}
@@ -958,23 +943,20 @@ ${LIGHTBOX_JS}
   if (!embed) return;
   var pins = embed.querySelectorAll('.ha-ipin');
   var panels = embed.querySelectorAll('.ha-ipanel');
-  var overlay = embed.querySelector('.ha-overlay');
   var activeIdx = -1;
 
   function openPanel(idx) {
     closePanel();
     activeIdx = idx;
-    overlay.classList.add('ha-overlay-visible');
     pins[idx].classList.add('ha-ipin-active');
-    panels[idx].classList.add('ha-ipanel-visible');
+    panels[idx].style.display = 'block';
   }
 
   function closePanel() {
     if (activeIdx >= 0) {
       pins[activeIdx].classList.remove('ha-ipin-active');
-      panels[activeIdx].classList.remove('ha-ipanel-visible');
+      panels[activeIdx].style.display = 'none';
     }
-    overlay.classList.remove('ha-overlay-visible');
     activeIdx = -1;
   }
 
@@ -985,8 +967,6 @@ ${LIGHTBOX_JS}
       openPanel(i);
     });
   });
-
-  overlay.addEventListener('click', function() { closePanel(); });
 
   // Lightbox close/nav buttons
   var lb = embed.querySelector('.ha-lightbox');
