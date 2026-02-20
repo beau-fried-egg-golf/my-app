@@ -2,6 +2,8 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getAnnotation, saveAnnotation } from './storage';
 import { generateAnnotationHTML } from './generateAnnotationHTML';
+import { getFontDataUris } from './fontData';
+import type { FontUris } from './generateAnnotationHTML';
 import AnnotationCanvas from './AnnotationCanvas';
 import PinEditor from './PinEditor';
 import AnnotationPreview from './AnnotationPreview';
@@ -20,6 +22,9 @@ export default function AnnotationEditor() {
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [exportHtml, setExportHtml] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fontUris, setFontUris] = useState<FontUris | undefined>(undefined);
+
+  useEffect(() => { getFontDataUris().then(setFontUris); }, []);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveInFlightRef = useRef(false);
@@ -222,7 +227,7 @@ export default function AnnotationEditor() {
 
   function handlePreview() {
     if (!annotation) return;
-    const html = generateAnnotationHTML(annotation, pins, pinPhotos);
+    const html = generateAnnotationHTML(annotation, pins, pinPhotos, fontUris);
     setPreviewHtml(html);
   }
 

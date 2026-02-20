@@ -18,28 +18,39 @@ function renderBodyHtml(bodyText: string): string {
 // Shared overlay card CSS + JS (used by both scroll and interactive exports)
 // ---------------------------------------------------------------------------
 
-const OVERLAY_CARD_CSS = `
+export interface FontUris {
+  regular: string;
+  medium: string;
+  bold: string;
+}
+
+function fontFaceCss(fonts?: FontUris): string {
+  if (!fonts) return '';
+  return `
 @font-face {
   font-family: 'Grey LL';
-  src: url('/fonts/GreyLLTT-Regular.ttf') format('truetype');
+  src: url('${fonts.regular}') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Grey LL';
-  src: url('/fonts/GreyLLTT-Medium.ttf') format('truetype');
+  src: url('${fonts.medium}') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Grey LL';
-  src: url('/fonts/GreyLLTT-Bold.ttf') format('truetype');
+  src: url('${fonts.bold}') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
+}`;
 }
+
+const OVERLAY_CARD_CSS_BODY = `
 
 :root {
   --card-max-width: 520px;
@@ -473,11 +484,12 @@ export function generateAnnotationHTML(
   annotation: HoleAnnotation,
   pins: AnnotationPin[],
   pinPhotos: PinPhoto[],
+  fonts?: FontUris,
 ): string {
   if (annotation.annotation_type === 'interactive') {
-    return generateInteractiveHTML(annotation, pins, pinPhotos);
+    return generateInteractiveHTML(annotation, pins, pinPhotos, fonts);
   }
-  return generateScrollHTML(annotation, pins, pinPhotos);
+  return generateScrollHTML(annotation, pins, pinPhotos, fonts);
 }
 
 // =============================================================================
@@ -501,7 +513,9 @@ function generateScrollHTML(
   annotation: HoleAnnotation,
   pins: AnnotationPin[],
   pinPhotos: PinPhoto[],
+  fonts?: FontUris,
 ): string {
+  const OVERLAY_CARD_CSS = fontFaceCss(fonts) + OVERLAY_CARD_CSS_BODY;
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
 
   const pinMarkersHtml = sortedPins.map((pin, index) => `
@@ -766,7 +780,9 @@ function generateInteractiveHTML(
   annotation: HoleAnnotation,
   pins: AnnotationPin[],
   pinPhotos: PinPhoto[],
+  fonts?: FontUris,
 ): string {
+  const OVERLAY_CARD_CSS = fontFaceCss(fonts) + OVERLAY_CARD_CSS_BODY;
   const sortedPins = [...pins].sort((a, b) => a.sort_order - b.sort_order);
   const color = annotation.pin_color || 'black';
 
@@ -860,6 +876,7 @@ ${LIGHTBOX_CSS}
 }
 .ha-detail-area {
   overflow: hidden;
+  position: relative;
 }
 .ha-ipanel {
   display: none;
@@ -870,13 +887,13 @@ ${LIGHTBOX_CSS}
   cursor: default;
 }
 .ha-compact-content {
-  padding: 22px 24px;
+  padding: 22px 0;
 }
 .ha-compact-title {
   font-size: 1.35rem;
-  font-weight: 400;
+  font-weight: 500;
   color: #1a1a1a;
-  margin: 0 0 12px 0;
+  margin: 0 0 20px 0;
   line-height: 1.25;
   letter-spacing: -0.01em;
 }
@@ -884,16 +901,17 @@ ${LIGHTBOX_CSS}
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 16px;
   margin-bottom: 14px;
 }
 .ha-compact-pill {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 3px 8px;
   background: #F3F1E7;
   border-radius: 20px;
   font-family: var(--card-font);
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #1a1a1a;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -915,14 +933,17 @@ ${LIGHTBOX_CSS}
   font-size: 0.88rem;
   font-weight: 400;
   color: #1a1a1a;
+  text-decoration: none;
+  transition: text-decoration 0.2s, color 0.2s;
+}
+.ha-compact-link:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
-  transition: color 0.2s;
+  color: #3a6a3a;
 }
-.ha-compact-link:hover { color: #3a6a3a; }
 @media (max-width: 600px) {
-  .ha-compact-content { padding: 18px 18px; }
+  .ha-compact-content { padding: 18px 0; }
   .ha-compact-title { font-size: 1.15rem; }
   .ha-compact-body { font-size: 0.88rem; }
 }
@@ -967,6 +988,7 @@ ${LIGHTBOX_JS}
       openPanel(i);
     });
   });
+
 
   // Lightbox close/nav buttons
   var lb = embed.querySelector('.ha-lightbox');
