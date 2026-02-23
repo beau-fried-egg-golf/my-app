@@ -477,6 +477,32 @@ function buildCompactCard(
 }
 
 // ---------------------------------------------------------------------------
+// Default course-info card for interactive annotations (shown on page load)
+// ---------------------------------------------------------------------------
+
+function buildDefaultCard(annotation: HoleAnnotation): string {
+  const pills: string[] = [];
+  if (annotation.location) pills.push(`<span class="ha-compact-pill">${escapeHtml(annotation.location)}</span>`);
+  if (annotation.architect) pills.push(`<span class="ha-compact-pill">${escapeHtml(annotation.architect)}</span>`);
+  if (annotation.year_opened) pills.push(`<span class="ha-compact-pill">${escapeHtml(annotation.year_opened)}</span>`);
+  const pillsHtml = pills.length > 0 ? `<div class="ha-compact-pills">${pills.join('')}</div>` : '';
+
+  const bodyText = (annotation.course_description || '').trim();
+  const bodyHtml = bodyText ? `<div class="ha-compact-body"><p>${escapeHtml(bodyText)}</p></div>` : '';
+
+  return `
+  <div class="ha-ipanel ha-default-panel" data-panel-index="-1">
+    <div class="ha-compact-card">
+      <div class="ha-compact-content">
+        <h3 class="ha-compact-title">${escapeHtml(annotation.course_name)}</h3>
+        ${pillsHtml}
+        ${bodyHtml}
+      </div>
+    </div>
+  </div>`;
+}
+
+// ---------------------------------------------------------------------------
 // Public entry point
 // ---------------------------------------------------------------------------
 
@@ -799,6 +825,8 @@ function generateInteractiveHTML(
     </button>`
   ).join('');
 
+  const defaultPanelHtml = buildDefaultCard(annotation);
+
   const pinPanelsHtml = sortedPins.map((pin, index) => {
     const cardHtml = buildCompactCard(pin);
 
@@ -881,6 +909,9 @@ ${LIGHTBOX_CSS}
 .ha-ipanel {
   display: none;
 }
+.ha-default-panel {
+  display: block;
+}
 .ha-compact-card {
   background: #fff;
   font-family: var(--card-font);
@@ -890,7 +921,7 @@ ${LIGHTBOX_CSS}
   padding: 22px 0;
 }
 .ha-compact-title {
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   font-weight: 500;
   color: #1a1a1a;
   margin: 0 0 20px 0;
@@ -953,6 +984,7 @@ ${LIGHTBOX_CSS}
   ${pinMarkersHtml}
 </div>
 <div class="ha-detail-area">
+  ${defaultPanelHtml}
   ${pinPanelsHtml}
 </div>
 ${LIGHTBOX_HTML}
@@ -963,7 +995,8 @@ ${LIGHTBOX_JS}
   var embed = document.getElementById('${embedId}');
   if (!embed) return;
   var pins = embed.querySelectorAll('.ha-ipin');
-  var panels = embed.querySelectorAll('.ha-ipanel');
+  var panels = embed.querySelectorAll('.ha-ipanel:not(.ha-default-panel)');
+  var defaultPanel = embed.querySelector('.ha-default-panel');
   var activeIdx = -1;
 
   function openPanel(idx) {
@@ -971,6 +1004,7 @@ ${LIGHTBOX_JS}
     activeIdx = idx;
     pins[idx].classList.add('ha-ipin-active');
     panels[idx].style.display = 'block';
+    if (defaultPanel) defaultPanel.style.display = 'none';
   }
 
   function closePanel() {
@@ -979,6 +1013,7 @@ ${LIGHTBOX_JS}
       panels[activeIdx].style.display = 'none';
     }
     activeIdx = -1;
+    if (defaultPanel) defaultPanel.style.display = 'block';
   }
 
   pins.forEach(function(pin, i) {

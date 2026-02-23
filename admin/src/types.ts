@@ -234,6 +234,10 @@ export interface HoleAnnotation {
   aerial_image_url: string | null;
   annotation_type: 'scroll' | 'interactive';
   pin_color: 'black' | 'yellow';
+  location: string;
+  architect: string;
+  year_opened: string;
+  course_description: string;
   created_at: string;
   updated_at: string;
   pin_count?: number;

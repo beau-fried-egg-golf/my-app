@@ -285,6 +285,51 @@ export default function PinEditor({
         )}
       </div>
 
+      {isInteractive && (
+        <>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Location</label>
+              <input
+                className="form-input"
+                value={annotation.location}
+                onChange={(e) => onAnnotationChange('location', e.target.value)}
+                placeholder="e.g. Southampton, NY"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Architect</label>
+              <input
+                className="form-input"
+                value={annotation.architect}
+                onChange={(e) => onAnnotationChange('architect', e.target.value)}
+                placeholder="e.g. Seth Raynor"
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Year Opened</label>
+            <input
+              className="form-input"
+              value={annotation.year_opened}
+              onChange={(e) => onAnnotationChange('year_opened', e.target.value)}
+              placeholder="e.g. 1931"
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Course Description</label>
+            <textarea
+              className="form-input form-textarea"
+              value={annotation.course_description}
+              onChange={(e) => onAnnotationChange('course_description', e.target.value)}
+              placeholder="Short description of the course..."
+            />
+          </div>
+        </>
+      )}
+
       {annotation.aerial_image_url && (
         <div className="form-group">
           <label className="form-label">Aerial Image</label>

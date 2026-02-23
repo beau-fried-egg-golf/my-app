@@ -951,6 +951,10 @@ export async function duplicateAnnotation(id: string): Promise<string | null> {
     aerial_image_url: result.annotation.aerial_image_url,
     annotation_type: result.annotation.annotation_type,
     pin_color: result.annotation.pin_color,
+    location: result.annotation.location,
+    architect: result.annotation.architect,
+    year_opened: result.annotation.year_opened,
+    course_description: result.annotation.course_description,
     created_at: now,
     updated_at: now,
   });
