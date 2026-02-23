@@ -19,6 +19,7 @@ interface PinEditorProps {
   onPhotoCaptionChange: (photoId: string, caption: string) => void;
   onImageUpload: (url: string) => void;
   onDeselectPin: () => void;
+  onResetCardPosition: (pinId: string) => void;
 }
 
 export default function PinEditor({
@@ -37,6 +38,7 @@ export default function PinEditor({
   onPhotoCaptionChange,
   onImageUpload,
   onDeselectPin,
+  onResetCardPosition,
 }: PinEditorProps) {
   const isInteractive = annotation.annotation_type === 'interactive';
   const pinLabel = isInteractive ? 'hole' : 'pin';
@@ -176,25 +178,19 @@ export default function PinEditor({
           />
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Scroll Direction</label>
-          <div className="ha-type-toggle">
-            {([
-              ['bottom', '\u2193 Bottom'],
-              ['top', '\u2191 Top'],
-              ['left', '\u2190 Left'],
-              ['right', '\u2192 Right'],
-            ] as const).map(([dir, label]) => (
-              <button
-                key={dir}
-                className={`ha-type-btn${(selectedPin.scroll_direction || 'bottom') === dir ? ' active' : ''}`}
-                onClick={() => onPinChange(selectedPin.id, 'scroll_direction', dir)}
-              >
-                {label}
-              </button>
-            ))}
+        {selectedPin.card_position_x !== null && (
+          <div className="form-group">
+            <button
+              className="btn btn-sm"
+              onClick={() => onResetCardPosition(selectedPin.id)}
+            >
+              Reset Card Position
+            </button>
+            <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+              Card is placed at a custom position. Reset to snap it back to the pin.
+            </p>
           </div>
-        </div>
+        )}
 
         <div style={{ marginTop: 24 }}>
           <button

@@ -975,6 +975,8 @@ export async function duplicateAnnotation(id: string): Promise<string | null> {
       yardage: pin.yardage,
       handicap: pin.handicap,
       scroll_direction: pin.scroll_direction,
+      card_position_x: pin.card_position_x,
+      card_position_y: pin.card_position_y,
       created_at: now,
     });
 

@@ -24,26 +24,30 @@ export interface FontUris {
   bold: string;
 }
 
+const HOSTED_FONT_BASE = 'https://maylqohoflkarvgadttn.supabase.co/storage/v1/object/public/hole-annotations/fonts';
+
 function fontFaceCss(fonts?: FontUris): string {
-  if (!fonts) return '';
+  const regular = fonts?.regular ?? `${HOSTED_FONT_BASE}/GreyLLTT-Regular.ttf`;
+  const medium = fonts?.medium ?? `${HOSTED_FONT_BASE}/GreyLLTT-Medium.ttf`;
+  const bold = fonts?.bold ?? `${HOSTED_FONT_BASE}/GreyLLTT-Bold.ttf`;
   return `
 @font-face {
   font-family: 'Grey LL';
-  src: url('${fonts.regular}') format('truetype');
+  src: url('${regular}') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Grey LL';
-  src: url('${fonts.medium}') format('truetype');
+  src: url('${medium}') format('truetype');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
 @font-face {
   font-family: 'Grey LL';
-  src: url('${fonts.bold}') format('truetype');
+  src: url('${bold}') format('truetype');
   font-weight: 700;
   font-style: normal;
   font-display: swap;
@@ -522,19 +526,6 @@ export function generateAnnotationHTML(
 // SCROLL TYPE — pins + overlay cards on top of sticky aerial image
 // =============================================================================
 
-function getDirectionStyles(dir: string) {
-  switch (dir) {
-    case 'top':
-      return { alignItems: 'flex-start', justifyContent: 'center', edgePadding: 'padding-top: 5vh', hiddenTransform: 'translateY(-30px)' };
-    case 'left':
-      return { alignItems: 'center', justifyContent: 'flex-start', edgePadding: 'padding-left: 5vw', hiddenTransform: 'translateX(-30px)' };
-    case 'right':
-      return { alignItems: 'center', justifyContent: 'flex-end', edgePadding: 'padding-right: 5vw', hiddenTransform: 'translateX(30px)' };
-    default: // bottom
-      return { alignItems: 'flex-end', justifyContent: 'center', edgePadding: 'padding-bottom: 5vh', hiddenTransform: 'translateY(30px)' };
-  }
-}
-
 function generateScrollHTML(
   annotation: HoleAnnotation,
   pins: AnnotationPin[],
@@ -550,20 +541,28 @@ function generateScrollHTML(
     </div>`
   ).join('');
 
-  // Spacer sections just create scroll distance — cards are rendered separately as fixed overlays
+  // Spacer sections create scroll distance — cards are inside the aerial container
   const spacerSectionsHtml = sortedPins.map((_, index) => `
     <div class="ha-scroll-section" data-pin-index="${index}"></div>`
   ).join('');
 
-  const fixedCardsHtml = sortedPins.map((pin, index) => {
+  const inPlaceCardsHtml = sortedPins.map((pin, index) => {
     const photos = pinPhotos
       .filter(p => p.pin_id === pin.id)
       .sort((a, b) => a.sort_order - b.sort_order);
 
     const cardHtml = buildOverlayCard(pin, photos, `ha-scroll-hero-${index}`);
 
+    // Use card position if set, otherwise fall back to pin position
+    const cardX = pin.card_position_x ?? pin.position_x;
+    const cardY = pin.card_position_y ?? pin.position_y;
+
+    // Smart anchor: if position is in right half, anchor card's right edge; if in bottom half, anchor upward
+    const tx = cardX > 50 ? '-100%' : '0%';
+    const ty = cardY > 50 ? '-100%' : '0%';
+
     return `
-    <div class="ha-scroll-card" data-direction="${pin.scroll_direction || 'bottom'}" data-card-index="${index}">
+    <div class="ha-scroll-card" style="left:${cardX}%;top:${cardY}%;transform:translate(${tx},${ty})" data-card-index="${index}">
       ${cardHtml}
     </div>`;
   }).join('');
@@ -657,27 +656,21 @@ ${LIGHTBOX_CSS}
   margin-bottom: 40vh;
 }
 .ha-scroll-card {
-  position: fixed;
+  position: absolute;
   z-index: 100;
   pointer-events: none;
   opacity: 0;
-  will-change: transform, opacity;
   max-width: var(--card-max-width);
-  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s ease;
 }
-.ha-scroll-card[data-direction="bottom"] { transform: translateY(100vh); }
-.ha-scroll-card[data-direction="top"]    { transform: translateY(-100vh); }
-.ha-scroll-card[data-direction="left"]   { transform: translateX(-100vw); }
-.ha-scroll-card[data-direction="right"]  { transform: translateX(100vw); }
 .ha-scroll-card.ha-card-visible {
   opacity: 1;
-  transform: translate(0, 0);
   pointer-events: auto;
 }
 @media (max-width: 600px) {
   .ha-scroll-aerial { position: relative; height: auto; }
   .ha-scroll-section { height: auto; margin: 0; }
-  .ha-scroll-card { position: relative; max-width: 100%; opacity: 1 !important; transform: none !important; padding: 16px; }
+  .ha-scroll-card { position: relative !important; max-width: 100%; opacity: 1 !important; transform: none !important; padding: 16px; left: auto !important; top: auto !important; }
 }
 </style>
 <div class="ha-scroll-wrap">
@@ -685,12 +678,12 @@ ${LIGHTBOX_CSS}
     <div class="ha-scroll-aerial-inner">
       <img class="ha-aerial-img" src="${escapeHtml(annotation.aerial_image_url ?? '')}" alt="${escapeHtml(annotation.title)}" />
       ${pinMarkersHtml}
+      ${inPlaceCardsHtml}
     </div>
   </div>
   <div class="ha-scroll-content">
     ${spacerSectionsHtml}
   </div>
-  ${fixedCardsHtml}
 </div>
 ${LIGHTBOX_HTML}
 <script>
@@ -702,67 +695,14 @@ ${LIGHTBOX_JS}
   var sections = embed.querySelectorAll('.ha-scroll-section');
   var cards = embed.querySelectorAll('.ha-scroll-card');
   var pins = embed.querySelectorAll('.ha-pin');
-  var visibleCard = -1;
-  var pendingCard = -1;
-  var showTimer = null;
-
-  function requestShow(idx) {
-    if (idx >= 0 && (idx === visibleCard || idx === pendingCard)) return;
-    if (idx === -1 && visibleCard === -1 && pendingCard === -1) return;
-    if (showTimer) { clearTimeout(showTimer); showTimer = null; pendingCard = -1; }
-
-    // Hide current card
-    if (visibleCard >= 0) {
-      cards[visibleCard].classList.remove('ha-card-visible');
-    }
-    var hadVisible = visibleCard >= 0;
-    visibleCard = -1;
-
-    if (idx >= 0) {
-      pendingCard = idx;
-      showTimer = setTimeout(function() {
-        cards[idx].classList.add('ha-card-visible');
-        visibleCard = idx;
-        pendingCard = -1;
-        showTimer = null;
-      }, hadVisible ? 800 : 0);
-    }
-  }
+  var activeIdx = -1;
 
   function update() {
     var vh = window.innerHeight;
-    var ew = embed.offsetWidth;
-    var eleft = embed.getBoundingClientRect().left;
-    var pad = 24;
-
-    // Position all cards at their home spots and find the best one to show
     var bestIdx = -1;
+
     for (var i = 0; i < sections.length; i++) {
       var rect = sections[i].getBoundingClientRect();
-      var card = cards[i];
-      var dir = card.getAttribute('data-direction') || 'bottom';
-      var cardW = card.offsetWidth || 400;
-      var cardH = card.offsetHeight || 300;
-
-      switch (dir) {
-        case 'bottom':
-          card.style.left = (eleft + (ew - cardW) / 2) + 'px';
-          card.style.top = (vh - cardH - pad) + 'px';
-          break;
-        case 'top':
-          card.style.left = (eleft + (ew - cardW) / 2) + 'px';
-          card.style.top = pad + 'px';
-          break;
-        case 'left':
-          card.style.left = (eleft + pad) + 'px';
-          card.style.top = ((vh - cardH) / 2) + 'px';
-          break;
-        case 'right':
-          card.style.left = (eleft + ew - cardW - pad) + 'px';
-          card.style.top = ((vh - cardH) / 2) + 'px';
-          break;
-      }
-
       var progress = (vh - rect.top) / (vh + rect.height);
       progress = Math.max(0, Math.min(1, progress));
 
@@ -771,9 +711,17 @@ ${LIGHTBOX_JS}
       }
     }
 
-    requestShow(bestIdx);
-
-    var activeIdx = visibleCard >= 0 ? visibleCard : pendingCard;
+    if (bestIdx !== activeIdx) {
+      // Toggle card visibility — CSS transition handles the fade
+      for (var i = 0; i < cards.length; i++) {
+        if (i === bestIdx) {
+          cards[i].classList.add('ha-card-visible');
+        } else {
+          cards[i].classList.remove('ha-card-visible');
+        }
+      }
+      activeIdx = bestIdx;
+    }
 
     // Update pin markers
     for (var j = 0; j < pins.length; j++) {
@@ -912,71 +860,90 @@ ${LIGHTBOX_CSS}
 .ha-default-panel {
   display: block;
 }
-.ha-compact-card {
-  background: #fff;
-  font-family: var(--card-font);
-  cursor: default;
+.ha-interactive-embed .ha-compact-card {
+  background: #fff !important;
+  font-family: var(--card-font) !important;
+  cursor: default !important;
 }
-.ha-compact-content {
-  padding: 22px 0;
+.ha-interactive-embed .ha-compact-content {
+  padding: 22px 0 !important;
+  margin: 0 !important;
 }
-.ha-compact-title {
-  font-size: 1.5rem;
-  font-weight: 500;
-  color: #1a1a1a;
-  margin: 0 0 20px 0;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+.ha-interactive-embed .ha-compact-title {
+  font-family: var(--card-font) !important;
+  font-size: 27px !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important;
+  margin: 0 0 20px 0 !important;
+  padding: 0 !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
 }
-.ha-compact-pills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 16px;
-  margin-bottom: 14px;
+.ha-interactive-embed .ha-compact-pills {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin: 16px 0 14px 0 !important;
+  padding: 0 !important;
 }
-.ha-compact-pill {
-  display: inline-block;
-  padding: 3px 8px;
-  background: #F3F1E7;
-  border-radius: 20px;
-  font-family: var(--card-font);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #1a1a1a;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.ha-interactive-embed .ha-compact-pill {
+  display: inline-block !important;
+  padding: 2px 7px !important;
+  background: #F3F1E7 !important;
+  border-radius: 20px !important;
+  font-family: var(--card-font) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  line-height: 1.5 !important;
+  margin: 0 !important;
+  border: none !important;
 }
-.ha-compact-body {
-  font-size: 0.95rem;
-  font-weight: 400;
-  color: #1a1a1a;
-  line-height: 1.65;
+.ha-interactive-embed .ha-compact-body {
+  font-family: var(--card-font) !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  color: #1a1a1a !important;
+  line-height: 1.65 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
-.ha-compact-body p { margin: 0; }
-.ha-compact-body p + p { margin-top: 0.75em; }
-.ha-compact-footer {
-  padding: 0;
-  margin-top: 14px;
+.ha-interactive-embed .ha-compact-body p {
+  font-family: var(--card-font) !important;
+  font-size: 15px !important;
+  font-weight: 400 !important;
+  color: #1a1a1a !important;
+  line-height: 1.65 !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
-.ha-compact-link {
-  font-family: var(--card-font);
-  font-size: 0.88rem;
-  font-weight: 400;
-  color: #1a1a1a;
-  text-decoration: none;
+.ha-interactive-embed .ha-compact-body p + p { margin-top: 0.75em !important; }
+.ha-interactive-embed .ha-compact-footer {
+  padding: 0 !important;
+  margin: 14px 0 0 0 !important;
+}
+.ha-interactive-embed .ha-compact-link {
+  font-family: var(--card-font) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: #1a1a1a !important;
+  text-decoration: none !important;
   transition: text-decoration 0.2s, color 0.2s;
 }
-.ha-compact-link:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1px;
-  color: #3a6a3a;
+.ha-interactive-embed .ha-compact-link:hover {
+  text-decoration: underline !important;
+  text-underline-offset: 3px !important;
+  text-decoration-thickness: 1px !important;
+  color: #3a6a3a !important;
 }
 @media (max-width: 600px) {
-  .ha-compact-content { padding: 18px 0; }
-  .ha-compact-title { font-size: 1.15rem; }
-  .ha-compact-body { font-size: 0.88rem; }
+  .ha-interactive-embed .ha-compact-content { padding: 18px 0 !important; }
+  .ha-interactive-embed .ha-compact-title { font-size: 22px !important; }
+  .ha-interactive-embed .ha-compact-body { font-size: 13px !important; }
+  .ha-interactive-embed .ha-compact-body p { font-size: 13px !important; }
 }
 </style>
 <div class="ha-interactive-container">

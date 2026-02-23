@@ -730,6 +730,32 @@ tr:hover {
   box-shadow: 0 3px 10px rgba(0,0,0,0.3);
 }
 
+/* Card-position marker (scroll annotations) */
+.ha-card-pos-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  border: 2px dashed #0d9488;
+  border-radius: 4px;
+  background: rgba(13, 148, 136, 0.15);
+  cursor: grab;
+  z-index: 6;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.ha-card-pos-marker:hover {
+  transform: translate(-50%, -50%) scale(1.2);
+  box-shadow: 0 3px 10px rgba(13, 148, 136, 0.4);
+}
+
+.ha-card-pos-marker.dragging {
+  cursor: grabbing;
+  transform: translate(-50%, -50%) scale(1.3);
+  box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.3), 0 3px 10px rgba(0,0,0,0.3);
+}
+
 .ha-pin-marker.selected {
   transform: translate(-50%, -50%) scale(1.25);
   box-shadow: 0 0 0 3px rgba(26, 26, 26, 0.3), 0 3px 10px rgba(0,0,0,0.3);

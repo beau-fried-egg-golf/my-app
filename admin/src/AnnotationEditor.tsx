@@ -128,6 +128,8 @@ export default function AnnotationEditor() {
       yardage: '',
       handicap: '',
       scroll_direction: 'bottom',
+      card_position_x: null,
+      card_position_y: null,
       created_at: new Date().toISOString(),
     };
     setPins(prev => [...prev, newPin]);
@@ -139,6 +141,24 @@ export default function AnnotationEditor() {
     setPins(prev => prev.map(p =>
       p.id === pinId
         ? { ...p, position_x: Math.round(x * 100) / 100, position_y: Math.round(y * 100) / 100 }
+        : p
+    ));
+    scheduleSave();
+  }
+
+  function handleCardPositionMove(pinId: string, x: number, y: number) {
+    setPins(prev => prev.map(p =>
+      p.id === pinId
+        ? { ...p, card_position_x: Math.round(x * 100) / 100, card_position_y: Math.round(y * 100) / 100 }
+        : p
+    ));
+    scheduleSave();
+  }
+
+  function handleResetCardPosition(pinId: string) {
+    setPins(prev => prev.map(p =>
+      p.id === pinId
+        ? { ...p, card_position_x: null, card_position_y: null }
         : p
     ));
     scheduleSave();
@@ -272,6 +292,7 @@ export default function AnnotationEditor() {
           onPinMove={handlePinMove}
           onPinSelect={handlePinSelect}
           onImageUpload={handleImageUpload}
+          onCardPositionMove={handleCardPositionMove}
         />
         <PinEditor
           annotation={annotation}
@@ -289,6 +310,7 @@ export default function AnnotationEditor() {
           onPhotoCaptionChange={handlePhotoCaptionChange}
           onImageUpload={handleImageUpload}
           onDeselectPin={() => setSelectedPinId(null)}
+          onResetCardPosition={handleResetCardPosition}
         />
       </div>
 

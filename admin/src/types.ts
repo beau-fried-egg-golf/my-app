@@ -256,6 +256,8 @@ export interface AnnotationPin {
   yardage: string;
   handicap: string;
   scroll_direction: 'top' | 'bottom' | 'left' | 'right';
+  card_position_x: number | null;
+  card_position_y: number | null;
   created_at: string;
 }
 
