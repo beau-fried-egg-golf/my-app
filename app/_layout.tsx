@@ -249,7 +249,7 @@ function AppShell() {
         <Stack.Screen name="(experiences)" options={{ headerShown: false }} />
         <Stack.Screen
           name="profile"
-          options={{ headerShown: false, presentation: isDesktop ? 'transparentModal' : 'modal' }}
+          options={{ headerShown: false, ...(!isDesktop && { presentation: 'modal' }) }}
         />
         <Stack.Screen
           name="edit-profile"
