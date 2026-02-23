@@ -11,6 +11,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -193,6 +194,7 @@ export default function CourseDetailScreen() {
   const [markPlayedDate, setMarkPlayedDate] = useState('');
   const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
   const galleryScrollRef = useRef<ScrollView>(null);
+  const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   const insets = useSafeAreaInsets();
   const isDesktop = useIsDesktop();
@@ -705,9 +707,20 @@ export default function CourseDetailScreen() {
 
       <Modal visible={galleryVisible} transparent animationType="fade">
         <View style={styles.modalBg}>
-          <Pressable style={styles.modalClose} onPress={() => setGalleryVisible(false)}>
-            <Text style={styles.modalCloseText}>x</Text>
-          </Pressable>
+          <View style={styles.modalTopBar}>
+            <Pressable style={styles.modalClose} onPress={() => setGalleryVisible(false)}>
+              <Ionicons name="chevron-back" size={18} color={Colors.white} />
+              <Text style={styles.modalCloseText}>BACK</Text>
+            </Pressable>
+            {sortedPhotos.length > 1 && (
+              <Text style={styles.modalCounter}>
+                {selectedPhoto + 1} / {sortedPhotos.length}
+              </Text>
+            )}
+            <Pressable style={{ padding: 4 }} onPress={() => setGalleryVisible(false)}>
+              <Ionicons name="close" size={24} color={Colors.white} />
+            </Pressable>
+          </View>
           <ScrollView
             ref={galleryScrollRef}
             horizontal
@@ -715,22 +728,26 @@ export default function CourseDetailScreen() {
             showsHorizontalScrollIndicator={false}
             onLayout={() => {
               if (selectedPhoto > 0) {
-                galleryScrollRef.current?.scrollTo({ x: selectedPhoto * SCREEN_WIDTH, animated: false });
+                galleryScrollRef.current?.scrollTo({ x: selectedPhoto * winWidth, animated: false });
               }
+            }}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / winWidth);
+              setSelectedPhoto(idx);
             }}
             style={Platform.OS === 'web' ? { scrollSnapType: 'x mandatory' } as any : undefined}
           >
             {sortedPhotos.map((photo) => {
               const photoHasUpvote = photo.user_has_upvoted ?? false;
               return (
-                <View key={`modal-${photo.id}`} style={[styles.modalSlide, Platform.OS === 'web' && { scrollSnapAlign: 'start' } as any]}>
+                <View key={`modal-${photo.id}`} style={[styles.modalSlide, { width: winWidth, height: winHeight }, Platform.OS === 'web' && { scrollSnapAlign: 'start' } as any]}>
                   <Image
                     source={{ uri: photo.url }}
-                    style={styles.modalImage}
+                    style={[styles.modalImage, { width: winWidth, height: winHeight * 0.55 }]}
                     resizeMode="contain"
                     onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
                   />
-                  <View style={styles.modalBelow}>
+                  <View style={[styles.modalBelow, { width: winWidth }]}>
                     <Pressable
                       style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
                       onPress={() => togglePhotoUpvote(photo.id)}
@@ -747,6 +764,30 @@ export default function CourseDetailScreen() {
               );
             })}
           </ScrollView>
+          {sortedPhotos.length > 1 && selectedPhoto > 0 && (
+            <Pressable
+              style={[styles.galleryNav, styles.galleryNavPrev]}
+              onPress={() => {
+                const next = selectedPhoto - 1;
+                setSelectedPhoto(next);
+                galleryScrollRef.current?.scrollTo({ x: next * winWidth, animated: true });
+              }}
+            >
+              <Ionicons name="chevron-back" size={24} color={Colors.white} />
+            </Pressable>
+          )}
+          {sortedPhotos.length > 1 && selectedPhoto < sortedPhotos.length - 1 && (
+            <Pressable
+              style={[styles.galleryNav, styles.galleryNavNext]}
+              onPress={() => {
+                const next = selectedPhoto + 1;
+                setSelectedPhoto(next);
+                galleryScrollRef.current?.scrollTo({ x: next * winWidth, animated: true });
+              }}
+            >
+              <Ionicons name="chevron-forward" size={24} color={Colors.white} />
+            </Pressable>
+          )}
         </View>
       </Modal>
     </ScrollView>
@@ -824,11 +865,16 @@ const styles = StyleSheet.create({
   writeButtonText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
   addWriteupRow: { alignItems: 'center', paddingVertical: 16, paddingHorizontal: 16 },
   modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center' },
-  modalClose: { position: 'absolute', top: 60, right: 20, zIndex: 10, padding: 8 },
-  modalCloseText: { fontSize: 24, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white },
-  modalSlide: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: 'center', alignItems: 'center' },
-  modalImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.55 },
-  modalBelow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, width: SCREEN_WIDTH, gap: 12 },
+  modalTopBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 56, paddingHorizontal: 20, paddingBottom: 12, zIndex: 10 },
+  modalClose: { flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4 },
+  modalCloseText: { fontSize: 12, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.white, letterSpacing: 0.5 },
+  modalCounter: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.white, opacity: 0.85, letterSpacing: 0.5 },
+  galleryNav: { position: 'absolute', top: '50%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', zIndex: 10, marginTop: -22 } as any,
+  galleryNavPrev: { left: 20 },
+  galleryNavNext: { right: 20 },
+  modalSlide: { justifyContent: 'center', alignItems: 'center' },
+  modalImage: {},
+  modalBelow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 12, gap: 12 },
   modalCaption: { flex: 1, color: Colors.white, fontSize: 15, lineHeight: 22, fontFamily: Fonts!.sans, textAlign: 'center' },
   modalActions: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   modalUpvote: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6 },

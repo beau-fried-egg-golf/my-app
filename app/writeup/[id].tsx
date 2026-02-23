@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -371,9 +371,8 @@ export default function WriteupDetailScreen() {
             const photoUpvoted = photo.user_has_upvoted ?? false;
             return (
               <View key={photo.id} style={styles.photoContainer}>
-                <Image
-                  source={{ uri: photo.url }}
-                  style={styles.photo}
+                <AutoImage
+                  uri={photo.url}
                   onError={() => setBrokenPhotoIds(prev => new Set(prev).add(photo.id))}
                 />
                 {photo.caption ? (
@@ -533,6 +532,20 @@ export default function WriteupDetailScreen() {
   );
 }
 
+function AutoImage({ uri, onError }: { uri: string; onError?: () => void }) {
+  const [ratio, setRatio] = useState(16 / 10);
+  useEffect(() => {
+    Image.getSize(uri, (w, h) => { if (w && h) setRatio(w / h); });
+  }, [uri]);
+  return (
+    <Image
+      source={{ uri }}
+      style={{ width: '100%', aspectRatio: ratio, borderRadius: 8 }}
+      onError={onError}
+    />
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 16, paddingBottom: 16 },
@@ -544,7 +557,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, color: Colors.black, lineHeight: 26, fontFamily: Fonts!.sans },
   photos: { marginTop: 20, gap: 16 },
   photoContainer: { gap: 6 },
-  photo: { width: '100%', height: 240, borderRadius: 8 },
+  photo: { width: '100%', borderRadius: 8 },
   photoCaption: { fontSize: 14, color: Colors.darkGray, lineHeight: 20, fontFamily: Fonts!.sans },
   photoActions: { flexDirection: 'row' },
   photoUpvote: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, borderColor: Colors.border, borderRadius: 14, paddingHorizontal: 10, paddingVertical: 4 },
