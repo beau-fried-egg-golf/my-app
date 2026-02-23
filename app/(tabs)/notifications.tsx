@@ -190,7 +190,7 @@ export default function NotificationsScreen() {
       {isDesktop && (
         <View style={styles.desktopPageTitle}>
           <View style={styles.desktopPagePill}>
-            <Text style={styles.desktopPagePillText}>ALERTS</Text>
+            <Text style={styles.desktopPagePillText}>UPDATES</Text>
           </View>
         </View>
       )}
@@ -206,7 +206,9 @@ export default function NotificationsScreen() {
         keyExtractor={item => item.id}
         {...desktopScrollProps}
         renderItem={({ item }) => (
-          <NotificationItem item={item} onPress={() => handlePress(item)} />
+          <View style={isDesktop ? styles.desktopCard : undefined}>
+            <NotificationItem item={item} onPress={() => handlePress(item)} />
+          </View>
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -311,6 +313,15 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.regular,
     fontSize: 16,
     color: Colors.gray,
+  },
+  desktopCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
   },
   desktopPageTitle: { alignItems: 'center', paddingTop: 18, paddingBottom: 18 },
   desktopPagePill: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },

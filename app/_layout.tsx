@@ -1,7 +1,7 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Animated, Platform, View } from 'react-native';
+import { Animated, Image, Platform, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { DesktopHeader, DesktopNav, DesktopDropdownMenu } from '@/components/desktop';
 import { ActionPaneContext, ActionPaneType } from '@/hooks/useActionPane';
-import { DesktopScrollContext, DESKTOP_HEADER_HEIGHT } from '@/hooks/useDesktopScroll';
+import { DesktopScrollContext } from '@/hooks/useDesktopScroll';
 
 const LazyCreatePost = React.lazy(() => import('./create-post'));
 const LazyCreateWriteup = React.lazy(() => import('./create-writeup'));
@@ -60,16 +60,150 @@ function PasswordResetNavigator() {
 }
 
 function AppShell() {
+  const { isLoading } = useStore();
   const isDesktop = useIsDesktop();
   const [showDropdown, setShowDropdown] = useState(false);
   const [actionPane, setActionPane] = useState<ActionPaneType | null>(null);
   const desktopScrollY = useRef(new Animated.Value(0)).current;
 
-  const headerMarginTop = desktopScrollY.interpolate({
-    inputRange: [0, DESKTOP_HEADER_HEIGHT],
-    outputRange: [0, -DESKTOP_HEADER_HEIGHT],
-    extrapolate: 'clamp',
-  });
+  // Desktop web: make root the scroll container and fix the flex/absolute chain
+  // so all page content flows naturally and scrolls via the root container.
+  useEffect(() => {
+    if (!isDesktop || Platform.OS !== 'web') return;
+    const style = document.createElement('style');
+    style.id = 'desktop-scroll-fix';
+    style.textContent = `
+      /* Root becomes the page scroll container */
+      #root-app-shell {
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+      }
+
+      /* Break the flex: 1 chain so containers grow to content height.
+         flex-basis: auto overrides flex: 1's basis: 0%.
+         flex-shrink: 0 prevents shrinking below content height. */
+      #root-app-shell > div:not(:first-child),
+      #root-app-shell > div:not(:first-child) div {
+        flex-basis: auto !important;
+        flex-shrink: 0 !important;
+      }
+
+      /* Active scene containers: undo absoluteFill so they participate in
+         normal flow. CSS attribute selectors with !important persist across
+         React re-renders (React doesn't use !important). */
+      [data-dsk-scene] {
+        position: relative !important;
+        top: auto !important;
+        right: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+      }
+      /* Inactive scene containers: completely hide so their content can't
+         bleed through below active scenes. React state is preserved since
+         components remain mounted — only CSS rendering is suppressed. */
+      [data-dsk-scene-inactive] {
+        display: none !important;
+      }
+
+      /* Hide scrollbars on inner containers — only root scrollbar visible */
+      #root-app-shell > div:not(:first-child) ::-webkit-scrollbar {
+        display: none !important;
+      }
+      #root-app-shell > div:not(:first-child) * {
+        scrollbar-width: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, [isDesktop]);
+
+  // Desktop web: detect absoluteFill scene containers (from Stack and Bottom Tabs
+  // navigators) and mark ACTIVE ones with data attributes so the CSS rules above
+  // apply. Inactive scenes (z-index < 0) keep absoluteFill so they stay hidden.
+  // Re-runs on every DOM/class change to handle tab switches.
+  useEffect(() => {
+    if (!isDesktop || Platform.OS !== 'web') return;
+
+    const markSceneContainers = () => {
+      const root = document.getElementById('root-app-shell');
+      if (!root) return;
+
+      // Check previously marked active scenes — if they became inactive, swap marks.
+      root.querySelectorAll('[data-dsk-scene]').forEach(el => {
+        const z = parseInt(getComputedStyle(el).zIndex, 10);
+        if (isNaN(z) || z < 0) {
+          el.removeAttribute('data-dsk-scene');
+          el.setAttribute('data-dsk-scene-inactive', '');
+        }
+      });
+      // Check previously marked inactive scenes — if they became active, swap marks.
+      root.querySelectorAll('[data-dsk-scene-inactive]').forEach(el => {
+        const z = parseInt(getComputedStyle(el).zIndex, 10);
+        if (!isNaN(z) && z >= 0) {
+          el.removeAttribute('data-dsk-scene-inactive');
+          el.setAttribute('data-dsk-scene', '');
+        }
+      });
+
+      // Search ALL descendant divs for absoluteFill scene containers
+      const allDivs = root.querySelectorAll('div');
+      for (const div of Array.from(allDivs) as HTMLElement[]) {
+        if (div.hasAttribute('data-dsk-scene') || div.hasAttribute('data-dsk-scene-inactive')) continue;
+
+        const cs = getComputedStyle(div);
+
+        // Scene containers have absoluteFill + explicit z-index
+        if (cs.position !== 'absolute') continue;
+        if (cs.top !== '0px' || cs.right !== '0px' || cs.bottom !== '0px' || cs.left !== '0px') continue;
+        if (cs.zIndex === 'auto') continue;
+
+        // Skip absoluteFill elements that aren't full-viewport scene containers
+        // (e.g. image layers, link preview cards, icon containers)
+        if (div.offsetWidth < window.innerWidth * 0.8) continue;
+
+        const zIndex = parseInt(cs.zIndex, 10);
+        if (isNaN(zIndex)) continue;
+
+        // Scene containers use z-index 0 (active) or -1 (inactive) —
+        // skip high z-index elements (loading overlays, modals, etc.)
+        if (zIndex > 1 || zIndex < -1) continue;
+
+        if (zIndex >= 0) {
+          // Active scene — make it participate in normal flow
+          div.setAttribute('data-dsk-scene', '');
+        } else {
+          // Inactive scene — clip overflow so content doesn't bleed through
+          div.setAttribute('data-dsk-scene-inactive', '');
+        }
+      }
+    };
+
+    // Run on next frame, then re-run on DOM or class/style changes (tab switches)
+    let rafId: number;
+    const debouncedMark = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(markSceneContainers);
+    };
+    debouncedMark();
+
+    const root = document.getElementById('root-app-shell');
+    const observer = root
+      ? new MutationObserver(debouncedMark)
+      : null;
+    if (root && observer) {
+      observer.observe(root, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+      });
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      observer?.disconnect();
+    };
+  }, [isDesktop]);
 
   return (
     <ActionPaneContext.Provider
@@ -80,16 +214,19 @@ function AppShell() {
       }}
     >
     <DesktopScrollContext.Provider value={desktopScrollY}>
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF', overflow: 'hidden' }}>
+    <View
+      nativeID="root-app-shell"
+      style={{ flex: 1, backgroundColor: '#FFFFFF' }}
+    >
       {isDesktop && (
-        <Animated.View style={{ marginTop: headerMarginTop }}>
+        <View style={{ zIndex: 10, backgroundColor: '#FFFFFF' }}>
           <DesktopHeader onMenuPress={() => setShowDropdown(v => !v)} />
           <DesktopNav />
           <DesktopDropdownMenu
             visible={showDropdown}
             onClose={() => setShowDropdown(false)}
           />
-        </Animated.View>
+        </View>
       )}
       <Stack
         initialRouteName="(tabs)"
@@ -98,7 +235,9 @@ function AppShell() {
           headerStyle: { backgroundColor: Colors.white },
           headerTintColor: Colors.black,
           headerShadowVisible: false,
-          contentStyle: { backgroundColor: Colors.white },
+          contentStyle: {
+            backgroundColor: Colors.white,
+          },
           headerTitleStyle: {
             fontFamily: Fonts!.sansBold,
             fontWeight: FontWeights.bold,
@@ -159,6 +298,12 @@ function AppShell() {
           {actionPane === 'meetup' && <LazyCreateMeetup />}
           {actionPane === 'group' && <LazyCreateGroup />}
         </Suspense>
+      )}
+      {isLoading && isDesktop && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.white }}>
+          <Image source={require('../assets/images/fegc-monogram-black.png')} style={{ width: 80, height: 80 }} resizeMode="contain" />
+          <Text style={{ fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, fontSize: 13, color: Colors.gray, letterSpacing: 1.5, marginTop: 16, textTransform: 'uppercase' }}>Loading...</Text>
+        </View>
       )}
     </View>
     </DesktopScrollContext.Provider>

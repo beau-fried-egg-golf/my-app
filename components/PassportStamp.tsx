@@ -153,7 +153,7 @@ const SAFE_ZONES: Record<StampShape, { top: string; left: string; right: string;
   triangle:  { top: '30%', left: '22%', right: '22%', bottom: '10%' },
 };
 
-export default function PassportStamp({ courseId, courseName, state, datePlayed, onPress }: PassportStampProps) {
+export default function PassportStamp({ courseId, courseName, state, datePlayed, onPress, size }: PassportStampProps & { size?: number }) {
   const h = hashCode(courseId);
   const shapeIndex = h % 4;
   const shape = SHAPES[shapeIndex];
@@ -163,7 +163,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
 
   return (
     <Pressable
-      style={[styles.wrapper, { transform: [{ rotate: `${rotation.toFixed(1)}deg` }] }]}
+      style={[styles.wrapper, size ? { width: size } : undefined, { transform: [{ rotate: `${rotation.toFixed(1)}deg` }] }]}
       onPress={onPress}
     >
       <View style={[styles.stampContainer, shape === 'rectangle' && { aspectRatio: 100 / 70 }]}>

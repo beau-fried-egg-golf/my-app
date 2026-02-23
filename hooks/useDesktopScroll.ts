@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useMemo } from 'react';
-import { Animated } from 'react-native';
+import { createContext, useContext, useEffect } from 'react';
+import { Animated, Platform } from 'react-native';
 import { useIsDesktop } from './useIsDesktop';
 
 /**
@@ -15,6 +15,9 @@ export const DESKTOP_HEADER_HEIGHT = 138;
  * Returns props to spread onto a ScrollView or FlatList to connect it
  * to the desktop header collapse behavior. On mobile, returns empty object.
  *
+ * On desktop web, disables internal scrolling so the root container handles it.
+ * On desktop native (if ever used), connects scroll to header collapse.
+ *
  * Usage:
  *   const desktopScrollProps = useDesktopScrollProps();
  *   <FlatList {...desktopScrollProps} ... />
@@ -28,15 +31,21 @@ export function useDesktopScrollProps() {
     if (isDesktop && scrollY) scrollY.setValue(0);
   }, []);
 
-  const onScroll = useMemo(() => {
-    if (!scrollY) return undefined;
-    return Animated.event(
-      [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-      { useNativeDriver: false },
-    );
-  }, [scrollY]);
-
   if (!isDesktop || !scrollY) return {};
 
+  // On desktop web, the root container handles scrolling.
+  // CSS in _layout.tsx breaks the flex chain so FlatList containers grow to
+  // full content height. With no internal overflow, wheel events chain up to
+  // the root. windowSize ensures all items render (not just visible window).
+  // Hide the inner scrollbar — only the root scrollbar should be visible.
+  if (Platform.OS === 'web') {
+    return { showsVerticalScrollIndicator: false, windowSize: 100 };
+  }
+
+  // Native desktop (unused currently) — keep original behavior
+  const onScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: false },
+  );
   return { onScroll, scrollEventThrottle: 16 as const };
 }

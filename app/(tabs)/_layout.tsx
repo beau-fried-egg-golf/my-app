@@ -14,9 +14,9 @@ import { HapticTab } from '@/components/haptic-tab';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 
-function TabIconBox({ children }: { children: React.ReactNode }) {
+function TabIconBox({ children, focused }: { children: React.ReactNode; focused?: boolean }) {
   return (
-    <View style={styles.tabIconBox}>
+    <View style={[styles.tabIconBox, focused && styles.tabIconBoxActive]}>
       {children}
     </View>
   );
@@ -54,12 +54,12 @@ function HeaderRight() {
   const isOnConversations = pathname === '/conversations';
   return (
     <View style={styles.headerPill}>
-      <PlatformPressable onPress={() => router.push('/notifications')} style={styles.headerPillBtn}>
-        <NotificationsIcon size={34} color={isOnNotifications ? Colors.orange : Colors.black} />
+      <PlatformPressable onPress={() => router.push('/notifications')} style={[styles.headerPillBtn, isOnNotifications && styles.headerPillBtnActive]}>
+        <NotificationsIcon size={34} color={isOnNotifications ? Colors.orange : Colors.black} strokeWidth={isOnNotifications ? 1.875 : 1.5} />
         {hasUnreadNotifications && !isOnNotifications && <View style={styles.unreadBadge} />}
       </PlatformPressable>
-      <PlatformPressable onPress={() => router.push('/conversations')} style={styles.headerPillBtn}>
-        <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} />
+      <PlatformPressable onPress={() => router.push('/conversations')} style={[styles.headerPillBtn, isOnConversations && styles.headerPillBtnActive]}>
+        <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} strokeWidth={isOnConversations ? 1.875 : 1.5} />
         {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
       </PlatformPressable>
       <PlatformPressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
@@ -94,11 +94,14 @@ export default function TabLayout() {
   const TAB_BAR_WIDTH = 340;
   const [showMore, setShowMore] = useState(false);
 
-  if (isLoading) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
-      <Image source={require('../../assets/images/fegc-app-icon.png')} style={{ width: 120, height: 120 }} />
-    </View>
-  );
+  if (isLoading) {
+    if (isDesktop) return null;
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.orange }}>
+        <Image source={require('../../assets/images/fegc-app-icon.png')} style={{ width: 120, height: 120 }} />
+      </View>
+    );
+  }
 
   if (!session) {
     return <Redirect href="/(auth)/login" />;
@@ -138,8 +141,8 @@ export default function TabLayout() {
           title: 'HOME',
           headerTitle: () => <LetterSpacedHeader text="HOME" size={32} />,
           tabBarIcon: ({ color, focused }) => (
-            <TabIconBox>
-              <ClubhouseIcon size={41} color={color} />
+            <TabIconBox focused={focused}>
+              <ClubhouseIcon size={41} color={color} strokeWidth={focused ? 1.875 : 1.5} />
             </TabIconBox>
           ),
         }}
@@ -150,8 +153,8 @@ export default function TabLayout() {
           title: 'COURSES',
           headerTitle: () => <LetterSpacedHeader text="COURSES" size={32} />,
           tabBarIcon: ({ color, focused }) => (
-            <TabIconBox>
-              <CoursesIcon size={41} color={color} />
+            <TabIconBox focused={focused}>
+              <CoursesIcon size={41} color={color} strokeWidth={focused ? 1.875 : 1.5} />
             </TabIconBox>
           ),
         }}
@@ -162,8 +165,8 @@ export default function TabLayout() {
           title: 'MEETUPS',
           headerTitle: () => <LetterSpacedHeader text="MEETUPS" size={32} />,
           tabBarIcon: ({ color, focused }) => (
-            <TabIconBox>
-              <MeetupsIcon size={41} color={color} />
+            <TabIconBox focused={focused}>
+              <MeetupsIcon size={41} color={color} strokeWidth={focused ? 1.875 : 1.5} />
             </TabIconBox>
           ),
         }}
@@ -174,8 +177,8 @@ export default function TabLayout() {
           title: 'GROUPS',
           headerTitle: () => <LetterSpacedHeader text="GROUPS" size={32} />,
           tabBarIcon: ({ color, focused }) => (
-            <TabIconBox>
-              <GroupsIcon size={41} color={color} />
+            <TabIconBox focused={focused}>
+              <GroupsIcon size={41} color={color} strokeWidth={focused ? 1.875 : 1.5} />
             </TabIconBox>
           ),
         }}
@@ -186,8 +189,8 @@ export default function TabLayout() {
           title: 'MEMBERS',
           headerTitle: () => <LetterSpacedHeader text="MEMBERS" size={32} />,
           tabBarIcon: ({ color, focused }) => (
-            <TabIconBox>
-              <MembersIcon size={41} color={color} />
+            <TabIconBox focused={focused}>
+              <MembersIcon size={41} color={color} strokeWidth={focused ? 1.875 : 1.5} />
             </TabIconBox>
           ),
         }}
@@ -220,7 +223,7 @@ export default function TabLayout() {
         name="notifications"
         options={{
           href: null,
-          headerTitle: () => <LetterSpacedHeader text="ALERTS" size={32} />,
+          headerTitle: () => <LetterSpacedHeader text="UPDATES" size={32} />,
         }}
       />
     </Tabs>
@@ -329,10 +332,13 @@ const styles = StyleSheet.create({
   },
   tabIconBox: {
     width: 48,
-    height: 48,
-    borderRadius: 24,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tabIconBoxActive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
   },
 
   // ── Header pill bar ──
@@ -352,12 +358,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   headerPillBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+  },
+  headerPillBtnActive: {
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
   },
   unreadBadge: {
     position: 'absolute',

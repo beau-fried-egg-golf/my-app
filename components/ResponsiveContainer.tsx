@@ -1,4 +1,4 @@
-import { View, ViewStyle, StyleProp } from 'react-native';
+import { Platform, View, ViewStyle, StyleProp } from 'react-native';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 interface Props {
@@ -17,18 +17,23 @@ export default function ResponsiveContainer({ children, style }: Props) {
     );
   }
 
+  // On desktop web, use flexShrink: 0 so content can grow beyond viewport
+  // (the root container handles scrolling). On native, keep flex: 1.
+  const isWeb = Platform.OS === 'web';
+  const outerFlex = isWeb ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 };
+  const innerFlex = isWeb ? { flexGrow: 1, flexShrink: 0 } : { flex: 1 };
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
+    <View style={[{ backgroundColor: '#FFFFFF', ...outerFlex }, style]}>
       <View
         style={[
           {
-            flex: 1,
             maxWidth: 960,
             width: '100%',
             alignSelf: 'center' as const,
             paddingHorizontal: 20,
+            ...innerFlex,
           },
-          style,
         ]}
       >
         {children}

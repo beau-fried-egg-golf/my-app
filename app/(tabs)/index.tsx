@@ -66,6 +66,7 @@ const REACTION_EMOJI: Record<string, string> = {
 };
 
 function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Activity; onPress: () => void; writeups: Writeup[]; profiles: Profile[]; posts: Post[] }) {
+  const isDesktop = useIsDesktop();
   const userProfile = profiles.find(p => p.id === item.user_id);
   const thumbnail = item.type === 'writeup' && item.writeup_id
     ? writeups.find(w => w.id === item.writeup_id)?.photos[0]?.url
@@ -127,7 +128,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
         {!isLinkPost && thumbnail && (
-          <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
+          <Image source={{ uri: thumbnail }} style={isDesktop ? styles.thumbnailDesktop : styles.thumbnail} />
         )}
       </PlatformPressable>
     );
@@ -300,7 +301,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
         {thumbnail && (
-          <Image source={{ uri: thumbnail }} style={styles.thumbnail} />
+          <Image source={{ uri: thumbnail }} style={isDesktop ? styles.thumbnailDesktop : styles.thumbnail} />
         )}
       </PlatformPressable>
     );
@@ -954,6 +955,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 6,
+    marginLeft: 12,
+  },
+  thumbnailDesktop: {
+    width: 96,
+    height: 96,
+    borderRadius: 8,
     marginLeft: 12,
   },
   activityTime: {

@@ -180,29 +180,31 @@ export default function MembersScreen() {
     const distance = getMemberDistance(item);
 
     return (
-      <PlatformPressable
-        style={styles.row}
-        onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
-      >
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={22} color={Colors.gray} />
+      <View style={isDesktop ? styles.desktopCard : undefined}>
+        <PlatformPressable
+          style={[styles.row, isDesktop && styles.rowDesktop]}
+          onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
+        >
+          {item.image ? (
+            <Image source={{ uri: item.image }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={22} color={Colors.gray} />
+            </View>
+          )}
+          <View style={styles.info}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.name}>{item.name}</Text>
+              {item.is_verified && <VerifiedBadge size={14} />}
+            </View>
+            <Text style={styles.meta}>
+              {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
+              {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
+              {distance != null ? ` · ${Math.round(distance)} mi` : ''}
+            </Text>
           </View>
-        )}
-        <View style={styles.info}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Text style={styles.name}>{item.name}</Text>
-            {item.is_verified && <VerifiedBadge size={14} />}
-          </View>
-          <Text style={styles.meta}>
-            {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
-            {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
-            {distance != null ? ` · ${Math.round(distance)} mi` : ''}
-          </Text>
-        </View>
-      </PlatformPressable>
+        </PlatformPressable>
+      </View>
     );
   }
 
@@ -251,7 +253,7 @@ export default function MembersScreen() {
         data={sortedProfiles}
         keyExtractor={(item) => item.id}
         renderItem={renderMember}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ItemSeparatorComponent={isDesktop ? undefined : () => <View style={styles.separator} />}
         contentContainerStyle={[styles.list, { paddingBottom: isSearchExpanded ? searchBarBottom + 56 : 160 }]}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -386,6 +388,18 @@ const styles = StyleSheet.create({
   info: { flex: 1, marginLeft: 12 },
   name: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   meta: { fontSize: 13, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
+  desktopCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
+  },
+  rowDesktop: {
+    borderBottomWidth: 0,
+  },
   separator: { height: 1, backgroundColor: Colors.lightGray, marginLeft: 72 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { fontSize: 15, color: Colors.gray, marginTop: 8, fontFamily: Fonts!.sans },

@@ -134,7 +134,7 @@ export default function DesktopHeader({ onMenuPress }: DesktopHeaderProps) {
       {isCompact ? (
         <>
           <View style={{ flex: 1 }} />
-          <Pressable style={styles.monogramWrap} onPress={() => router.push('/')}>
+          <Pressable style={styles.monogramWrap} onPress={() => router.replace('/(tabs)')}>
             <Image
               source={require('@/assets/images/fegc-monogram-black.png')}
               style={styles.monogram}
@@ -143,7 +143,7 @@ export default function DesktopHeader({ onMenuPress }: DesktopHeaderProps) {
           </Pressable>
         </>
       ) : (
-        <Pressable style={styles.center} onPress={() => router.push('/')}>
+        <Pressable style={styles.center} onPress={() => router.replace('/(tabs)')}>
           <Image
             source={require('@/assets/images/FriedEggGolfClub_Horizontal_Black.png')}
             style={styles.logotype}

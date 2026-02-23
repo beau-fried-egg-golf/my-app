@@ -156,11 +156,13 @@ export default function ConversationsScreen() {
             </View>
           )}
           renderItem={({ item }) => (
-            <ConversationRow item={item} onPress={() => handlePress(item)} />
+            <View style={isDesktop ? styles.desktopCard : undefined}>
+              <ConversationRow item={item} onPress={() => handlePress(item)} />
+            </View>
           )}
           ListEmptyComponent={emptyComponent}
           contentContainerStyle={meetupSections.length === 0 ? styles.emptyContainer : undefined}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={isDesktop ? undefined : () => <View style={styles.separator} />}
           stickySectionHeadersEnabled={false}
         />
       ) : (
@@ -169,11 +171,13 @@ export default function ConversationsScreen() {
           keyExtractor={(item) => `${item.type}-${item.id}`}
           {...desktopScrollProps}
           renderItem={({ item }) => (
-            <ConversationRow item={item} onPress={() => handlePress(item)} />
+            <View style={isDesktop ? styles.desktopCard : undefined}>
+              <ConversationRow item={item} onPress={() => handlePress(item)} />
+            </View>
           )}
           ListEmptyComponent={emptyComponent}
           contentContainerStyle={filteredItems.length === 0 ? styles.emptyContainer : undefined}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={isDesktop ? undefined : () => <View style={styles.separator} />}
         />
       )}
 
@@ -320,6 +324,15 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
     color: Colors.gray,
     textAlign: 'center',
+  },
+  desktopCard: {
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    borderRadius: 10,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    backgroundColor: Colors.white,
+    overflow: 'hidden',
   },
   desktopPageTitle: { alignItems: 'center', paddingTop: 18, paddingBottom: 18 },
   desktopPagePill: { backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.black, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5 },

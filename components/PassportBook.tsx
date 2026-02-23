@@ -13,6 +13,7 @@ import {
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { Course, CoursePlayed, Writeup } from '@/types';
 import PassportStamp from './PassportStamp';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const STAMPS_PER_PAGE = 6; // 2 columns × 3 rows
@@ -141,6 +142,7 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 }
 
 export default function PassportBook({ userId, coursesPlayed, courses, writeups, onStampPress }: PassportBookProps) {
+  const isDesktop = useIsDesktop();
   const [sortMode, setSortMode] = useState<SortMode>('date');
   const [currentPage, setCurrentPage] = useState(0);
   const flatListRef = useRef<FlatList>(null);
@@ -221,27 +223,51 @@ export default function PassportBook({ userId, coursesPlayed, courses, writeups,
 
   if (allStamps.length === 0) return null;
 
+  const sortBar = (
+    <View style={styles.sortBar}>
+      <Pressable
+        style={[styles.sortTab, sortMode === 'date' && styles.sortTabActive]}
+        onPress={() => handleSortChange('date')}
+      >
+        <Text style={[styles.sortTabText, sortMode === 'date' && styles.sortTabTextActive]}>
+          BY DATE
+        </Text>
+      </Pressable>
+      <Pressable
+        style={[styles.sortTab, sortMode === 'state' && styles.sortTabActive]}
+        onPress={() => handleSortChange('state')}
+      >
+        <Text style={[styles.sortTabText, sortMode === 'state' && styles.sortTabTextActive]}>
+          BY STATE
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  if (isDesktop) {
+    return (
+      <View style={styles.container}>
+        {sortBar}
+        <View style={styles.desktopGrid}>
+          {sortedStamps.map(stamp => (
+            <PassportStamp
+              key={stamp.courseId}
+              courseId={stamp.courseId}
+              courseName={stamp.courseName}
+              state={stamp.state}
+              datePlayed={stamp.datePlayed}
+              onPress={() => onStampPress(stamp.courseId)}
+              size={200}
+            />
+          ))}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Sort tabs */}
-      <View style={styles.sortBar}>
-        <Pressable
-          style={[styles.sortTab, sortMode === 'date' && styles.sortTabActive]}
-          onPress={() => handleSortChange('date')}
-        >
-          <Text style={[styles.sortTabText, sortMode === 'date' && styles.sortTabTextActive]}>
-            BY DATE
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.sortTab, sortMode === 'state' && styles.sortTabActive]}
-          onPress={() => handleSortChange('state')}
-        >
-          <Text style={[styles.sortTabText, sortMode === 'state' && styles.sortTabTextActive]}>
-            BY STATE
-          </Text>
-        </Pressable>
-      </View>
+      {sortBar}
 
       {/* Navigation scrubber */}
       {scrubberLabels.length > 1 && (
@@ -369,6 +395,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
     gap: 8,
+  },
+  desktopGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
   dots: {
     flexDirection: 'row',

@@ -16,7 +16,7 @@ serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   }
 
-  const { member_id, amount_cents, meetup_name, meetup_id } = await req.json();
+  const { member_id, amount_cents, meetup_name, meetup_id, spots } = await req.json();
 
   if (!member_id || !amount_cents || !meetup_id) {
     return new Response(JSON.stringify({ error: "member_id, amount_cents, and meetup_id are required" }), {
@@ -31,7 +31,7 @@ serve(async (req: Request) => {
     "line_items[0][price_data][currency]": "usd",
     "line_items[0][price_data][unit_amount]": String(amount_cents),
     "line_items[0][price_data][product_data][name]": meetup_name || "Meetup",
-    "line_items[0][quantity]": "1",
+    "line_items[0][quantity]": String(spots || 1),
     success_url: `myapp://meetup/${meetup_id}`,
     cancel_url: `myapp://meetup/${meetup_id}`,
   });

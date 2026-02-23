@@ -280,22 +280,29 @@ export default function CourseDetailScreen() {
       )}
 
       {(() => {
+        const firstPhoto = sortedPhotos.length > 0 ? sortedPhotos[0] : null;
         const heroUrl = course.fe_hero_image
-          || (sortedPhotos.length > 0 ? sortedPhotos[0].url : null)
+          || (firstPhoto ? firstPhoto.url : null)
           || (MAPBOX_ACCESS_TOKEN
             ? `https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/static/${course.longitude},${course.latitude},14,0/800x400@2x?access_token=${MAPBOX_ACCESS_TOKEN}`
             : null);
         if (!heroUrl) return null;
+        const handleHeroError = () => {
+          if (firstPhoto && heroUrl === firstPhoto.url) {
+            setBrokenPhotoIds(prev => new Set(prev).add(firstPhoto.id));
+          }
+        };
         return (
           <View style={styles.feHeroWrap}>
             {Platform.OS === 'web' ? (
               <img
                 src={heroUrl}
+                onError={handleHeroError}
                 style={{ width: '100%', maxHeight: SCREEN_HEIGHT * 0.5, objectFit: 'cover', borderRadius: 8, display: 'block' }}
                 alt={course.short_name}
               />
             ) : (
-              <Image source={{ uri: heroUrl }} style={styles.feHero} resizeMode="cover" />
+              <Image source={{ uri: heroUrl }} style={styles.feHero} resizeMode="cover" onError={handleHeroError} />
             )}
           </View>
         );
@@ -614,31 +621,28 @@ export default function CourseDetailScreen() {
                 }}
               />
             )}
-            <View style={styles.markPlayedFooter}>
-              <Text style={styles.markPlayedHint}>Optional — defaults to today</Text>
-              <View style={[styles.reportActions, { marginTop: 0 }]}>
-                <Pressable
-                  style={styles.reportCancelBtn}
-                  onPress={() => {
-                    setMarkPlayedVisible(false);
-                    setMarkPlayedDate('');
-                  }}
-                >
-                  <Text style={styles.reportCancelText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  style={styles.reportSubmitBtn}
-                  onPress={async () => {
-                    const dateStr = markPlayedDate.trim();
-                    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : undefined;
-                    await markCoursePlayed(course.id, validDate);
-                    setMarkPlayedVisible(false);
-                    setMarkPlayedDate('');
-                  }}
-                >
-                  <Text style={styles.reportSubmitText}>Save</Text>
-                </Pressable>
-              </View>
+            <View style={styles.reportActions}>
+              <Pressable
+                style={styles.reportCancelBtn}
+                onPress={() => {
+                  setMarkPlayedVisible(false);
+                  setMarkPlayedDate('');
+                }}
+              >
+                <Text style={styles.reportCancelText}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                style={styles.reportSubmitBtn}
+                onPress={async () => {
+                  const dateStr = markPlayedDate.trim();
+                  const validDate = /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? dateStr : undefined;
+                  await markCoursePlayed(course.id, validDate);
+                  setMarkPlayedVisible(false);
+                  setMarkPlayedDate('');
+                }}
+              >
+                <Text style={styles.reportSubmitText}>Save</Text>
+              </Pressable>
             </View>
           </View>
         </View>

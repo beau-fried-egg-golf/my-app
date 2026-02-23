@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, AppState, Dimensions, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Animated, AppState, Dimensions, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -157,7 +157,7 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup, requestCancellation, getUserCancellationRequest, joinWaitlist, leaveWaitlist, getWaitlistPosition, getWaitlistEntries } = useStore();
+  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, cancelPendingReservation, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup, requestCancellation, getUserCancellationRequest, joinWaitlist, leaveWaitlist, getWaitlistPosition, getWaitlistEntries } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -169,6 +169,8 @@ export default function MeetupDetailScreen() {
   const [cancellationNote, setCancellationNote] = useState('');
   const [waitlistPosition, setWaitlistPosition] = useState<number | null>(null);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [showPaymentWarning, setShowPaymentWarning] = useState(false);
 
   const isDesktop = useIsDesktop();
   const desktopScrollProps = useDesktopScrollProps();
@@ -217,12 +219,19 @@ export default function MeetupDetailScreen() {
     const sub = AppState.addEventListener('change', (nextState) => {
       if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
         loadMeetups();
-        getMeetupMembers(id).then(setMembers);
+        getMeetupMembers(id).then(m => {
+          setMembers(m);
+          // Check if current user still has a pending payment
+          const myMember = m.find(mem => mem.user_id === session?.user?.id);
+          if (myMember?.payment_status === 'pending' && isFeMeetupWithPayment) {
+            setShowPaymentWarning(true);
+          }
+        });
       }
       appStateRef.current = nextState;
     });
     return () => sub.remove();
-  }, [id, loadMeetups, getMeetupMembers]);
+  }, [id, loadMeetups, getMeetupMembers, session, isFeMeetupWithPayment]);
 
   if (!meetup) {
     return (
@@ -233,10 +242,10 @@ export default function MeetupDetailScreen() {
     );
   }
 
-  const openCheckout = async (memberId: string) => {
+  const openCheckout = async (memberId: string, spots?: number) => {
     if (meetup.cost_cents != null && meetup.cost_cents > 0) {
       setCheckoutLoading(true);
-      const url = await createCheckoutSession(memberId, meetup.cost_cents, meetup.name, meetup.id);
+      const url = await createCheckoutSession(memberId, meetup.cost_cents, meetup.name, meetup.id, spots);
       setCheckoutLoading(false);
       if (url) Linking.openURL(url);
     } else if (meetup.stripe_payment_url) {
@@ -245,17 +254,22 @@ export default function MeetupDetailScreen() {
     }
   };
 
-  const handleJoin = async () => {
-    const memberId = await joinMeetup(meetup.id);
+  const handleJoin = () => {
+    setShowSpotModal(true);
+  };
+
+  const handleSpotSelection = async (spots: number) => {
+    setShowSpotModal(false);
+    const memberId = await joinMeetup(meetup.id, spots);
     const m = await getMeetupMembers(meetup.id);
     setMembers(m);
     if (memberId && isFeMeetupWithPayment) {
-      await openCheckout(memberId);
+      await openCheckout(memberId, spots);
     }
   };
 
   const handleLeave = async () => {
-    await leaveMeetup(meetup.id);
+    await leaveMeetup(meetup.id, currentUserMember?.spots ?? 1);
     const m = await getMeetupMembers(meetup.id);
     setMembers(m);
   };
@@ -322,7 +336,7 @@ export default function MeetupDetailScreen() {
                 if (!window.confirm('Are you sure you want to withdraw? Your payment will be refunded.')) return;
                 const prevMembers = members;
                 setMembers(prev => prev.filter(m => m.id !== currentUserMember.id));
-                const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
+                const success = await withdrawAndRefund(meetup.id, currentUserMember.id, currentUserMember.spots ?? 1);
                 if (!success) {
                   setMembers(prevMembers);
                   window.alert('Failed to process refund. Please try again.');
@@ -367,10 +381,14 @@ export default function MeetupDetailScreen() {
         <>
           <DesktopBlackButton label="MEETUP CHAT" onPress={() => router.push(`/meetup-chat/${meetup.id}`)} />
           {!isHost && (
-            <DesktopStripeButton label={checkoutLoading ? 'LOADING...' : 'PAY NOW'} onPress={() => currentUserMember && openCheckout(currentUserMember.id)} disabled={checkoutLoading} />
+            <DesktopStripeButton label={checkoutLoading ? 'LOADING...' : 'PAY NOW'} onPress={() => currentUserMember && openCheckout(currentUserMember.id, currentUserMember.spots ?? 1)} disabled={checkoutLoading} />
           )}
           {!isHost && (
-            <DesktopOutlineButton label="LEAVE & REQUEST REFUND" onPress={handleLeave} />
+            <DesktopOutlineButton label="CANCEL RESERVATION" onPress={async () => {
+              await cancelPendingReservation(meetup.id);
+              const m = await getMeetupMembers(meetup.id);
+              setMembers(m);
+            }} />
           )}
         </>
       );
@@ -490,7 +508,7 @@ export default function MeetupDetailScreen() {
                   if (!confirmed) return;
                   const prevMembers = members;
                   setMembers(prev => prev.filter(m => m.id !== currentUserMember.id));
-                  const success = await withdrawAndRefund(meetup.id, currentUserMember.id);
+                  const success = await withdrawAndRefund(meetup.id, currentUserMember.id, currentUserMember.spots ?? 1);
                   if (!success) {
                     setMembers(prevMembers);
                     if (Platform.OS === 'web') {
@@ -564,14 +582,18 @@ export default function MeetupDetailScreen() {
             <Pressable
               style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]}
               disabled={checkoutLoading}
-              onPress={() => currentUserMember && openCheckout(currentUserMember.id)}
+              onPress={() => currentUserMember && openCheckout(currentUserMember.id, currentUserMember.spots ?? 1)}
             >
               <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Pay Now'}</Text>
             </Pressable>
           )}
           {!isHost && (
-            <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
-              <Text style={styles.actionBtnOutlineText}>Leave & Request Refund</Text>
+            <Pressable style={styles.actionBtnOutline} onPress={async () => {
+              await cancelPendingReservation(meetup.id);
+              const m = await getMeetupMembers(meetup.id);
+              setMembers(m);
+            }}>
+              <Text style={styles.actionBtnOutlineText}>Cancel Reservation</Text>
             </Pressable>
           )}
         </>
@@ -906,6 +928,11 @@ export default function MeetupDetailScreen() {
                   <Text style={styles.roleBadgeText}>Host</Text>
                 </View>
               )}
+              {(m.spots ?? 1) > 1 && (
+                <View style={[styles.paymentBadge, { backgroundColor: '#E8F4FD' }]}>
+                  <Text style={[styles.paymentBadgeText, { color: '#0C5460' }]}>x{m.spots}</Text>
+                </View>
+              )}
               {isFeMeetupWithPayment && m.payment_status && PAYMENT_BADGE_COLORS[m.payment_status] && m.user_id !== meetup.host_id && (
                 <View style={[styles.paymentBadge, { backgroundColor: PAYMENT_BADGE_COLORS[m.payment_status].bg }]}>
                   <Text style={[styles.paymentBadgeText, { color: PAYMENT_BADGE_COLORS[m.payment_status].text }]}>
@@ -946,6 +973,82 @@ export default function MeetupDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Spot Selection Modal */}
+      <Modal visible={showSpotModal} transparent animationType="fade" onRequestClose={() => setShowSpotModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>How many spots?</Text>
+            {isFeMeetupWithPayment && meetup.cost_cents ? (
+              <Text style={styles.modalSubtitle}>
+                ${(meetup.cost_cents / 100).toFixed(2)} per spot
+              </Text>
+            ) : null}
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={styles.modalSpotBtn}
+                onPress={() => handleSpotSelection(1)}
+              >
+                <Text style={styles.modalSpotBtnText}>1 Spot</Text>
+                {isFeMeetupWithPayment && meetup.cost_cents ? (
+                  <Text style={styles.modalSpotPrice}>${(meetup.cost_cents / 100).toFixed(2)}</Text>
+                ) : null}
+              </Pressable>
+              {slotsRemaining >= 2 && (
+                <Pressable
+                  style={styles.modalSpotBtn}
+                  onPress={() => handleSpotSelection(2)}
+                >
+                  <Text style={styles.modalSpotBtnText}>2 Spots</Text>
+                  {isFeMeetupWithPayment && meetup.cost_cents ? (
+                    <Text style={styles.modalSpotPrice}>${((meetup.cost_cents * 2) / 100).toFixed(2)}</Text>
+                  ) : null}
+                </Pressable>
+              )}
+            </View>
+            <Pressable style={styles.modalCancelBtn} onPress={() => setShowSpotModal(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Payment Warning Modal */}
+      <Modal visible={showPaymentWarning} transparent animationType="fade" onRequestClose={() => setShowPaymentWarning(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Ionicons name="warning" size={32} color="#856404" style={{ alignSelf: 'center', marginBottom: 8 }} />
+            <Text style={styles.modalTitle}>Payment Incomplete</Text>
+            <Text style={styles.modalSubtitle}>Your spot is not being held. Complete payment to secure your reservation.</Text>
+            <View style={styles.modalBtnRow}>
+              <Pressable
+                style={[styles.stripeBtn, checkoutLoading && { opacity: 0.6 }]}
+                disabled={checkoutLoading}
+                onPress={async () => {
+                  setShowPaymentWarning(false);
+                  if (currentUserMember) {
+                    await openCheckout(currentUserMember.id, currentUserMember.spots ?? 1);
+                  }
+                }}
+              >
+                <Text style={styles.stripeBtnText}>{checkoutLoading ? 'Loading...' : 'Complete Payment'}</Text>
+              </Pressable>
+              <Pressable
+                style={styles.actionBtnOutline}
+                onPress={async () => {
+                  setShowPaymentWarning(false);
+                  await cancelPendingReservation(meetup.id);
+                  const m = await getMeetupMembers(meetup.id);
+                  setMembers(m);
+                }}
+              >
+                <Text style={styles.actionBtnOutlineText}>Cancel Reservation</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       </ResponsiveContainer>
     </View>
   );
@@ -1254,4 +1357,71 @@ const styles = StyleSheet.create({
   dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
   dtOutlineBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0, borderWidth: 1.5, borderColor: Colors.black },
   dtOutlineBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 360,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  modalSpotBtn: {
+    flex: 1,
+    minWidth: 120,
+    backgroundColor: Colors.black,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  modalSpotBtnText: {
+    fontSize: 15,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.white,
+  },
+  modalSpotPrice: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.white,
+    opacity: 0.8,
+    marginTop: 2,
+  },
+  modalCancelBtn: {
+    marginTop: 14,
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansMedium,
+    fontWeight: FontWeights.medium,
+    color: Colors.gray,
+  },
 });

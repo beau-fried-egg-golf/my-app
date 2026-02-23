@@ -70,6 +70,7 @@ export async function uploadPhoto(uri: string, userId: string): Promise<string> 
         blob = originalBlob;
       }
     }
+    if (blob.size === 0) throw new Error('Photo file is empty');
     const { error } = await supabase.storage
       .from('photos')
       .upload(fileName, blob, { contentType });
@@ -78,6 +79,7 @@ export async function uploadPhoto(uri: string, userId: string): Promise<string> 
     // Native: use expo-file-system File class which implements Blob (fetch().blob() returns 0 bytes on Hermes)
     const file = new ExpoFile(uri);
     const bytes = await file.arrayBuffer();
+    if (bytes.byteLength === 0) throw new Error('Photo file is empty');
     const { error } = await supabase.storage
       .from('photos')
       .upload(fileName, new Uint8Array(bytes), { contentType });

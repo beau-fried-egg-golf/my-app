@@ -108,12 +108,13 @@ interface StoreContextType {
   loadMeetups: () => Promise<void>;
   createMeetup: (data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null; host_id?: string | null }) => Promise<Meetup>;
   updateMeetup: (meetupId: string, data: { name: string; description: string; course_id: string | null; location_name: string; meetup_date: string; cost: string; total_slots: number; host_takes_slot: boolean; image: string | null; is_fe_coordinated?: boolean; stripe_payment_url?: string | null; cost_cents?: number | null }) => Promise<void>;
-  createCheckoutSession: (memberId: string, amountCents: number, meetupName: string, meetupId: string) => Promise<string | null>;
+  createCheckoutSession: (memberId: string, amountCents: number, meetupName: string, meetupId: string, spots?: number) => Promise<string | null>;
   deleteMeetup: (meetupId: string) => Promise<void>;
-  joinMeetup: (meetupId: string) => Promise<string | undefined>;
+  joinMeetup: (meetupId: string, spots?: number) => Promise<string | undefined>;
   addMeetupMember: (meetupId: string, userId: string) => Promise<void>;
-  leaveMeetup: (meetupId: string) => Promise<void>;
-  withdrawAndRefund: (meetupId: string, memberId: string) => Promise<boolean>;
+  leaveMeetup: (meetupId: string, spots?: number) => Promise<void>;
+  withdrawAndRefund: (meetupId: string, memberId: string, spots?: number) => Promise<boolean>;
+  cancelPendingReservation: (meetupId: string) => Promise<void>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
   sendMeetupMessage: (meetupId: string, content: string, replyToId?: string) => Promise<MeetupMessage>;
@@ -1178,15 +1179,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setCoursesPlayed(prev => prev.map(cp => cp.id === optimistic.id ? data : cp));
         }
 
-        // Insert activity
-        await supabase.from('activities').insert({
-          type: 'played',
-          user_id: userId,
-          course_id: courseId,
-        });
-
-        const newActivities = await loadActivities();
-        setActivities(newActivities);
       } finally {
         markPlayedInFlight.current.delete(courseId);
       }
@@ -2291,12 +2283,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       : { data: [] };
     const hostMap = new Map((hostProfiles ?? []).map(p => [p.id, p.name]));
 
+    // Build set of FE coordinated meetup IDs for capacity logic
+    const feCoordinatedIds = new Set(rawMeetups.filter(m => m.is_fe_coordinated).map(m => m.id));
+
     // Member counts, membership, last read
     const memberCountMap = new Map<string, number>();
     const membershipMap = new Map<string, boolean>();
     const memberLastReadMap = new Map<string, string | null>();
     for (const m of members) {
-      memberCountMap.set(m.meetup_id, (memberCountMap.get(m.meetup_id) ?? 0) + 1);
+      if (feCoordinatedIds.has(m.meetup_id)) {
+        // For FE coordinated meetups: only count spots where payment_status is 'paid' or 'waived'
+        if (m.payment_status === 'paid' || m.payment_status === 'waived') {
+          memberCountMap.set(m.meetup_id, (memberCountMap.get(m.meetup_id) ?? 0) + (m.spots ?? 1));
+        }
+      } else {
+        // For regular meetups: count all members' spots
+        memberCountMap.set(m.meetup_id, (memberCountMap.get(m.meetup_id) ?? 0) + (m.spots ?? 1));
+      }
       if (m.user_id === userId) {
         membershipMap.set(m.meetup_id, true);
         memberLastReadMap.set(m.meetup_id, m.last_read_at);
@@ -2465,62 +2468,77 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const joinMeetup = useCallback(
-    async (meetupId: string): Promise<string | undefined> => {
+    async (meetupId: string, spots?: number): Promise<string | undefined> => {
       if (!session) return undefined;
       const userId = session.user.id;
+      const spotsVal = spots ?? 1;
 
-      // Optimistic update
+      const meetup = meetupsRef.current.find(m => m.id === meetupId);
+      const isFePaid = meetup?.is_fe_coordinated && ((meetup?.cost_cents != null && meetup.cost_cents > 0) || meetup?.stripe_payment_url);
+
+      // Optimistic update: for FE paid, pending members don't count toward capacity
       setMeetups(prev => prev.map(m =>
-        m.id === meetupId ? { ...m, is_member: true, member_count: (m.member_count ?? 0) + 1 } : m
+        m.id === meetupId
+          ? { ...m, is_member: true, member_count: isFePaid ? (m.member_count ?? 0) : (m.member_count ?? 0) + spotsVal }
+          : m
       ));
 
       const { data: row, error } = await supabase
         .from('meetup_members')
-        .insert({ meetup_id: meetupId, user_id: userId })
+        .insert({
+          meetup_id: meetupId,
+          user_id: userId,
+          spots: spotsVal,
+          ...(isFePaid ? { payment_status: 'pending' } : {}),
+        })
         .select('id')
         .single();
 
       if (error) {
         // Revert on error
         setMeetups(prev => prev.map(m =>
-          m.id === meetupId ? { ...m, is_member: false, member_count: (m.member_count ?? 1) - 1 } : m
+          m.id === meetupId
+            ? { ...m, is_member: false, member_count: isFePaid ? (m.member_count ?? 0) : Math.max(0, (m.member_count ?? spotsVal) - spotsVal) }
+            : m
         ));
         return undefined;
       }
 
       const memberId = row?.id as string | undefined;
 
-      // Insert activity
-      const meetup = meetupsRef.current.find(m => m.id === meetupId);
-      await supabase.from('activities').insert({
-        type: 'meetup_signup',
-        user_id: userId,
-        meetup_id: meetupId,
-        course_id: meetup?.course_id || null,
-      });
-
-      // Notify meetup host (no self-notification, skip if no host)
-      if (meetup && meetup.host_id && meetup.host_id !== userId) {
-        await supabase.from('notifications').insert({
-          user_id: meetup.host_id,
+      // For FE paid meetups: skip activity + notification (webhook handles after payment)
+      if (!isFePaid) {
+        // Insert activity
+        await supabase.from('activities').insert({
           type: 'meetup_signup',
-          actor_id: userId,
+          user_id: userId,
           meetup_id: meetupId,
+          course_id: meetup?.course_id || null,
         });
-        sendPush({
-          recipient_id: meetup.host_id,
-          title: 'New Signup',
-          body: `${user?.name ?? 'Someone'} signed up for ${meetup.name}`,
-          data: { meetup_id: meetupId },
-          push_type: 'notification',
-        });
+
+        // Notify meetup host (no self-notification, skip if no host)
+        if (meetup && meetup.host_id && meetup.host_id !== userId) {
+          await supabase.from('notifications').insert({
+            user_id: meetup.host_id,
+            type: 'meetup_signup',
+            actor_id: userId,
+            meetup_id: meetupId,
+          });
+          sendPush({
+            recipient_id: meetup.host_id,
+            title: 'New Signup',
+            body: `${user?.name ?? 'Someone'} signed up for ${meetup.name}`,
+            data: { meetup_id: meetupId },
+            push_type: 'notification',
+          });
+        }
+
+        const newActivities = await loadActivities();
+        setActivities(newActivities);
       }
 
       // Remove from waitlist if user was on it
       await supabase.from('meetup_waitlist').delete().eq('meetup_id', meetupId).eq('user_id', userId);
-
-      const newActivities = await loadActivities();
-      setActivities(newActivities);
 
       return memberId;
     },
@@ -2550,17 +2568,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const leaveMeetup = useCallback(
-    async (meetupId: string) => {
+    async (meetupId: string, spots?: number) => {
       if (!session) return;
       const userId = session.user.id;
       const meetup = meetupsRef.current.find(m => m.id === meetupId);
       if (meetup?.host_id === userId) return; // Can't leave if host
 
+      const spotsVal = spots ?? 1;
       const wasFull = meetup && (meetup.member_count ?? 0) >= meetup.total_slots;
 
       // Optimistic update
       setMeetups(prev => prev.map(m =>
-        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
+        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? spotsVal) - spotsVal) } : m
       ));
 
       await supabase
@@ -2578,16 +2597,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const withdrawAndRefund = useCallback(
-    async (meetupId: string, memberId: string): Promise<boolean> => {
+    async (meetupId: string, memberId: string, spots?: number): Promise<boolean> => {
       if (!session) return false;
 
+      const spotsVal = spots ?? 1;
       const meetup = meetupsRef.current.find(m => m.id === meetupId);
       const wasFull = meetup && (meetup.member_count ?? 0) >= meetup.total_slots;
 
       // Optimistic update (same as leaveMeetup)
       const prevMeetups = meetupsRef.current;
       setMeetups(prev => prev.map(m =>
-        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? 1) - 1) } : m
+        m.id === meetupId ? { ...m, is_member: false, member_count: Math.max(0, (m.member_count ?? spotsVal) - spotsVal) } : m
       ));
 
       const { error } = await supabase.functions.invoke('stripe-refund', {
@@ -2610,10 +2630,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session],
   );
 
+  const cancelPendingReservation = useCallback(
+    async (meetupId: string) => {
+      if (!session) return;
+      const userId = session.user.id;
+
+      // Delete the pending meetup_members row
+      await supabase
+        .from('meetup_members')
+        .delete()
+        .eq('meetup_id', meetupId)
+        .eq('user_id', userId)
+        .eq('payment_status', 'pending');
+
+      // Update local state — no member_count change since pending didn't count
+      setMeetups(prev => prev.map(m =>
+        m.id === meetupId ? { ...m, is_member: false } : m
+      ));
+    },
+    [session],
+  );
+
   const createCheckoutSession = useCallback(
-    async (memberId: string, amountCents: number, meetupName: string, meetupId: string): Promise<string | null> => {
+    async (memberId: string, amountCents: number, meetupName: string, meetupId: string, spots?: number): Promise<string | null> => {
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: { member_id: memberId, amount_cents: amountCents, meetup_name: meetupName, meetup_id: meetupId },
+        body: { member_id: memberId, amount_cents: amountCents, meetup_name: meetupName, meetup_id: meetupId, spots: spots ?? 1 },
       });
 
       if (error || !data?.url) {
@@ -3101,6 +3142,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         addMeetupMember,
         leaveMeetup,
         withdrawAndRefund,
+        cancelPendingReservation,
         createCheckoutSession,
         getMeetupMembers,
         getMeetupMessages,

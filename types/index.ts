@@ -353,6 +353,7 @@ export interface MeetupMember {
   joined_at: string;
   payment_status?: string;
   stripe_payment_intent_id?: string;
+  spots: number;
   user_name?: string;
   user_image?: string | null;
 }

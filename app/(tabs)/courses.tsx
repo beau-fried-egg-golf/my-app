@@ -19,6 +19,32 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { useActionPane } from '@/hooks/useActionPane';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
+const LM_TEXT_HEIGHT = 18;
+const LM_SCROLL_GAP = 14;
+
+function HoverLoadMore({ label, onPress }: { label: string; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  function onHoverIn() { Animated.timing(anim, { toValue: 1, duration: 250, useNativeDriver: false }).start(); }
+  function onHoverOut() { Animated.timing(anim, { toValue: 0, duration: 250, useNativeDriver: false }).start(); }
+  const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, -(LM_TEXT_HEIGHT + LM_SCROLL_GAP)] });
+  const bgColor = anim.interpolate({ inputRange: [0, 1], outputRange: [Colors.black, Colors.orange] });
+  return (
+    <View style={styles.loadMoreDesktop}>
+      <Animated.View style={[styles.loadMoreDesktopBtn, { backgroundColor: bgColor }]}>
+        <Pressable onPress={onPress} onHoverIn={onHoverIn} onHoverOut={onHoverOut} style={styles.loadMoreDesktopInner}>
+          <View style={{ height: LM_TEXT_HEIGHT, overflow: 'hidden' }}>
+            <Animated.View style={{ transform: [{ translateY }] }}>
+              <Text style={styles.loadMoreDesktopText}>{label}</Text>
+              <View style={{ height: LM_SCROLL_GAP }} />
+              <Text style={[styles.loadMoreDesktopText, { color: Colors.black }]}>{label}</Text>
+            </Animated.View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
+
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
 }
@@ -577,12 +603,19 @@ export default function CoursesScreen() {
             }
             ListFooterComponent={
               displayCount < filteredCourses.length ? (
-                <PlatformPressable
-                  style={styles.loadMoreButton}
-                  onPress={() => setDisplayCount(displayCount + 15)}
-                >
-                  <Text style={styles.loadMoreText}>LOAD MORE ({filteredCourses.length - displayCount} remaining)</Text>
-                </PlatformPressable>
+                isDesktop ? (
+                  <HoverLoadMore
+                    label={`LOAD MORE (${filteredCourses.length - displayCount} remaining)`}
+                    onPress={() => setDisplayCount(displayCount + 15)}
+                  />
+                ) : (
+                  <PlatformPressable
+                    style={styles.loadMoreButton}
+                    onPress={() => setDisplayCount(displayCount + 15)}
+                  >
+                    <Text style={styles.loadMoreText}>LOAD MORE ({filteredCourses.length - displayCount} remaining)</Text>
+                  </PlatformPressable>
+                )
               ) : null
             }
           />
@@ -707,4 +740,8 @@ const styles = StyleSheet.create({
   dtToggleTextClip: { height: TOGGLE_TEXT_HEIGHT },
   dtToggleText: { fontSize: 13, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: TOGGLE_TEXT_HEIGHT },
   dtToggleTextActive: { color: Colors.white },
+  loadMoreDesktop: { alignItems: 'center', paddingVertical: 20, paddingHorizontal: 16 },
+  loadMoreDesktopBtn: { borderRadius: 8, overflow: 'hidden' },
+  loadMoreDesktopInner: { paddingHorizontal: 24, paddingVertical: LM_SCROLL_GAP, alignItems: 'center' },
+  loadMoreDesktopText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: LM_TEXT_HEIGHT },
 });
