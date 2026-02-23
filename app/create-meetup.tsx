@@ -416,32 +416,6 @@ export default function CreateMeetupScreen() {
           </View>
         )}
 
-        <View style={styles.toggleRow}>
-          <Text style={styles.toggleLabel}>FE Coordinated</Text>
-          <Pressable
-            style={[styles.toggleTrack, isFeCoordinated && styles.toggleTrackOn]}
-            onPress={() => {
-              setIsFeCoordinated(!isFeCoordinated);
-              if (!isFeCoordinated) setHostTakesSlot(false);
-            }}
-          >
-            <View style={[styles.toggleThumb, isFeCoordinated && styles.toggleThumbOn]} />
-          </Pressable>
-        </View>
-
-        {isFeCoordinated && (
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Price (cents)</Text>
-            <TextInput
-              style={styles.textInput}
-              value={costCents}
-              onChangeText={setCostCents}
-              placeholder="e.g. 5000 for $50.00"
-              placeholderTextColor={Colors.gray}
-              keyboardType="number-pad"
-            />
-          </View>
-        )}
     </>
   );
 
