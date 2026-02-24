@@ -58,9 +58,9 @@ interface StoreContextType {
   addPost: (data: { content: string; photos: { url: string; caption: string }[] }) => Promise<Post>;
   togglePostReaction: (postId: string, reaction: string) => Promise<void>;
   getPostReplies: (postId: string) => Promise<PostReply[]>;
-  addPostReply: (postId: string, content: string) => Promise<PostReply>;
+  addPostReply: (postId: string, content: string, parentId?: string) => Promise<PostReply>;
   getWriteupReplies: (writeupId: string) => Promise<WriteupReply[]>;
-  addWriteupReply: (writeupId: string, content: string) => Promise<WriteupReply>;
+  addWriteupReply: (writeupId: string, content: string, parentId?: string) => Promise<WriteupReply>;
   deletePost: (postId: string) => Promise<void>;
   flagContent: (contentType: 'post' | 'writeup', contentId: string) => Promise<void>;
   reportCourseInaccuracy: (courseId: string, reason: string) => Promise<void>;
@@ -1349,13 +1349,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addPostReply = useCallback(
-    async (postId: string, content: string): Promise<PostReply> => {
+    async (postId: string, content: string, parentId?: string): Promise<PostReply> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data: reply, error } = await supabase
         .from('post_replies')
-        .insert({ post_id: postId, user_id: userId, content })
+        .insert({ post_id: postId, user_id: userId, content, parent_id: parentId ?? null })
         .select()
         .single();
 
@@ -1429,13 +1429,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addWriteupReply = useCallback(
-    async (writeupId: string, content: string): Promise<WriteupReply> => {
+    async (writeupId: string, content: string, parentId?: string): Promise<WriteupReply> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data: reply, error } = await supabase
         .from('writeup_replies')
-        .insert({ writeup_id: writeupId, user_id: userId, content })
+        .insert({ writeup_id: writeupId, user_id: userId, content, parent_id: parentId ?? null })
         .select()
         .single();
 

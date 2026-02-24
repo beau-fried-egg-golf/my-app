@@ -108,6 +108,7 @@ export default function PostDetailScreen() {
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
+  const [replyingTo, setReplyingTo] = useState<PostReply | null>(null);
 
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -125,13 +126,34 @@ export default function PostDetailScreen() {
 
   const isOwner = user?.id === post.user_id;
 
+  function buildReplyTree(flat: PostReply[]) {
+    const topLevel = flat.filter(r => !r.parent_id);
+    const children = new Map<string, PostReply[]>();
+    for (const r of flat) {
+      if (r.parent_id) {
+        const arr = children.get(r.parent_id) || [];
+        arr.push(r);
+        children.set(r.parent_id, arr);
+      }
+    }
+    const result: { reply: PostReply; depth: number }[] = [];
+    for (const r of topLevel) {
+      result.push({ reply: r, depth: 0 });
+      for (const child of children.get(r.id) || []) {
+        result.push({ reply: child, depth: 1 });
+      }
+    }
+    return result;
+  }
+
   async function handleSendReply() {
     if (!replyText.trim() || sendingReply) return;
     setSendingReply(true);
     try {
-      const reply = await addPostReply(post!.id, replyText.trim());
+      const reply = await addPostReply(post!.id, replyText.trim(), replyingTo?.id);
       setReplies(prev => [...prev, reply]);
       setReplyText('');
+      setReplyingTo(null);
     } catch (e) {
       console.error('Failed to add reply', e);
     } finally {
@@ -282,57 +304,119 @@ export default function PostDetailScreen() {
         <DetailHeader title="POST" />
       )}
       <FlatList
-        data={replies}
-        keyExtractor={item => item.id}
+        data={buildReplyTree(replies)}
+        keyExtractor={item => item.reply.id}
         ListHeaderComponent={headerContent}
         contentContainerStyle={styles.content}
         {...desktopScrollProps}
         renderItem={({ item }) => {
+          const { reply, depth } = item;
           return (
-            <View style={styles.replyItem}>
+            <View style={[styles.replyItem, depth === 1 && { marginLeft: 32 }]}>
+              {depth === 1 && reply.parent_id && (
+                <Text style={styles.replyingToLabel}>
+                  Replying to {replies.find(r => r.id === reply.parent_id)?.author_name ?? 'Member'}
+                </Text>
+              )}
               <View style={styles.replyAuthorRow}>
-                <Pressable onPress={() => router.push(`/member/${item.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.replyAuthorName}>{item.author_name ?? 'Member'}</Text>
-                  {item.author_verified && <VerifiedBadge size={12} />}
+                <Pressable onPress={() => router.push(`/member/${reply.user_id}`)} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.replyAuthorName}>{reply.author_name ?? 'Member'}</Text>
+                  {reply.author_verified && <VerifiedBadge size={12} />}
                 </Pressable>
-                <Text style={styles.replyTime}> · {formatTime(item.created_at)}</Text>
+                <Text style={styles.replyTime}> · {formatTime(reply.created_at)}</Text>
               </View>
-              <Text style={styles.replyContent}>{item.content}</Text>
+              <Text style={styles.replyContent}>{reply.content}</Text>
+              {depth === 0 && (
+                <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
+                  <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
+                  <Text style={styles.replyButtonText}>Reply</Text>
+                </Pressable>
+              )}
             </View>
           );
         }}
         ListEmptyComponent={
           <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
         }
+        ListFooterComponent={isDesktop ? (
+          <View style={styles.desktopReplyInputBar}>
+            {replyingTo && (
+              <View style={styles.replyingToBanner}>
+                <Text style={styles.replyingToBannerText}>Replying to {replyingTo.author_name ?? 'Member'}</Text>
+                <Pressable onPress={() => setReplyingTo(null)}>
+                  <Ionicons name="close" size={16} color={Colors.gray} />
+                </Pressable>
+              </View>
+            )}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.replyInput}
+                value={replyText}
+                onChangeText={setReplyText}
+                placeholder="Write a reply..."
+                placeholderTextColor={Colors.gray}
+                multiline
+                maxLength={2000}
+                onKeyPress={(e: any) => {
+                  if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                    e.preventDefault();
+                    handleSendReply();
+                  }
+                }}
+              />
+              {!!replyText.trim() && (
+                <Pressable
+                  style={styles.sendBtn}
+                  onPress={handleSendReply}
+                  disabled={sendingReply}
+                >
+                  <Ionicons name="arrow-up" size={18} color={Colors.white} />
+                </Pressable>
+              )}
+            </View>
+          </View>
+        ) : undefined}
       />
-      <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.replyInput}
-            value={replyText}
-            onChangeText={setReplyText}
-            placeholder="Write a reply..."
-            placeholderTextColor={Colors.gray}
-            multiline
-            maxLength={2000}
-            onKeyPress={(e: any) => {
-              if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
-                e.preventDefault();
-                handleSendReply();
-              }
-            }}
-          />
-          {!!replyText.trim() && (
-            <Pressable
-              style={styles.sendBtn}
-              onPress={handleSendReply}
-              disabled={sendingReply}
-            >
-              <Ionicons name="arrow-up" size={18} color={Colors.white} />
-            </Pressable>
+      {!isDesktop && (
+        <>
+          {replyingTo && (
+            <View style={styles.replyingToBanner}>
+              <Text style={styles.replyingToBannerText}>Replying to {replyingTo.author_name ?? 'Member'}</Text>
+              <Pressable onPress={() => setReplyingTo(null)}>
+                <Ionicons name="close" size={16} color={Colors.gray} />
+              </Pressable>
+            </View>
           )}
-        </View>
-      </View>
+          <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.replyInput}
+                value={replyText}
+                onChangeText={setReplyText}
+                placeholder="Write a reply..."
+                placeholderTextColor={Colors.gray}
+                multiline
+                maxLength={2000}
+                onKeyPress={(e: any) => {
+                  if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                    e.preventDefault();
+                    handleSendReply();
+                  }
+                }}
+              />
+              {!!replyText.trim() && (
+                <Pressable
+                  style={styles.sendBtn}
+                  onPress={handleSendReply}
+                  disabled={sendingReply}
+                >
+                  <Ionicons name="arrow-up" size={18} color={Colors.white} />
+                </Pressable>
+              )}
+            </View>
+          </View>
+        </>
+      )}
       </ResponsiveContainer>
     </KeyboardAvoidingView>
   );
@@ -370,8 +454,14 @@ const styles = StyleSheet.create({
   replyAuthorName: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
+  replyButton: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  replyButtonText: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray },
+  replyingToLabel: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, marginBottom: 4 },
+  replyingToBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: Colors.cream ?? '#f5f5f0', borderTopWidth: 1, borderTopColor: Colors.lightGray },
+  replyingToBannerText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.darkGray },
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
   replyInputBar: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
+  desktopReplyInputBar: { paddingTop: 16 },
   inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
   replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
   sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },

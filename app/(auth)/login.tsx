@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -12,10 +13,12 @@ import { useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn } = useStore();
+  const isDesktop = useIsDesktop();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +49,15 @@ export default function LoginScreen() {
     >
       <View style={styles.content}>
         <View style={styles.header}>
-          <LetterSpacedHeader text="Welcome to The Fried Egg Golf Club" size={28} />
+          {isDesktop ? (
+            <>
+              <LetterSpacedHeader text="Welcome to The" size={28} />
+              <View style={{ height: 6 }} />
+              <LetterSpacedHeader text="Fried Egg Golf Club" size={28} />
+            </>
+          ) : (
+            <LetterSpacedHeader text="Welcome to The Fried Egg Golf Club" size={28} />
+          )}
           <Text style={styles.subtitle}>Sign in to your account</Text>
         </View>
 
@@ -102,9 +113,9 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
         </Pressable>
 
-        <Pressable style={styles.linkButton} onPress={() => router.push('/(auth)/signup')}>
+        <Pressable style={styles.linkButton} onPress={() => Linking.openURL('https://www.thefriedegg.com/fried-egg-golf-club')}>
           <Text style={styles.linkText}>
-            Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
+            Not a member? <Text style={styles.linkBold}>Sign up for FEGC.</Text>
           </Text>
         </Pressable>
       </View>

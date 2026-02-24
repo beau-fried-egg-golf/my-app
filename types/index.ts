@@ -204,6 +204,7 @@ export interface PostReply {
   created_at: string;
   author_name?: string;
   author_verified?: boolean;
+  parent_id?: string | null;
 }
 
 export interface WriteupReply {
@@ -214,6 +215,7 @@ export interface WriteupReply {
   created_at: string;
   author_name?: string;
   author_verified?: boolean;
+  parent_id?: string | null;
 }
 
 export interface Activity {

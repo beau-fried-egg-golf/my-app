@@ -480,6 +480,7 @@ export default function FeedScreen() {
 
   const filteredActivities = useMemo(() => {
     return activities.filter(a => {
+      if (a.type === 'played') return false;
       if (feedFilter === 'FOLLOWING' && !followingIds.has(a.user_id)) return false;
       if (activityFilter !== 'all' && !ACTIVITY_TYPE_MAP[activityFilter]?.includes(a.type)) return false;
       if (searchQuery.trim()) {
