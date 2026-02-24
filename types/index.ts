@@ -153,7 +153,7 @@ export interface Writeup {
   created_at: string;
   hidden: boolean;
   photos: Photo[];
-  reactions: Record<string, number>;
+  reactions: Record<string, string[]>;
   user_reactions: string[];
   reaction_count?: number;
   reply_count: number;
@@ -185,7 +185,7 @@ export interface Post {
   created_at: string;
   hidden: boolean;
   photos: PostPhoto[];
-  reactions: Record<string, number>;
+  reactions: Record<string, string[]>;
   user_reactions: string[];
   reply_count: number;
   author_name?: string;

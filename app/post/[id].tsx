@@ -17,6 +17,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
 import LinkPreview from '@/components/LinkPreview';
+import ReactionTooltip from '@/components/ReactionTooltip';
 import DetailHeader from '@/components/DetailHeader';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
@@ -102,7 +103,7 @@ function formatTime(iso: string): string {
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent } = useStore();
+  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent, getUserName } = useStore();
 
   const [replies, setReplies] = useState<PostReply[]>([]);
   const [replyText, setReplyText] = useState('');
@@ -241,18 +242,21 @@ export default function PostDetailScreen() {
       <View style={styles.reactionsBar}>
         {REACTION_KEYS.map(key => {
           const active = post.user_reactions.includes(key);
-          const count = post.reactions[key] ?? 0;
+          const reactorIds = post.reactions[key] ?? [];
+          const count = reactorIds.length;
           return (
-            <Pressable
+            <ReactionTooltip
               key={key}
-              style={[styles.reactionButton, active && styles.reactionButtonActive]}
+              userIds={reactorIds}
+              getUserName={getUserName}
               onPress={() => togglePostReaction(post.id, key)}
+              style={[styles.reactionButton, active && styles.reactionButtonActive]}
             >
               <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
               {count > 0 && (
                 <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>{count}</Text>
               )}
-            </Pressable>
+            </ReactionTooltip>
           );
         })}
         <View style={styles.commentBadge}>

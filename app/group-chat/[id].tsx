@@ -45,7 +45,7 @@ export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     session, groups, getGroupMessages, sendGroupMessage, markGroupRead, loadGroups,
-    toggleGroupMessageReaction, getGroupMembers,
+    toggleGroupMessageReaction, getGroupMembers, getUserName,
   } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -257,6 +257,7 @@ export default function GroupChatScreen() {
               currentUserId={currentUserId}
               onLongPress={handleContextMenuOpen}
               onToggleReaction={handleToggleReaction}
+              getUserName={getUserName}
             />
           );
         }}

@@ -44,7 +44,7 @@ export default function ConversationScreen() {
   const {
     session, getMessages, sendMessage, conversations,
     profiles, blockUser, unblockUser, isBlocked, isBlockedBy,
-    markConversationRead, loadConversations, toggleMessageReaction,
+    markConversationRead, loadConversations, toggleMessageReaction, getUserName,
   } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -253,6 +253,7 @@ export default function ConversationScreen() {
               currentUserId={currentUserId}
               onLongPress={handleContextMenuOpen}
               onToggleReaction={handleToggleReaction}
+              getUserName={getUserName}
             />
           );
         }}

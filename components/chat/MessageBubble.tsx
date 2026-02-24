@@ -50,6 +50,7 @@ interface MessageBubbleProps {
   currentUserId?: string;
   onLongPress: (messageId: string, position: { x: number; y: number }) => void;
   onToggleReaction: (messageId: string, reaction: string) => void;
+  getUserName: (userId: string) => string;
 }
 
 export default function MessageBubble({
@@ -59,6 +60,7 @@ export default function MessageBubble({
   currentUserId,
   onLongPress,
   onToggleReaction,
+  getUserName,
 }: MessageBubbleProps) {
   const bubbleRef = useRef<View>(null);
 
@@ -105,6 +107,7 @@ export default function MessageBubble({
           reactions={message.reactions}
           currentUserId={currentUserId}
           onToggleReaction={(reaction) => onToggleReaction(message.id, reaction)}
+          getUserName={getUserName}
         />
       )}
     </View>

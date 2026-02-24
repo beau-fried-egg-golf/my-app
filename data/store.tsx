@@ -485,23 +485,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       photosByWriteup.set(photo.writeup_id, list);
     }
 
-    // Aggregate reactions per writeup
-    const reactionsByWriteup = new Map<string, { counts: Record<string, number>; userReactions: string[] }>();
+    // Aggregate reactions per writeup (user ID arrays)
+    const reactionsByWriteup = new Map<string, { userIds: Record<string, string[]>; userReactions: string[] }>();
+    const reactorIds = new Set<string>();
     for (const r of writeupReactions ?? []) {
-      const entry = reactionsByWriteup.get(r.writeup_id) ?? { counts: {}, userReactions: [] };
-      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+      const entry = reactionsByWriteup.get(r.writeup_id) ?? { userIds: {}, userReactions: [] };
+      entry.userIds[r.reaction] = [...(entry.userIds[r.reaction] ?? []), r.user_id];
       if (r.user_id === currentUserId) entry.userReactions.push(r.reaction);
+      reactorIds.add(r.user_id);
       reactionsByWriteup.set(r.writeup_id, entry);
+    }
+
+    // Cache reactor profiles
+    const uncachedReactorIds = [...reactorIds].filter(id => !profileMap.has(id));
+    if (uncachedReactorIds.length > 0) {
+      const { data: reactorProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, is_verified')
+        .in('id', uncachedReactorIds);
+      if (reactorProfiles) {
+        setProfileCache(prev => {
+          const next = new Map(prev);
+          for (const p of reactorProfiles) next.set(p.id, { name: p.name as string, verified: !!p.is_verified });
+          return next;
+        });
+      }
     }
 
     return rawWriteups.map(w => {
       const rData = reactionsByWriteup.get(w.id);
-      const counts = rData?.counts ?? {};
-      const reactionCount = Object.values(counts).reduce((sum, n) => sum + n, 0);
+      const userIds = rData?.userIds ?? {};
+      const reactionCount = Object.values(userIds).reduce((sum, ids) => sum + ids.length, 0);
       return {
         ...w,
         photos: photosByWriteup.get(w.id) ?? [],
-        reactions: counts,
+        reactions: userIds,
         user_reactions: rData?.userReactions ?? [],
         reaction_count: reactionCount,
         reply_count: replyCountByWriteup.get(w.id) ?? 0,
@@ -632,13 +650,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       photosByPost.set(photo.post_id, list);
     }
 
-    // Aggregate reactions per post
-    const reactionsByPost = new Map<string, { counts: Record<string, number>; userReactions: string[] }>();
+    // Aggregate reactions per post (user ID arrays)
+    const reactionsByPost = new Map<string, { userIds: Record<string, string[]>; userReactions: string[] }>();
+    const postReactorIds = new Set<string>();
     for (const r of reactionsRes.data ?? []) {
-      const entry = reactionsByPost.get(r.post_id) ?? { counts: {}, userReactions: [] };
-      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+      const entry = reactionsByPost.get(r.post_id) ?? { userIds: {}, userReactions: [] };
+      entry.userIds[r.reaction] = [...(entry.userIds[r.reaction] ?? []), r.user_id];
       if (r.user_id === currentUserId) entry.userReactions.push(r.reaction);
+      postReactorIds.add(r.user_id);
       reactionsByPost.set(r.post_id, entry);
+    }
+
+    // Cache reactor profiles
+    const uncachedPostReactorIds = [...postReactorIds].filter(id => !authorMap.has(id));
+    if (uncachedPostReactorIds.length > 0) {
+      const { data: reactorProfiles } = await supabase
+        .from('profiles')
+        .select('id, name, is_verified')
+        .in('id', uncachedPostReactorIds);
+      if (reactorProfiles) {
+        setProfileCache(prev => {
+          const next = new Map(prev);
+          for (const p of reactorProfiles) next.set(p.id, { name: p.name as string, verified: !!p.is_verified });
+          return next;
+        });
+      }
     }
 
     // Count replies per post
@@ -652,7 +688,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return {
         ...p,
         photos: photosByPost.get(p.id) ?? [],
-        reactions: rData?.counts ?? {},
+        reactions: rData?.userIds ?? {},
         user_reactions: rData?.userReactions ?? [],
         reply_count: replyCountByPost.get(p.id) ?? 0,
         author_name: authorMap.get(p.user_id)?.name ?? 'Member',
@@ -1047,15 +1083,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const newReactions = { ...w.reactions };
           const newUserReactions = [...w.user_reactions];
           if (hasReaction) {
-            newReactions[reaction] = Math.max(0, (newReactions[reaction] ?? 0) - 1);
-            if (newReactions[reaction] === 0) delete newReactions[reaction];
+            newReactions[reaction] = (newReactions[reaction] ?? []).filter(id => id !== userId);
+            if (newReactions[reaction].length === 0) delete newReactions[reaction];
             const idx = newUserReactions.indexOf(reaction);
             if (idx >= 0) newUserReactions.splice(idx, 1);
           } else {
-            newReactions[reaction] = (newReactions[reaction] ?? 0) + 1;
+            newReactions[reaction] = [...(newReactions[reaction] ?? []), userId];
             newUserReactions.push(reaction);
           }
-          const reactionCount = Object.values(newReactions).reduce((sum, n) => sum + n, 0);
+          const reactionCount = Object.values(newReactions).reduce((sum, ids) => sum + ids.length, 0);
           return { ...w, reactions: newReactions, user_reactions: newUserReactions, reaction_count: reactionCount };
         }),
       );
@@ -1294,12 +1330,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           const newReactions = { ...p.reactions };
           const newUserReactions = [...p.user_reactions];
           if (hasReaction) {
-            newReactions[reaction] = Math.max(0, (newReactions[reaction] ?? 0) - 1);
-            if (newReactions[reaction] === 0) delete newReactions[reaction];
+            newReactions[reaction] = (newReactions[reaction] ?? []).filter(id => id !== userId);
+            if (newReactions[reaction].length === 0) delete newReactions[reaction];
             const idx = newUserReactions.indexOf(reaction);
             if (idx >= 0) newUserReactions.splice(idx, 1);
           } else {
-            newReactions[reaction] = (newReactions[reaction] ?? 0) + 1;
+            newReactions[reaction] = [...(newReactions[reaction] ?? []), userId];
             newUserReactions.push(reaction);
           }
           return { ...p, reactions: newReactions, user_reactions: newUserReactions };

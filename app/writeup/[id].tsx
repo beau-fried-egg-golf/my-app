@@ -20,6 +20,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Photo, WriteupReply } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
+import ReactionTooltip from '@/components/ReactionTooltip';
 import DetailHeader from '@/components/DetailHeader';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
@@ -420,18 +421,21 @@ export default function WriteupDetailScreen() {
       <View style={styles.reactionsBar}>
         {REACTION_KEYS.map(key => {
           const active = writeup.user_reactions.includes(key);
-          const count = writeup.reactions[key] ?? 0;
+          const reactorIds = writeup.reactions[key] ?? [];
+          const count = reactorIds.length;
           return (
-            <Pressable
+            <ReactionTooltip
               key={key}
-              style={[styles.reactionButton, active && styles.reactionButtonActive]}
+              userIds={reactorIds}
+              getUserName={getUserName}
               onPress={() => toggleWriteupReaction(writeup.id, key)}
+              style={[styles.reactionButton, active && styles.reactionButtonActive]}
             >
               <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
               {count > 0 && (
                 <Text style={[styles.reactionCount, active && styles.reactionCountActive]}>{count}</Text>
               )}
-            </Pressable>
+            </ReactionTooltip>
           );
         })}
         <View style={styles.commentBadge}>

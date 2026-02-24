@@ -45,7 +45,7 @@ export default function MeetupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     session, meetups, getMeetupMessages, sendMeetupMessage, markMeetupRead, loadMeetups,
-    toggleMeetupMessageReaction, getMeetupMembers,
+    toggleMeetupMessageReaction, getMeetupMembers, getUserName,
   } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -244,6 +244,7 @@ export default function MeetupChatScreen() {
               currentUserId={currentUserId}
               onLongPress={handleContextMenuOpen}
               onToggleReaction={handleToggleReaction}
+              getUserName={getUserName}
             />
           );
         }}

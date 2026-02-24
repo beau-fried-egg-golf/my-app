@@ -1,13 +1,15 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import ReactionTooltip from '@/components/ReactionTooltip';
 
 interface ReactionBadgesProps {
   reactions: Record<string, string[]>;
   currentUserId?: string;
   onToggleReaction: (reaction: string) => void;
+  getUserName: (userId: string) => string;
 }
 
-export default function ReactionBadges({ reactions, currentUserId, onToggleReaction }: ReactionBadgesProps) {
+export default function ReactionBadges({ reactions, currentUserId, onToggleReaction, getUserName }: ReactionBadgesProps) {
   const entries = Object.entries(reactions).filter(([, users]) => users.length > 0);
   if (entries.length === 0) return null;
 
@@ -16,14 +18,16 @@ export default function ReactionBadges({ reactions, currentUserId, onToggleReact
       {entries.map(([emoji, userIds]) => {
         const isActive = currentUserId ? userIds.includes(currentUserId) : false;
         return (
-          <Pressable
+          <ReactionTooltip
             key={emoji}
-            style={[styles.badge, isActive && styles.badgeActive]}
+            userIds={userIds}
+            getUserName={getUserName}
             onPress={() => onToggleReaction(emoji)}
+            style={[styles.badge, isActive && styles.badgeActive]}
           >
             <Text style={styles.emoji}>{emoji}</Text>
             <Text style={[styles.count, isActive && styles.countActive]}>{userIds.length}</Text>
-          </Pressable>
+          </ReactionTooltip>
         );
       })}
     </View>

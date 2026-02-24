@@ -85,8 +85,8 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
       : item.post_content ?? '';
     const reactionSummary = post
       ? Object.entries(post.reactions)
-          .filter(([, count]) => count > 0)
-          .map(([key, count]) => `${REACTION_EMOJI[key] ?? key} ${count}`)
+          .filter(([, ids]) => ids.length > 0)
+          .map(([key, ids]) => `${REACTION_EMOJI[key] ?? key} ${ids.length}`)
           .join('  ')
       : '';
 
