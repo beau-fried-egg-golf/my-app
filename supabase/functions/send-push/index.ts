@@ -32,7 +32,7 @@ serve(async (req: Request) => {
   // Look up recipient's push token and preferences
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("expo_push_token, push_dm_enabled, push_notifications_enabled, push_nearby_enabled")
+    .select("expo_push_token, push_dm_enabled, push_notifications_enabled, push_nearby_enabled, push_fe_content_enabled")
     .eq("id", recipient_id)
     .single();
 
@@ -49,6 +49,7 @@ serve(async (req: Request) => {
     notification: profile.push_notifications_enabled ?? true,
     nearby_meetup: profile.push_nearby_enabled ?? true,
     mention: profile.push_notifications_enabled ?? true,
+    fe_content: profile.push_fe_content_enabled ?? true,
   };
 
   if (!prefMap[push_type]) {

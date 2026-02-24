@@ -368,7 +368,7 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount } = useStore();
+  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount, isPaidMember, setShowUpgradeModal } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -508,7 +508,7 @@ export default function FeedScreen() {
           onFeedFilterChange={setFeedFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onCreatePress={() => openActionPane('create')}
+          onCreatePress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } openActionPane('create'); }}
         />
       ) : (
         <View style={styles.filterRow}>
@@ -681,6 +681,7 @@ export default function FeedScreen() {
               style={styles.modalOption}
               onPress={() => {
                 setShowFabMenu(false);
+                if (!isPaidMember) { setShowUpgradeModal(true); return; }
                 router.push('/create-writeup');
               }}
             >
@@ -697,6 +698,7 @@ export default function FeedScreen() {
               style={styles.modalOption}
               onPress={() => {
                 setShowFabMenu(false);
+                if (!isPaidMember) { setShowUpgradeModal(true); return; }
                 router.push('/create-post');
               }}
             >

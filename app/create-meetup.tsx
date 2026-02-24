@@ -37,7 +37,7 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 export default function CreateMeetupScreen() {
   const router = useRouter();
   const { meetupId } = useLocalSearchParams<{ meetupId?: string }>();
-  const { user, courses, meetups, profiles, createMeetup, updateMeetup, addMeetupMember } = useStore();
+  const { user, courses, meetups, profiles, createMeetup, updateMeetup, addMeetupMember, isPaidMember, setShowUpgradeModal } = useStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [courseId, setCourseId] = useState<string | null>(null);
@@ -140,6 +140,7 @@ export default function CreateMeetupScreen() {
   }
 
   async function handleSubmit() {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     if (!canSubmit || !selectedCourse) return;
     setSubmitting(true);
     try {

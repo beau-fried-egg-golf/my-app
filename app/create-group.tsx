@@ -37,7 +37,7 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
 export default function CreateGroupScreen() {
   const router = useRouter();
   const { groupId } = useLocalSearchParams<{ groupId?: string }>();
-  const { user, courses, groups, createGroup, updateGroup } = useStore();
+  const { user, courses, groups, createGroup, updateGroup, isPaidMember, setShowUpgradeModal } = useStore();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [homeCourseId, setHomeCourseId] = useState<string | null>(null);
@@ -114,6 +114,7 @@ export default function CreateGroupScreen() {
   }
 
   async function handleSubmit() {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     if (!canSubmit) return;
     setSubmitting(true);
     try {

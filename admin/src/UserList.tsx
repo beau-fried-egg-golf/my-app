@@ -21,6 +21,7 @@ interface UserRow {
   writeup_count: number;
   photo_count: number;
   is_verified: boolean;
+  is_member: boolean;
 }
 
 export default function UserList() {
@@ -43,6 +44,7 @@ export default function UserList() {
           writeup_count: userWriteups.length,
           photo_count: photoCount,
           is_verified: !!p.is_verified,
+          is_member: p.subscription_tier === 'standard' && (p.subscription_status === 'active' || p.subscription_status === 'trialing'),
         };
       });
 
@@ -76,6 +78,15 @@ export default function UserList() {
                   <Link to={`/users/${u.id}`} className="link">
                     <strong>{u.name}</strong>
                   </Link>
+                  {u.is_member ? (
+                    <span className="badge badge-verified" style={{ marginLeft: 6, verticalAlign: 'middle' }}>
+                      Member
+                    </span>
+                  ) : (
+                    <span className="badge" style={{ marginLeft: 6, verticalAlign: 'middle', background: '#eee', color: '#999' }}>
+                      Guest
+                    </span>
+                  )}
                   {u.is_verified && (
                     <span className="badge badge-verified" style={{ marginLeft: 6, verticalAlign: 'middle' }}>
                       Verified

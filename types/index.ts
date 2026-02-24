@@ -20,6 +20,13 @@ export interface Profile {
   push_nearby_enabled?: boolean;
   push_nearby_radius_miles?: number;
   email_notifications_enabled?: boolean;
+  push_fe_content_enabled?: boolean;
+  subscription_tier?: string;
+  subscription_status?: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  current_period_end?: string | null;
+  memberstack_id?: string | null;
 }
 
 export interface Follow {
@@ -77,6 +84,8 @@ export interface User {
   favoriteBall: string;
   memberSince: string;
   isVerified?: boolean;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
 }
 
 export interface Course {
@@ -254,6 +263,8 @@ export function profileToUser(p: Profile): User {
     favoriteBall: p.favorite_ball,
     memberSince: p.member_since,
     isVerified: p.is_verified,
+    subscriptionTier: p.subscription_tier,
+    subscriptionStatus: p.subscription_status,
   };
 }
 

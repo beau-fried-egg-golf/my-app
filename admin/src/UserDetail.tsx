@@ -19,6 +19,7 @@ export default function UserDetail() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [suspending, setSuspending] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [grantingMembership, setGrantingMembership] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -56,6 +57,21 @@ export default function UserDetail() {
     setVerifying(false);
   }
 
+  const isMember = profile?.subscription_tier === 'standard' && (profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing');
+
+  async function handleToggleMembership() {
+    if (!profile || !id) return;
+    setGrantingMembership(true);
+    if (isMember) {
+      await updateProfile(id, { subscription_tier: 'free', subscription_status: 'canceled' });
+      setProfile({ ...profile, subscription_tier: 'free', subscription_status: 'canceled' });
+    } else {
+      await updateProfile(id, { subscription_tier: 'standard', subscription_status: 'active' });
+      setProfile({ ...profile, subscription_tier: 'standard', subscription_status: 'active' });
+    }
+    setGrantingMembership(false);
+  }
+
   const userName = profile?.name || `Member ${id?.slice(0, 6)}`;
 
   return (
@@ -72,6 +88,15 @@ export default function UserDetail() {
               {profile?.is_verified && (
                 <span className="badge badge-verified" style={{ marginLeft: 8, verticalAlign: 'middle' }}>
                   Verified
+                </span>
+              )}
+              {isMember ? (
+                <span className="badge badge-verified" style={{ marginLeft: 8, verticalAlign: 'middle' }}>
+                  Member
+                </span>
+              ) : (
+                <span className="badge" style={{ marginLeft: 8, verticalAlign: 'middle', background: '#eee', color: '#999' }}>
+                  Guest
                 </span>
               )}
               {profile?.suspended && (
@@ -91,6 +116,17 @@ export default function UserDetail() {
           </div>
           {profile && (
             <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button
+                className={`btn btn-sm ${isMember ? '' : 'btn-primary'}`}
+                onClick={handleToggleMembership}
+                disabled={grantingMembership}
+              >
+                {grantingMembership
+                  ? 'Updating...'
+                  : isMember
+                    ? 'Revoke Membership'
+                    : 'Grant Membership'}
+              </button>
               <button
                 className={`btn btn-sm ${profile.is_verified ? '' : 'btn-primary'}`}
                 onClick={handleToggleVerify}

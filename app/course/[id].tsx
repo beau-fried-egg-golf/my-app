@@ -24,6 +24,7 @@ import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import WordHighlight from '@/components/WordHighlight';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import EggRating from '@/components/EggRating';
+import LockedContentCard from '@/components/LockedContentCard';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -182,7 +183,7 @@ function DesktopBackButton({ onPress }: { onPress: () => void }) {
 export default function CourseDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed, meetups, loadMeetups, reportCourseInaccuracy } = useStore();
+  const { courses, writeups, getUserName, user, togglePhotoUpvote, coursesPlayed, markCoursePlayed, unmarkCoursePlayed, meetups, loadMeetups, reportCourseInaccuracy, isPaidMember, setShowUpgradeModal } = useStore();
   const [galleryVisible, setGalleryVisible] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(0);
   const [activeTab, setActiveTab] = useState<'writeups' | 'photos' | 'meetups'>('writeups');
@@ -347,6 +348,7 @@ export default function CourseDetailScreen() {
             ) : (
               isDesktop ? (
                 <DesktopBlackButton label="MARK PLAYED" onPress={() => {
+                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const today = new Date();
                   const yyyy = today.getFullYear();
                   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -356,6 +358,7 @@ export default function CourseDetailScreen() {
                 }} />
               ) : (
                 <Pressable style={styles.playedButton} onPress={() => {
+                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const today = new Date();
                   const yyyy = today.getFullYear();
                   const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -397,7 +400,7 @@ export default function CourseDetailScreen() {
               {new Date(course.fe_profile_date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </Text>
           )}
-          <EggRating rating={course.fe_egg_rating} />
+          {isPaidMember ? <EggRating rating={course.fe_egg_rating} /> : <LockedContentCard />}
         </Pressable>
       )}
 
@@ -433,34 +436,43 @@ export default function CourseDetailScreen() {
           {mostUpvoted && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>MOST LIKED</Text>
-              <WriteupCard
-                writeup={mostUpvoted}
-                userName={mostUpvoted.author_name ?? getUserName(mostUpvoted.user_id)}
-                onPress={() => router.push(`/writeup/${mostUpvoted.id}`)}
-                isFeatured
-                isVerified={mostUpvoted.author_verified}
-              />
+              {isPaidMember ? (
+                <WriteupCard
+                  writeup={mostUpvoted}
+                  userName={mostUpvoted.author_name ?? getUserName(mostUpvoted.user_id)}
+                  onPress={() => router.push(`/writeup/${mostUpvoted.id}`)}
+                  isFeatured
+                  isVerified={mostUpvoted.author_verified}
+                />
+              ) : (
+                <LockedContentCard />
+              )}
             </View>
           )}
 
           {mostUpvotedVerified && (
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>MOST LIKED VERIFIED REVIEW</Text>
-              <WriteupCard
-                writeup={mostUpvotedVerified}
-                userName={mostUpvotedVerified.author_name ?? getUserName(mostUpvotedVerified.user_id)}
-                onPress={() => router.push(`/writeup/${mostUpvotedVerified.id}`)}
-                isFeatured
-                isVerified
-                verifiedFeatured
-              />
-              {verifiedWriteups.length > 1 && (
-                <Pressable onPress={() => {
-                  // Navigate to filtered view — for now show all recent
-                  setShowAllRecent(true);
-                }}>
-                  <Text style={styles.viewAllLink}>View all verified reviews ({verifiedWriteups.length})</Text>
-                </Pressable>
+              {isPaidMember ? (
+                <>
+                  <WriteupCard
+                    writeup={mostUpvotedVerified}
+                    userName={mostUpvotedVerified.author_name ?? getUserName(mostUpvotedVerified.user_id)}
+                    onPress={() => router.push(`/writeup/${mostUpvotedVerified.id}`)}
+                    isFeatured
+                    isVerified
+                    verifiedFeatured
+                  />
+                  {verifiedWriteups.length > 1 && (
+                    <Pressable onPress={() => {
+                      setShowAllRecent(true);
+                    }}>
+                      <Text style={styles.viewAllLink}>View all verified reviews ({verifiedWriteups.length})</Text>
+                    </Pressable>
+                  )}
+                </>
+              ) : (
+                <LockedContentCard />
               )}
             </View>
           )}
@@ -493,11 +505,11 @@ export default function CourseDetailScreen() {
 
           <View style={styles.addWriteupRow}>
             {isDesktop ? (
-              <DesktopBlackButton label="POST A REVIEW" onPress={() => router.push(`/create-writeup?courseId=${id}`)} />
+              <DesktopBlackButton label="POST A REVIEW" onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } router.push(`/create-writeup?courseId=${id}`); }} />
             ) : (
               <Pressable
                 style={styles.writeButton}
-                onPress={() => router.push(`/create-writeup?courseId=${id}`)}
+                onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } router.push(`/create-writeup?courseId=${id}`); }}
               >
                 <Text style={styles.writeButtonText}>Post a review</Text>
               </Pressable>
@@ -750,7 +762,7 @@ export default function CourseDetailScreen() {
                   <View style={[styles.modalBelow, { width: winWidth }]}>
                     <Pressable
                       style={[styles.modalUpvote, photoHasUpvote && styles.modalUpvoteActive]}
-                      onPress={() => togglePhotoUpvote(photo.id)}
+                      onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } togglePhotoUpvote(photo.id); }}
                     >
                       <Text style={{ fontSize: 16 }}>{'\uD83D\uDC4D'}</Text>
                       <Text style={styles.modalUpvoteText}>{photo.upvote_count ?? 0}</Text>

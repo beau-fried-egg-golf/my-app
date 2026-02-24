@@ -8,6 +8,7 @@ import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { EditIcon, SignOutIcon } from '@/components/icons/CustomIcons';
 import PassportBook from '@/components/PassportBook';
+import GuestBadge from '@/components/GuestBadge';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
@@ -59,7 +60,7 @@ function DesktopBackStyleButton({ label, onPress }: { label: string; onPress: ()
 }
 
 export default function ProfileScreen() {
-  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, updatePushPreferences } = useStore();
+  const { user, writeups, posts, signOut, coursesPlayed, courses, getFollowerCount, getFollowingCount, dmsDisabled, toggleDms, pushDmEnabled, pushNotificationsEnabled, pushNearbyEnabled, pushNearbyRadiusMiles, emailNotificationsEnabled, pushFeContentEnabled, updatePushPreferences, isPaidMember } = useStore();
   const router = useRouter();
   const goBack = useGoBack();
   const isDesktop = useIsDesktop();
@@ -121,6 +122,7 @@ export default function ProfileScreen() {
         )}
         <Text style={styles.name}>{user.name}</Text>
         {(user.city || user.state) ? <Text style={styles.location}>{[user.city, user.state].filter(Boolean).join(', ')}</Text> : null}
+        {!isPaidMember && <GuestBadge style={{ alignSelf: 'center', marginTop: 6 }} />}
         {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
       </View>
 
@@ -160,9 +162,9 @@ export default function ProfileScreen() {
           </View>
         ) : null}
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Member Since</Text>
+          <Text style={styles.detailLabel}>{!isPaidMember ? 'Status' : 'Member Since'}</Text>
           <Text style={styles.detailValue}>
-            {new Date(user.memberSince).toLocaleDateString('en-US', {
+            {!isPaidMember ? 'Guest' : new Date(user.memberSince).toLocaleDateString('en-US', {
               month: 'long',
               year: 'numeric',
             })}
@@ -198,6 +200,15 @@ export default function ProfileScreen() {
               onPress={() => updatePushPreferences({ push_notifications_enabled: !pushNotificationsEnabled })}
             >
               <View style={[styles.toggleThumb, pushNotificationsEnabled && styles.toggleThumbOn]} />
+            </Pressable>
+          </View>
+          <View style={styles.detailRow}>
+            <Text style={styles.detailLabel}>Push: Fried Egg Content</Text>
+            <Pressable
+              style={[styles.toggleTrack, pushFeContentEnabled && styles.toggleTrackOn]}
+              onPress={() => updatePushPreferences({ push_fe_content_enabled: !pushFeContentEnabled })}
+            >
+              <View style={[styles.toggleThumb, pushFeContentEnabled && styles.toggleThumbOn]} />
             </Pressable>
           </View>
           <View style={styles.detailRow}>

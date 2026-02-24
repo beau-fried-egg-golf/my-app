@@ -6,6 +6,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { GroupMember } from '@/types';
 import DetailHeader from '@/components/DetailHeader';
+import GuestBadge from '@/components/GuestBadge';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
@@ -123,7 +124,7 @@ function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () =
 
 export default function GroupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { groups, session, joinGroup, leaveGroup, getGroupMembers, loadGroups, deleteGroup } = useStore();
+  const { groups, session, profiles, joinGroup, leaveGroup, getGroupMembers, loadGroups, deleteGroup, isPaidMember, setShowUpgradeModal } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -154,6 +155,7 @@ export default function GroupDetailScreen() {
   }
 
   const handleJoin = async () => {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     await joinGroup(group.id);
     const m = await getGroupMembers(group.id);
     setMembers(m);
@@ -166,6 +168,7 @@ export default function GroupDetailScreen() {
   };
 
   const handleShare = () => {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     router.push({
       pathname: '/create-post',
       params: {
@@ -348,6 +351,7 @@ export default function GroupDetailScreen() {
                 </View>
               )}
               <Text style={styles.memberName}>{m.user_name ?? 'Member'}</Text>
+              {(() => { const p = profiles.find(pr => pr.id === m.user_id); return p && (!p.subscription_tier || p.subscription_tier === 'free') ? <GuestBadge style={{ marginLeft: 6 }} /> : null; })()}
               {m.role === 'creator' && (
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleBadgeText}>Creator</Text>

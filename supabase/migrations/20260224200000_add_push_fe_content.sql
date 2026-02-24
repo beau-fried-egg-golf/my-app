@@ -1,0 +1,1 @@
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS push_fe_content_enabled BOOLEAN NOT NULL DEFAULT true;

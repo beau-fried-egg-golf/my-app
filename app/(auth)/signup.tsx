@@ -54,6 +54,7 @@ export default function SignupScreen() {
         <View style={styles.header}>
           <LetterSpacedHeader text="Create Account" size={28} />
           <Text style={styles.subtitle}>Sign up to get started</Text>
+          <Text style={styles.memberNote}>Already a FEGC member? Use the same email address as your membership for full access.</Text>
         </View>
 
         {error ? (
@@ -155,6 +156,13 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 12,
     fontFamily: Fonts!.sans,
+  },
+  memberNote: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginTop: 8,
+    fontFamily: Fonts!.sans,
+    lineHeight: 18,
   },
   errorBox: {
     backgroundColor: '#ffebee',

@@ -6,6 +6,7 @@ import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { CancellationRequest, MeetupMember, WaitlistEntry } from '@/types';
 import DetailHeader from '@/components/DetailHeader';
+import GuestBadge from '@/components/GuestBadge';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
@@ -157,7 +158,7 @@ const PAYMENT_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
 
 export default function MeetupDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, cancelPendingReservation, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup, requestCancellation, getUserCancellationRequest, joinWaitlist, leaveWaitlist, getWaitlistPosition, getWaitlistEntries } = useStore();
+  const { meetups, session, profiles, joinMeetup, leaveMeetup, withdrawAndRefund, cancelPendingReservation, createCheckoutSession, getMeetupMembers, addMeetupMember, loadMeetups, deleteMeetup, requestCancellation, getUserCancellationRequest, joinWaitlist, leaveWaitlist, getWaitlistPosition, getWaitlistEntries, isPaidMember, setShowUpgradeModal } = useStore();
   const router = useRouter();
   const [members, setMembers] = useState<MeetupMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
@@ -255,6 +256,7 @@ export default function MeetupDetailScreen() {
   };
 
   const handleJoin = () => {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     setShowSpotModal(true);
   };
 
@@ -275,6 +277,7 @@ export default function MeetupDetailScreen() {
   };
 
   const handleShare = () => {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     const description = `${formatMeetupDate(meetup.meetup_date)} · ${meetup.location_name}`;
     router.push({
       pathname: '/create-post',
@@ -310,6 +313,7 @@ export default function MeetupDetailScreen() {
             <DesktopBlackButton
               label={`JOIN WAITLIST${(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} WAITING)` : ''}`}
               onPress={async () => {
+                if (!isPaidMember) { setShowUpgradeModal(true); return; }
                 await joinWaitlist(meetup.id);
                 const pos = await getWaitlistPosition(meetup.id);
                 setWaitlistPosition(pos);
@@ -423,6 +427,7 @@ export default function MeetupDetailScreen() {
         <DesktopBlackButton
           label={`JOIN WAITLIST${(meetup.waitlist_count ?? 0) > 0 ? ` (${meetup.waitlist_count} WAITING)` : ''}`}
           onPress={async () => {
+            if (!isPaidMember) { setShowUpgradeModal(true); return; }
             await joinWaitlist(meetup.id);
             const pos = await getWaitlistPosition(meetup.id);
             setWaitlistPosition(pos);
@@ -463,6 +468,7 @@ export default function MeetupDetailScreen() {
             <Pressable
               style={[styles.actionBtnPrimary, { backgroundColor: '#6C757D' }]}
               onPress={async () => {
+                if (!isPaidMember) { setShowUpgradeModal(true); return; }
                 await joinWaitlist(meetup.id);
                 const pos = await getWaitlistPosition(meetup.id);
                 setWaitlistPosition(pos);
@@ -641,6 +647,7 @@ export default function MeetupDetailScreen() {
         <Pressable
           style={[styles.actionBtnPrimary, { backgroundColor: '#6C757D' }]}
           onPress={async () => {
+            if (!isPaidMember) { setShowUpgradeModal(true); return; }
             await joinWaitlist(meetup.id);
             const pos = await getWaitlistPosition(meetup.id);
             setWaitlistPosition(pos);
@@ -923,6 +930,7 @@ export default function MeetupDetailScreen() {
                 </View>
               )}
               <Text style={styles.memberName}>{m.user_name ?? 'Member'}</Text>
+              {(() => { const p = profiles.find(pr => pr.id === m.user_id); return p && (!p.subscription_tier || p.subscription_tier === 'free') ? <GuestBadge style={{ marginLeft: 6 }} /> : null; })()}
               {m.user_id === meetup.host_id && (
                 <View style={styles.roleBadge}>
                   <Text style={styles.roleBadgeText}>Host</Text>
@@ -965,6 +973,7 @@ export default function MeetupDetailScreen() {
                   </View>
                 )}
                 <Text style={styles.memberName}>{e.user_name ?? 'Member'}</Text>
+                {(() => { const p = profiles.find(pr => pr.id === e.user_id); return p && (!p.subscription_tier || p.subscription_tier === 'free') ? <GuestBadge style={{ marginLeft: 6 }} /> : null; })()}
                 <View style={[styles.paidBadge, { backgroundColor: '#E8F4FD' }]}>
                   <Text style={[styles.paidBadgeText, { color: '#0C5460', fontSize: 11 }]}>#{e.position}</Text>
                 </View>

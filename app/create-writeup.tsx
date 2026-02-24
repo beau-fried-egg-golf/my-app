@@ -43,7 +43,7 @@ interface PhotoDraft {
 export default function CreateWriteupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ courseId?: string }>();
-  const { user, courses, addWriteup } = useStore();
+  const { user, courses, addWriteup, isPaidMember, setShowUpgradeModal } = useStore();
   const [courseId, setCourseId] = useState<string | null>(params.courseId ?? null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -117,6 +117,7 @@ export default function CreateWriteupScreen() {
   }
 
   async function handleSubmit() {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     if (!canSubmit) return;
     setSubmitting(true);
     try {

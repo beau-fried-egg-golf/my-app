@@ -113,9 +113,14 @@ export default function LoginScreen() {
           <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
         </Pressable>
 
-        <Pressable style={styles.linkButton} onPress={() => Linking.openURL('https://www.thefriedegg.com/fried-egg-golf-club')}>
+        <Pressable style={styles.linkButton} onPress={() => router.push('/(auth)/signup')}>
           <Text style={styles.linkText}>
-            Not a member? <Text style={styles.linkBold}>Sign up for FEGC.</Text>
+            New to the app? <Text style={styles.linkBold}>Create a free account.</Text>
+          </Text>
+        </Pressable>
+        <Pressable style={styles.linkButton} onPress={() => Linking.openURL('https://www.thefriedegg.com/membership')}>
+          <Text style={styles.linkText}>
+            Not a member? <Text style={styles.linkBold}>Join FEGC.</Text>
           </Text>
         </Pressable>
       </View>

@@ -10,6 +10,8 @@ export interface Profile {
   suspended?: boolean;
   is_verified?: boolean;
   dms_disabled?: boolean;
+  subscription_tier?: string;
+  subscription_status?: string;
 }
 
 export interface Course {

@@ -9,6 +9,7 @@ import PassportBook from '@/components/PassportBook';
 import DetailHeader from '@/components/DetailHeader';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import GuestBadge from '@/components/GuestBadge';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
 
@@ -81,7 +82,7 @@ function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () =
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy } = useStore();
+  const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy, isPaidMember, setShowUpgradeModal } = useStore();
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const desktopScrollProps = useDesktopScrollProps();
@@ -151,6 +152,7 @@ export default function MemberProfileScreen() {
           {profile.is_verified && <VerifiedBadge size={18} />}
         </View>
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
+        {(!profile.subscription_tier || profile.subscription_tier === 'free') && <GuestBadge style={{ alignSelf: 'center', marginTop: 6 }} />}
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         {!isOwnProfile && isDesktop && (
           <View style={styles.actionRow}>
@@ -163,6 +165,7 @@ export default function MemberProfileScreen() {
               <DesktopBlackButton
                 label="MESSAGE"
                 onPress={async () => {
+                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const convoId = await getOrCreateConversation(profile.id);
                   router.push(`/conversation/${convoId}`);
                 }}
@@ -184,6 +187,7 @@ export default function MemberProfileScreen() {
               <Pressable
                 style={styles.actionBtn}
                 onPress={async () => {
+                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const convoId = await getOrCreateConversation(profile.id);
                   router.push(`/conversation/${convoId}`);
                 }}
@@ -231,9 +235,9 @@ export default function MemberProfileScreen() {
           </View>
         ) : null}
         <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Member Since</Text>
+          <Text style={styles.detailLabel}>{(!profile.subscription_tier || profile.subscription_tier === 'free') ? 'Status' : 'Member Since'}</Text>
           <Text style={styles.detailValue}>
-            {new Date(profile.member_since).toLocaleDateString('en-US', {
+            {(!profile.subscription_tier || profile.subscription_tier === 'free') ? 'Guest' : new Date(profile.member_since).toLocaleDateString('en-US', {
               month: 'long',
               year: 'numeric',
             })}

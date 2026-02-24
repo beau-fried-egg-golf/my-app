@@ -103,7 +103,7 @@ function formatTime(iso: string): string {
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent, getUserName } = useStore();
+  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent, getUserName, isPaidMember, setShowUpgradeModal } = useStore();
 
   const [replies, setReplies] = useState<PostReply[]>([]);
   const [replyText, setReplyText] = useState('');
@@ -148,6 +148,7 @@ export default function PostDetailScreen() {
   }
 
   async function handleSendReply() {
+    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     if (!replyText.trim() || sendingReply) return;
     setSendingReply(true);
     try {
@@ -249,7 +250,7 @@ export default function PostDetailScreen() {
               key={key}
               userIds={reactorIds}
               getUserName={getUserName}
-              onPress={() => togglePostReaction(post.id, key)}
+              onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } togglePostReaction(post.id, key); }}
               style={[styles.reactionButton, active && styles.reactionButtonActive]}
             >
               <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
@@ -357,7 +358,7 @@ export default function PostDetailScreen() {
                 style={styles.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}
-                placeholder="Write a reply..."
+                placeholder={isPaidMember ? "Write a reply..." : "Join FEGC to reply"}
                 placeholderTextColor={Colors.gray}
                 multiline
                 maxLength={2000}
@@ -397,7 +398,7 @@ export default function PostDetailScreen() {
                 style={styles.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}
-                placeholder="Write a reply..."
+                placeholder={isPaidMember ? "Write a reply..." : "Join FEGC to reply"}
                 placeholderTextColor={Colors.gray}
                 multiline
                 maxLength={2000}

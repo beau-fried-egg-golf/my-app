@@ -138,8 +138,12 @@ interface StoreContextType {
   pushNearbyEnabled: boolean;
   pushNearbyRadiusMiles: number;
   emailNotificationsEnabled: boolean;
-  updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean }) => Promise<void>;
+  pushFeContentEnabled: boolean;
+  updatePushPreferences: (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean; push_fe_content_enabled?: boolean }) => Promise<void>;
   isAdmin: boolean;
+  isPaidMember: boolean;
+  showUpgradeModal: boolean;
+  setShowUpgradeModal: (show: boolean) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -174,7 +178,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [pushNearbyEnabled, setPushNearbyEnabled] = useState(true);
   const [pushNearbyRadiusMiles, setPushNearbyRadiusMiles] = useState(50);
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
+  const [pushFeContentEnabled, setPushFeContentEnabled] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isPaidMember, setIsPaidMember] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -299,9 +306,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         setPushNearbyEnabled(true);
         setPushNearbyRadiusMiles(50);
         setEmailNotificationsEnabled(true);
+        setPushFeContentEnabled(true);
         setGroups([]);
         setMeetups([]);
         setNotifications([]);
+        setIsPaidMember(false);
+        setShowUpgradeModal(false);
       }
     });
 
@@ -340,6 +350,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setUser(profileToUser(profile));
+      const tier = profile.subscription_tier ?? 'free';
+      const status = profile.subscription_status ?? 'active';
+      setIsPaidMember(tier !== 'free' && (status === 'active' || status === 'trialing'));
     }
     // Check admin status (non-critical — default to false on error)
     try {
@@ -389,6 +402,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             setPushNearbyEnabled(ownProfile.push_nearby_enabled ?? true);
             setPushNearbyRadiusMiles(ownProfile.push_nearby_radius_miles ?? 50);
             setEmailNotificationsEnabled(ownProfile.email_notifications_enabled ?? true);
+            setPushFeContentEnabled(ownProfile.push_fe_content_enabled ?? true);
           }
         }
       }
@@ -884,11 +898,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (email: string, password: string, name: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
+    if (!error && data.user) {
+      // Check if this email has an existing Stripe subscription (non-blocking)
+      supabase.functions.invoke('check-subscription', {
+        body: { user_id: data.user.id },
+      }).then(() => loadProfile(data.user!.id)).catch(() => {});
+      // Auto-follow The Fried Egg (non-blocking)
+      const friedEgg = profiles.find(p => p.name.toLowerCase().includes('fried egg'));
+      if (friedEgg) {
+        supabase.from('follows').insert({ follower_id: data.user.id, following_id: friedEgg.id }).catch(() => {});
+      }
+    }
     return { error: error ?? null };
   }, []);
 
@@ -1307,6 +1332,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       const newActivities = await loadActivities();
       setActivities(newActivities);
+
+      // Notify followers when The Fried Egg posts
+      if (user?.name?.toLowerCase().includes('fried egg')) {
+        supabase.functions.invoke('notify-fe-post', {
+          body: { post_id: postData.id, poster_name: user.name },
+        }).catch(() => {});
+      }
 
       return post;
     },
@@ -3035,18 +3067,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' }) {
+  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' | 'fe_content' }) {
     supabase.functions.invoke('send-push', { body: params }).catch(() => {});
   }
 
   const updatePushPreferences = useCallback(
-    async (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean }) => {
+    async (prefs: { push_dm_enabled?: boolean; push_notifications_enabled?: boolean; push_nearby_enabled?: boolean; push_nearby_radius_miles?: number; email_notifications_enabled?: boolean; push_fe_content_enabled?: boolean }) => {
       if (!session) return;
       if (prefs.push_dm_enabled !== undefined) setPushDmEnabled(prefs.push_dm_enabled);
       if (prefs.push_notifications_enabled !== undefined) setPushNotificationsEnabled(prefs.push_notifications_enabled);
       if (prefs.push_nearby_enabled !== undefined) setPushNearbyEnabled(prefs.push_nearby_enabled);
       if (prefs.push_nearby_radius_miles !== undefined) setPushNearbyRadiusMiles(prefs.push_nearby_radius_miles);
       if (prefs.email_notifications_enabled !== undefined) setEmailNotificationsEnabled(prefs.email_notifications_enabled);
+      if (prefs.push_fe_content_enabled !== undefined) setPushFeContentEnabled(prefs.push_fe_content_enabled);
       await supabase.from('profiles').update(prefs).eq('id', session.user.id);
     },
     [session],
@@ -3200,8 +3233,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         pushNearbyEnabled,
         pushNearbyRadiusMiles,
         emailNotificationsEnabled,
+        pushFeContentEnabled,
         updatePushPreferences,
         isAdmin,
+        isPaidMember,
+        showUpgradeModal,
+        setShowUpgradeModal,
       }}
     >
       {children}

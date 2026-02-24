@@ -14,6 +14,7 @@ import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { DesktopHeader, DesktopNav, DesktopDropdownMenu } from '@/components/desktop';
 import { ActionPaneContext, ActionPaneType } from '@/hooks/useActionPane';
 import { DesktopScrollContext } from '@/hooks/useDesktopScroll';
+import UpgradeModal from '@/components/UpgradeModal';
 
 const LazyCreatePost = React.lazy(() => import('./create-post'));
 const LazyCreateWriteup = React.lazy(() => import('./create-writeup'));
@@ -33,7 +34,7 @@ function InitialRouteEnforcer() {
 
   useEffect(() => {
     requestAnimationFrame(() => {
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/');
     });
   }, []);
 
@@ -374,6 +375,7 @@ export default function RootLayout() {
       <InitialRouteEnforcer />
       <PushNotificationRegistrar />
       <PasswordResetNavigator />
+      <UpgradeModal />
       <StatusBar style="dark" />
       <AppShell />
     </ExperienceStoreProvider>
