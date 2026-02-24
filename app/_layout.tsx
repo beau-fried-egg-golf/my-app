@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Animated, Image, Platform, Text, View } from 'react-native';
 import { useFonts } from 'expo-font';
@@ -62,6 +62,8 @@ function PasswordResetNavigator() {
 function AppShell() {
   const { isLoading } = useStore();
   const isDesktop = useIsDesktop();
+  const segments = useSegments();
+  const isAuthScreen = segments[0] === '(auth)';
   const [showDropdown, setShowDropdown] = useState(false);
   const [actionPane, setActionPane] = useState<ActionPaneType | null>(null);
   const desktopScrollY = useRef(new Animated.Value(0)).current;
@@ -111,6 +113,20 @@ function AppShell() {
       }
       #root-app-shell > div:not(:first-child) * {
         scrollbar-width: none !important;
+      }
+
+      /* Ensure content fills viewport so footer is never visible without scrolling */
+      [data-dsk-scene] {
+        min-height: 100vh !important;
+      }
+
+      /* Peek-behind footer: make scroll container transparent at bottom */
+      #root-app-shell {
+        background-color: transparent !important;
+      }
+      /* Exempt the footer from the flex-basis override */
+      #desktop-footer {
+        flex-shrink: 1 !important;
       }
     `;
     document.head.appendChild(style);
@@ -218,7 +234,7 @@ function AppShell() {
       nativeID="root-app-shell"
       style={{ flex: 1, backgroundColor: '#FFFFFF' }}
     >
-      {isDesktop && (
+      {isDesktop && !isAuthScreen && (
         <View style={{ zIndex: 10, backgroundColor: '#FFFFFF' }}>
           <DesktopHeader onMenuPress={() => setShowDropdown(v => !v)} />
           <DesktopNav />
@@ -305,7 +321,31 @@ function AppShell() {
           <Text style={{ fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, fontSize: 13, color: Colors.gray, letterSpacing: 1.5, marginTop: 16, textTransform: 'uppercase' }}>Loading...</Text>
         </View>
       )}
+      {isDesktop && Platform.OS === 'web' && !isAuthScreen && (
+        <View nativeID="desktop-footer" style={{ height: 300 }} />
+      )}
     </View>
+    {isDesktop && Platform.OS === 'web' && !isAuthScreen && (
+      <View
+        style={{
+          position: 'fixed' as any,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 300,
+          backgroundColor: Colors.orange,
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: -1,
+        }}
+      >
+        <Image
+          source={require('../assets/images/FriedEggGolfClub_Horizontal_Black.png')}
+          style={{ width: '80%', height: '60%' } as any}
+          resizeMode="contain"
+        />
+      </View>
+    )}
     </DesktopScrollContext.Provider>
     </ActionPaneContext.Provider>
   );
