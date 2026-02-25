@@ -12,6 +12,23 @@ import { generateEventEmbedHTML } from './generateEventEmbedHTML';
 import AnnotationPreview from './AnnotationPreview';
 import AnnotationExport from './AnnotationExport';
 
+/** Convert a UTC ISO string to a `datetime-local` input value (browser-local time) */
+function isoToLocal(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/** Convert a `datetime-local` input value (browser-local time) to a UTC ISO string */
+function localToIso(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 function generateSlug(name: string): string {
   return name
     .toLowerCase()
@@ -51,6 +68,7 @@ export default function EventEditor() {
   const [addOns, setAddOns] = useState<(AddOn & { _key: string; _new?: boolean })[]>([]);
   const [formFields, setFormFields] = useState<(EventFormField & { _key: string; _new?: boolean })[]>([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [exportHtml, setExportHtml] = useState<string | null>(null);
 
@@ -206,7 +224,26 @@ export default function EventEditor() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError('');
     if (!form.name.trim() || !form.date) return;
+
+    // Validate registration window
+    if (form.registration_opens_at && form.registration_closes_at) {
+      if (new Date(form.registration_opens_at) >= new Date(form.registration_closes_at)) {
+        setError('Registration open date must be before close date.');
+        return;
+      }
+    }
+
+    // Validate registration closes before or on event date
+    if (form.registration_closes_at && form.date) {
+      const eventEnd = new Date(form.date + 'T23:59:59');
+      if (new Date(form.registration_closes_at) > eventEnd) {
+        setError('Registration close date should not be after the event date.');
+        return;
+      }
+    }
+
     setSaving(true);
 
     const now = new Date().toISOString();
@@ -331,11 +368,11 @@ export default function EventEditor() {
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Opens At</label>
-            <input className="form-input" type="datetime-local" value={form.registration_opens_at?.slice(0, 16) ?? ''} onChange={e => handleChange('registration_opens_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />
+            <input className="form-input" type="datetime-local" value={isoToLocal(form.registration_opens_at)} onChange={e => handleChange('registration_opens_at', localToIso(e.target.value))} />
           </div>
           <div className="form-group">
             <label className="form-label">Closes At</label>
-            <input className="form-input" type="datetime-local" value={form.registration_closes_at?.slice(0, 16) ?? ''} onChange={e => handleChange('registration_closes_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />
+            <input className="form-input" type="datetime-local" value={isoToLocal(form.registration_closes_at)} onChange={e => handleChange('registration_closes_at', localToIso(e.target.value))} />
           </div>
         </div>
 
@@ -545,6 +582,11 @@ export default function EventEditor() {
         <button type="button" className="btn" onClick={addFormField} style={{ marginBottom: 8 }}>+ Add Form Field</button>
 
         {/* Submit */}
+        {error && (
+          <div style={{ padding: 12, backgroundColor: '#fee', border: '1px solid #c00', borderRadius: 6, color: '#c00', fontSize: 14, marginTop: 16 }}>
+            {error}
+          </div>
+        )}
         <div className="form-actions" style={{ marginTop: 32 }}>
           <button type="submit" className="btn btn-primary" disabled={saving}>
             {saving ? 'Saving...' : isEditing ? 'Save Changes' : 'Create Event'}
