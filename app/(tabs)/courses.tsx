@@ -172,7 +172,7 @@ export default function CoursesScreen() {
   const defaultBottom = Math.max(16, insets.bottom) + 56 + 12;
   const searchBarBottom = keyboardHeight > 0 ? keyboardHeight + 12 : defaultBottom;
 
-  const fabRight = (screenWidth - 340) / 2;
+  const fabRight = 20;
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const expandAnim = useRef(new Animated.Value(0)).current;
   const searchInputRef = useRef<TextInput>(null);

@@ -105,7 +105,7 @@ export default function GroupsScreen() {
   const isDesktop = useIsDesktop();
   const { openActionPane } = useActionPane();
   const desktopScrollProps = useDesktopScrollProps();
-  const fabRight = (screenWidth - 340) / 2;
+  const fabRight = 20;
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
   const [sortOrder, setSortOrder] = useState<GroupSortOrder>('distance');
   const [desktopSearch, setDesktopSearch] = useState('');

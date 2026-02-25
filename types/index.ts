@@ -239,6 +239,7 @@ export interface Activity {
   target_user_id: string | null;
   group_id?: string | null;
   meetup_id?: string | null;
+  content?: string | null;
   created_at: string;
   // Joined fields for display
   user_name?: string;

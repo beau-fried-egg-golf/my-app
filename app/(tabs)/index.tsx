@@ -137,13 +137,14 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
   if (item.type === 'post_reply') {
     const name = item.user_name ?? '';
     const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
-    const postDisplayName = post
+    const postPreview = post
       ? post.link_title
         ? decodeEntities(post.link_title)
         : post.content
-          ? post.content.length > 50 ? post.content.slice(0, 50) + '...' : post.content
-          : 'a post'
-      : 'a post';
+          ? post.content.length > 80 ? post.content.slice(0, 80) + '...' : post.content
+          : ''
+      : '';
+    const replyText = item.content ?? '';
     return (
       <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
@@ -155,10 +156,14 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
-            <Text style={styles.activityText}> commented on </Text>
-            <Text style={styles.activityTextBold}>{postDisplayName}</Text>
+            <Text style={styles.activityTime}>  {formatTime(item.created_at)}</Text>
           </View>
-          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+          {replyText ? (
+            <Text style={styles.activityText} numberOfLines={3}>{replyText}</Text>
+          ) : null}
+          {postPreview ? (
+            <Text style={styles.activityReplyContext} numberOfLines={1}>Replying to: {postPreview}</Text>
+          ) : null}
         </View>
       </PlatformPressable>
     );
@@ -167,6 +172,9 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
   if (item.type === 'writeup_reply') {
     const name = item.user_name ?? '';
     const writeupDisplayName = item.writeup_title ?? 'a review';
+    const courseName = item.course_name ?? '';
+    const contextLabel = courseName ? `${writeupDisplayName} — ${courseName}` : writeupDisplayName;
+    const replyText = item.content ?? '';
     return (
       <PlatformPressable style={styles.activityItem} onPress={onPress}>
         {userProfile?.image ? (
@@ -178,11 +186,12 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
-            <Text style={styles.activityText}> commented on </Text>
-            <Text style={styles.activityTextBold}>{writeupDisplayName}</Text>
+            <Text style={styles.activityTime}>  {formatTime(item.created_at)}</Text>
           </View>
-          <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
-          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+          {replyText ? (
+            <Text style={styles.activityText} numberOfLines={3}>{replyText}</Text>
+          ) : null}
+          <Text style={styles.activityReplyContext} numberOfLines={1}>Replying to: {contextLabel}</Text>
         </View>
       </PlatformPressable>
     );
@@ -376,7 +385,7 @@ export default function FeedScreen() {
   const isDesktop = useIsDesktop();
   const { openActionPane } = useActionPane();
   const desktopScrollProps = useDesktopScrollProps();
-  const fabRight = (screenWidth - 340) / 2;
+  const fabRight = 20;
   const [showFabMenu, setShowFabMenu] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -982,6 +991,13 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 4,
     fontFamily: Fonts!.sans,
+  },
+  activityReplyContext: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginTop: 4,
+    fontFamily: Fonts!.sans,
+    fontStyle: 'italic',
   },
   separator: {
     height: 1,

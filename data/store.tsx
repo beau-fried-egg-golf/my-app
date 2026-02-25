@@ -327,12 +327,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     if (!session) return;
     const userId = session.user.id;
 
-    const poll = () => {
+    const poll = async () => {
       loadConversations(userId);
       loadGroupsData(userId);
       loadMeetupsData(userId);
       loadNotificationsData(userId);
       loadActivities();
+      const updatedPosts = await loadPosts();
+      setPosts(updatedPosts);
+      const updatedWriteups = await loadWriteups();
+      setWriteups(updatedWriteups);
     };
 
     const interval = setInterval(poll, 15000);
@@ -1492,17 +1496,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         user_id: userId,
         post_id: postId,
         target_user_id: post?.user_id ?? null,
+        content,
       });
       if (actErr) console.error('Failed to insert post_reply activity:', actErr);
 
       // Insert notification (no self-notification)
       if (post && post.user_id !== userId) {
-        await supabase.from('notifications').insert({
+        const { error: notifErr } = await supabase.from('notifications').insert({
           user_id: post.user_id,
           type: 'post_reply',
           actor_id: userId,
           post_id: postId,
         });
+        if (notifErr) console.error('Failed to insert post_reply notification:', notifErr);
         sendPush({
           recipient_id: post.user_id,
           title: 'New Reply',
@@ -1572,17 +1578,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         user_id: userId,
         writeup_id: writeupId,
         target_user_id: writeup?.user_id ?? null,
+        content,
       });
       if (actErr) console.error('Failed to insert writeup_reply activity:', actErr);
 
       // Insert notification (no self-notification)
       if (writeup && writeup.user_id !== userId) {
-        await supabase.from('notifications').insert({
+        const { error: notifErr } = await supabase.from('notifications').insert({
           user_id: writeup.user_id,
           type: 'writeup_reply',
           actor_id: userId,
           writeup_id: writeupId,
         });
+        if (notifErr) console.error('Failed to insert writeup_reply notification:', notifErr);
         sendPush({
           recipient_id: writeup.user_id,
           title: 'New Reply',

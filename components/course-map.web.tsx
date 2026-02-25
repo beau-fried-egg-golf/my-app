@@ -112,7 +112,7 @@ export default function CourseMap({
           </Marker>
         ))}
       </Map>
-      <div style={{ position: 'absolute', bottom: 16, right: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ position: 'absolute', bottom: 80, right: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <button
           onClick={handleZoomIn}
           style={{
