@@ -6,11 +6,13 @@ import type { Course } from './types';
 const CSV_COLUMNS = [
   'id', 'name', 'short_name', 'address', 'city', 'state', 'postal_code', 'country',
   'is_private', 'holes', 'par', 'year_established', 'description', 'latitude', 'longitude',
+  'fe_hero_image', 'fe_profile_url', 'fe_profile_author', 'fe_egg_rating', 'fe_bang_for_buck', 'fe_profile_date',
 ] as const;
 
 const TEMPLATE_EXAMPLE = [
   '', 'Pine Valley Golf Club', 'Pine Valley', '1 Pine Valley Dr', 'Pine Valley', 'NJ', '08021', 'US',
   'true', '18', '70', '1913', 'A legendary course in the Pine Barrens of New Jersey.', '39.7879', '-74.9668',
+  '', 'https://friedegg.com/pine-valley', 'Andy Johnson', '3', 'false', '2023-05-15',
 ];
 
 type RowStatus = 'new' | 'update' | 'error';
@@ -114,12 +116,12 @@ function validateRow(data: Record<string, string>): { course: Course | null; err
     description: data.description?.trim() || '',
     latitude: parseFloat(data.latitude) || 0,
     longitude: parseFloat(data.longitude) || 0,
-    fe_hero_image: null,
-    fe_profile_url: null,
-    fe_profile_author: null,
-    fe_egg_rating: null,
-    fe_bang_for_buck: false,
-    fe_profile_date: null,
+    fe_hero_image: data.fe_hero_image?.trim() || null,
+    fe_profile_url: data.fe_profile_url?.trim() || null,
+    fe_profile_author: data.fe_profile_author?.trim() || null,
+    fe_egg_rating: data.fe_egg_rating?.trim() ? parseInt(data.fe_egg_rating) : null,
+    fe_bang_for_buck: parseBool(data.fe_bang_for_buck || ''),
+    fe_profile_date: data.fe_profile_date?.trim() || null,
   };
 
   return { course };
