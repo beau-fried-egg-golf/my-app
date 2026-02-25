@@ -332,7 +332,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       loadGroupsData(userId);
       loadMeetupsData(userId);
       loadNotificationsData(userId);
-      loadActivities();
+      const updatedActivities = await loadActivities();
+      setActivities(updatedActivities);
       const updatedPosts = await loadPosts();
       setPosts(updatedPosts);
       const updatedWriteups = await loadWriteups();

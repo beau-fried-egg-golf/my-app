@@ -908,6 +908,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 16,
     paddingVertical: 14,
+    overflow: 'hidden',
   },
   activityAvatar: {
     width: 36,
@@ -926,6 +927,9 @@ const styles = StyleSheet.create({
   },
   activityContent: {
     flex: 1,
+    flexShrink: 1,
+    width: 0,
+    overflow: 'hidden',
   },
   activityRow: {
     flexDirection: 'row',

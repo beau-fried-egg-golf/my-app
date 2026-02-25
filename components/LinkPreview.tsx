@@ -55,7 +55,7 @@ function getDomain(url: string): string {
 export default function LinkPreview({ url, title, description, image }: LinkPreviewProps) {
   const router = useRouter();
   const domain = getDomain(url);
-  const [aspectRatio, setAspectRatio] = useState(1.91); // default OG image ratio (1200x630)
+  const [aspectRatio, setAspectRatio] = useState(1.91);
 
   function handlePress() {
     const parsed = parseInAppUrl(url);
@@ -70,19 +70,31 @@ export default function LinkPreview({ url, title, description, image }: LinkPrev
     }
   }
 
+  const isWeb = Platform.OS === 'web';
+
   return (
     <Pressable style={styles.card} onPress={handlePress}>
       {image ? (
-        <Image
-          source={{ uri: image }}
-          style={[styles.image, { aspectRatio }]}
-          onLoad={(e) => {
-            const source = e.nativeEvent?.source ?? e.nativeEvent;
-            const width = source?.width;
-            const height = source?.height;
-            if (width && height) setAspectRatio(width / height);
-          }}
-        />
+        isWeb ? (
+          <div style={{ width: '100%', overflow: 'hidden' }}>
+            <img
+              src={image}
+              style={{ width: '100%', display: 'block', borderTopLeftRadius: 9, borderTopRightRadius: 9 }}
+              alt=""
+            />
+          </div>
+        ) : (
+          <Image
+            source={{ uri: image }}
+            style={[styles.image, { aspectRatio }]}
+            onLoad={(e) => {
+              const source = e.nativeEvent?.source ?? e.nativeEvent;
+              const width = source?.width;
+              const height = source?.height;
+              if (width && height) setAspectRatio(width / height);
+            }}
+          />
+        )
       ) : null}
       <View style={styles.body}>
         {title ? (
