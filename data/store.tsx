@@ -372,8 +372,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     try {
       const currentUserId = (await supabase.auth.getSession()).data.session?.user?.id;
 
-      const [coursesRes, writeupsRes, profilesRes, playedRes, postsRes, followsRes, blockerRes, blockedRes] = await Promise.all([
-        supabase.from('courses').select('*').order('name'),
+      async function loadAllCourses() {
+        const all: Course[] = [];
+        const pageSize = 1000;
+        let from = 0;
+        while (true) {
+          const { data } = await supabase
+            .from('courses')
+            .select('*')
+            .order('name')
+            .range(from, from + pageSize - 1);
+          if (!data || data.length === 0) break;
+          all.push(...data);
+          if (data.length < pageSize) break;
+          from += pageSize;
+        }
+        return all;
+      }
+
+      const [loadedCourses, writeupsRes, profilesRes, playedRes, postsRes, followsRes, blockerRes, blockedRes] = await Promise.all([
+        loadAllCourses(),
         loadWriteups(),
         supabase.from('profiles').select('*').order('name'),
         supabase.from('courses_played').select('*'),
@@ -389,7 +407,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           : { data: [] },
       ]);
 
-      const loadedCourses = coursesRes.data ?? [];
       if (loadedCourses.length) {
         setCourses(loadedCourses);
         coursesRef.current = loadedCourses;

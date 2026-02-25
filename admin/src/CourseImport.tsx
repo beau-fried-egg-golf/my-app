@@ -161,6 +161,7 @@ export default function CourseImport() {
   const [importing, setImporting] = useState(false);
   const [done, setDone] = useState(false);
   const [importedCount, setImportedCount] = useState(0);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -209,8 +210,10 @@ export default function CourseImport() {
     if (valid.length === 0) return;
 
     setImporting(true);
-    await saveCourses(valid.map((r) => r.course!));
+    setImportErrors([]);
+    const { errors } = await saveCourses(valid.map((r) => r.course!));
     setImporting(false);
+    setImportErrors(errors);
     setImportedCount(valid.length);
     setDone(true);
     // Refresh existing courses so re-upload shows "update"
@@ -248,8 +251,17 @@ export default function CourseImport() {
         <div className="form-container" style={{ textAlign: 'center', padding: 48 }}>
           <h2 style={{ marginBottom: 8 }}>Import Complete</h2>
           <p style={{ color: '#555', marginBottom: 20 }}>
-            Successfully imported {importedCount} course{importedCount !== 1 ? 's' : ''}.
+            {importErrors.length > 0
+              ? `Imported with ${importErrors.length} error(s):`
+              : `Successfully imported ${importedCount} course${importedCount !== 1 ? 's' : ''}.`}
           </p>
+          {importErrors.length > 0 && (
+            <div style={{ textAlign: 'left', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: 8, padding: 16, marginBottom: 20 }}>
+              {importErrors.map((err, i) => (
+                <p key={i} style={{ color: '#dc2626', fontSize: 14, margin: '4px 0' }}>{err}</p>
+              ))}
+            </div>
+          )}
           <div className="btn-group" style={{ justifyContent: 'center' }}>
             <Link to="/courses" className="btn btn-primary">View Courses</Link>
             <button className="btn" onClick={() => { setRows([]); setDone(false); if (fileRef.current) fileRef.current.value = ''; }}>

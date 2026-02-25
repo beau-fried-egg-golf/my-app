@@ -2,16 +2,38 @@ import { supabase, supabaseAuth } from './supabase';
 import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto, CancellationRequest, WaitlistEntry } from './types';
 
 export async function getCourses(): Promise<Course[]> {
-  const { data } = await supabase.from('courses').select('*').order('name');
-  return data ?? [];
+  const all: Course[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const { data } = await supabase
+      .from('courses')
+      .select('*')
+      .order('name')
+      .range(from, from + pageSize - 1);
+    if (!data || data.length === 0) break;
+    all.push(...data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return all;
 }
 
 export async function saveCourse(course: Course): Promise<void> {
   await supabase.from('courses').upsert(course);
 }
 
-export async function saveCourses(courses: Course[]): Promise<void> {
-  await supabase.from('courses').upsert(courses);
+export async function saveCourses(courses: Course[]): Promise<{ errors: string[] }> {
+  const batchSize = 200;
+  const errors: string[] = [];
+  for (let i = 0; i < courses.length; i += batchSize) {
+    const batch = courses.slice(i, i + batchSize);
+    const { error } = await supabase.from('courses').upsert(batch);
+    if (error) {
+      errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${error.message}`);
+    }
+  }
+  return { errors };
 }
 
 export async function deleteCourse(id: string): Promise<void> {
