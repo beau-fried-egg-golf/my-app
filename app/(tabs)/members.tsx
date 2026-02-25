@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+import TutorialPopup from '@/components/TutorialPopup';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { DesktopPageToolbar } from '@/components/desktop';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
@@ -62,7 +63,7 @@ function getDistanceMiles(
 type MemberSortOrder = 'distance' | 'alpha';
 
 export default function MembersScreen() {
-  const { profiles, writeups, session, coursesPlayed, courses } = useStore();
+  const { profiles, writeups, session, coursesPlayed, courses, isPaidMember } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -295,6 +296,17 @@ export default function MembersScreen() {
             </Animated.View>
           )}
         </Animated.View>
+      )}
+      {!isPaidMember && (
+        <TutorialPopup
+          storageKey="tutorial_members_guest"
+          title="Members"
+          paragraphs={[
+            'Browse FEGC member profiles — see their reviews, courses played, and more.',
+            'As a guest, you can view profiles. Following members and sending direct messages require a FEGC membership.',
+            'Your access: Limited (browse only)',
+          ]}
+        />
       )}
     </View>
     </ResponsiveContainer>

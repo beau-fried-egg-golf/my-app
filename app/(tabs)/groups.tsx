@@ -243,14 +243,26 @@ export default function GroupsScreen() {
         </PlatformPressable>
       )}
 
-      <TutorialPopup
-        storageKey="tutorial_groups"
-        title="Groups"
-        paragraphs={[
-          'Groups let you organize around shared interests, home courses, or regions.',
-          'Join an existing group or create your own. Each group has its own chat so members can stay connected.',
-        ]}
-      />
+      {isPaidMember ? (
+        <TutorialPopup
+          storageKey="tutorial_groups"
+          title="Groups"
+          paragraphs={[
+            'Groups let you organize around shared interests, home courses, or regions.',
+            'Join an existing group or create your own. Each group has its own chat so members can stay connected.',
+          ]}
+        />
+      ) : (
+        <TutorialPopup
+          storageKey="tutorial_groups_guest"
+          title="Groups"
+          paragraphs={[
+            'Groups let members organize around shared interests, home courses, or regions. Each group has its own chat.',
+            'As a guest, you can browse groups but creating or joining a group requires a FEGC membership.',
+            'Your access: Restricted (view only)',
+          ]}
+        />
+      )}
     </View>
     </ResponsiveContainer>
   );

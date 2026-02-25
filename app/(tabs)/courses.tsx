@@ -18,6 +18,7 @@ import { DesktopPageToolbar } from '@/components/desktop';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { useActionPane } from '@/hooks/useActionPane';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+import TutorialPopup from '@/components/TutorialPopup';
 
 const LM_TEXT_HEIGHT = 18;
 const LM_SCROLL_GAP = 14;
@@ -158,7 +159,7 @@ function HoverToggleBtn({ label, active, onPress }: { label: string; active: boo
 }
 
 export default function CoursesScreen() {
-  const { courses, writeups, meetups } = useStore();
+  const { courses, writeups, meetups, isPaidMember } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -673,6 +674,17 @@ export default function CoursesScreen() {
             />
           )}
         </View>
+      )}
+      {!isPaidMember && (
+        <TutorialPopup
+          storageKey="tutorial_courses_guest"
+          title="Courses"
+          paragraphs={[
+            'Browse the FEGC course directory — search courses, view photos, and see what other members have to say.',
+            'As a guest, you can browse and view courses. Egg ratings, Fried Egg profiles, and posting reviews require a FEGC membership.',
+            'Your access: Limited (browse only)',
+          ]}
+        />
       )}
     </View>
     </ResponsiveContainer>

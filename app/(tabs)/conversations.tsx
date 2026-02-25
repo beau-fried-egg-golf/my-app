@@ -55,7 +55,7 @@ function ConversationRow({ item, onPress }: { item: ConversationListItem; onPres
 type TabType = 'dms' | 'groups' | 'meetups';
 
 export default function ConversationsScreen() {
-  const { conversationListItems, loadConversations, loadGroups, loadMeetups } = useStore();
+  const { conversationListItems, loadConversations, loadGroups, loadMeetups, isPaidMember } = useStore();
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const desktopScrollProps = useDesktopScrollProps();
@@ -181,14 +181,26 @@ export default function ConversationsScreen() {
         />
       )}
 
-      <TutorialPopup
-        storageKey="tutorial_messaging"
-        title="Messages"
-        paragraphs={[
-          'This is where your direct messages and group/meetup chats live.',
-          'You can block a user from their profile page if needed.',
-        ]}
-      />
+      {isPaidMember ? (
+        <TutorialPopup
+          storageKey="tutorial_messaging"
+          title="Messages"
+          paragraphs={[
+            'This is where your direct messages and group/meetup chats live.',
+            'You can block a user from their profile page if needed.',
+          ]}
+        />
+      ) : (
+        <TutorialPopup
+          storageKey="tutorial_messaging_guest"
+          title="Messages"
+          paragraphs={[
+            'This is where your direct messages and group/meetup chats live.',
+            'As a guest, messaging is restricted. Sending and receiving direct messages requires a FEGC membership.',
+            'Your access: Restricted',
+          ]}
+        />
+      )}
     </View>
     </ResponsiveContainer>
   );

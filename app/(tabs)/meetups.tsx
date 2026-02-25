@@ -254,16 +254,28 @@ export default function MeetupsScreen() {
         </PlatformPressable>
       )}
 
-      <TutorialPopup
-        storageKey="tutorial_meetups"
-        title="Meetups"
-        paragraphs={[
-          'Meetups let you organize play with other FEGC members.',
-          'Creating a meetup does NOT book a tee time — you still need to handle that separately.',
-          'Reselling tee times at a premium through meetups is strictly prohibited and is grounds for removal from the club.',
-          'Creating meetups in bad faith is also grounds for removal. Keep it fun and fair for everyone.',
-        ]}
-      />
+      {isPaidMember ? (
+        <TutorialPopup
+          storageKey="tutorial_meetups"
+          title="Meetups"
+          paragraphs={[
+            'Meetups let you organize play with other FEGC members.',
+            'Creating a meetup does NOT book a tee time — you still need to handle that separately.',
+            'Reselling tee times at a premium through meetups is strictly prohibited and is grounds for removal from the club.',
+            'Creating meetups in bad faith is also grounds for removal. Keep it fun and fair for everyone.',
+          ]}
+        />
+      ) : (
+        <TutorialPopup
+          storageKey="tutorial_meetups_guest"
+          title="Meetups"
+          paragraphs={[
+            'Meetups let FEGC members organize rounds and events together.',
+            'As a guest, you can view upcoming meetups but creating or joining a meetup requires a FEGC membership.',
+            'Your access: Restricted (view only)',
+          ]}
+        />
+      )}
     </View>
     </ResponsiveContainer>
   );

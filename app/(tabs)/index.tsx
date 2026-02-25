@@ -508,7 +508,7 @@ export default function FeedScreen() {
           onFeedFilterChange={setFeedFilter}
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          onCreatePress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } openActionPane('create'); }}
+          onCreatePress={() => openActionPane('create')}
         />
       ) : (
         <View style={styles.filterRow}>
@@ -698,7 +698,6 @@ export default function FeedScreen() {
               style={styles.modalOption}
               onPress={() => {
                 setShowFabMenu(false);
-                if (!isPaidMember) { setShowUpgradeModal(true); return; }
                 router.push('/create-post');
               }}
             >
@@ -812,15 +811,27 @@ export default function FeedScreen() {
         </Pressable>
       </Modal>
 
-      <TutorialPopup
-        storageKey="tutorial_welcome"
-        title="Welcome to FEGC"
-        paragraphs={[
-          'Welcome to the Fried Egg Golf Club! FEGC is a community of golfers who share a love for the game and the courses we play.',
-          'Here you can write course reviews, share posts, organize meetups, and connect with fellow golfers.',
-          'We encourage you to participate, share your experiences, and be respectful of other members. Enjoy the club!',
-        ]}
-      />
+      {isPaidMember ? (
+        <TutorialPopup
+          storageKey="tutorial_welcome"
+          title="Welcome to FEGC"
+          paragraphs={[
+            'Welcome to the Fried Egg Golf Club! FEGC is a community of golfers who share a love for the game and the courses we play.',
+            'Here you can write course reviews, share posts, organize meetups, and connect with fellow golfers.',
+            'We encourage you to participate, share your experiences, and be respectful of other members. Enjoy the club!',
+          ]}
+        />
+      ) : (
+        <TutorialPopup
+          storageKey="tutorial_welcome_guest"
+          title="Welcome to FEGC"
+          paragraphs={[
+            'This is the home feed — a stream of posts and course reviews from the FEGC community.',
+            'As a guest, you can create posts, reply to posts, and react to posts. Course reviews are read-only — you\'ll need a FEGC membership to write reviews.',
+            'Your access: Full (posts) · Limited (reviews are read-only)',
+          ]}
+        />
+      )}
     </View>
     </ResponsiveContainer>
   );
