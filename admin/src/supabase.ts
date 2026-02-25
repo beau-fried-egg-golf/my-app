@@ -12,10 +12,7 @@ if (!SUPABASE_URL || !ANON_KEY) {
 export const supabaseAuth = createClient(SUPABASE_URL, ANON_KEY);
 
 // Data client — uses service role key to bypass RLS, never picks up user session
-export const supabase = createClient(SUPABASE_URL, ANON_KEY, {
-  global: {
-    headers: SERVICE_KEY ? { Authorization: `Bearer ${SERVICE_KEY}` } : {},
-  },
+export const supabase = createClient(SUPABASE_URL, SERVICE_KEY || ANON_KEY, {
   auth: {
     persistSession: false,
     autoRefreshToken: false,
