@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 15, color: Colors.gray, fontFamily: Fonts!.sans },
   loadMoreButton: { alignItems: 'center', paddingVertical: 16, borderTopWidth: 1, borderTopColor: Colors.lightGray, marginHorizontal: 16 },
   loadMoreText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.orange, letterSpacing: 0.5 },
-  mapContainer: { flex: 1, position: 'relative', minHeight: 600 },
+  mapContainer: { flex: 1, position: 'relative', minHeight: 600, marginBottom: 160 },
   desktopCard: { borderWidth: 1, borderColor: Colors.borderLight, borderRadius: 10, marginHorizontal: 16, marginVertical: 8, backgroundColor: Colors.white, overflow: 'hidden' },
   feBlurb: { fontSize: 13, color: Colors.gray, fontFamily: Fonts!.sans },
   meetupCallout: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 8 },
