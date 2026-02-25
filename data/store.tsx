@@ -42,6 +42,9 @@ interface StoreContextType {
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
   needsPasswordReset: boolean;
   clearPasswordReset: () => void;
+  emailVerified: boolean;
+  sendVerificationCode: () => Promise<{ error: string | null }>;
+  verifyEmailCode: (code: string) => Promise<{ success: boolean; error: string | null }>;
   saveUser: (user: User) => Promise<void>;
   addWriteup: (data: { courseId: string; title: string; content: string; photos: { url: string; caption: string }[] }) => Promise<Writeup>;
   updateWriteup: (writeupId: string, data: { title: string; content: string; photos: { id?: string; url: string; caption: string }[] }) => Promise<void>;
@@ -173,6 +176,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const notificationsRef = useRef<Notification[]>([]);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(true);
   const [pushDmEnabled, setPushDmEnabled] = useState(true);
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(true);
   const [pushNearbyEnabled, setPushNearbyEnabled] = useState(true);
@@ -350,6 +354,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setUser(profileToUser(profile));
+      setEmailVerified(profile.email_verified !== false);
       const tier = profile.subscription_tier ?? 'free';
       const status = profile.subscription_status ?? 'active';
       setIsPaidMember(tier !== 'free' && (status === 'active' || status === 'trialing'));
@@ -913,6 +918,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (friedEgg) {
         supabase.from('follows').insert({ follower_id: data.user.id, following_id: friedEgg.id }).catch(() => {});
       }
+      // Mark as unverified and send verification code
+      supabase.from('profiles').update({ email_verified: false }).eq('id', data.user.id).catch(() => {});
+      setEmailVerified(false);
+      supabase.functions.invoke('send-verification-code', {
+        body: { user_id: data.user.id },
+      }).catch(() => {});
     }
     return { error: error ?? null };
   }, []);
@@ -939,6 +950,29 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const clearPasswordReset = useCallback(() => {
     setNeedsPasswordReset(false);
   }, []);
+
+  const sendVerificationCode = useCallback(async () => {
+    const userId = session?.user?.id;
+    if (!userId) return { error: 'Not signed in' };
+    const { error } = await supabase.functions.invoke('send-verification-code', {
+      body: { user_id: userId },
+    });
+    return { error: error ? String(error) : null };
+  }, [session]);
+
+  const verifyEmailCode = useCallback(async (code: string) => {
+    const userId = session?.user?.id;
+    if (!userId) return { success: false, error: 'Not signed in' };
+    const { data, error } = await supabase.functions.invoke('verify-email-code', {
+      body: { user_id: userId, code },
+    });
+    if (error) return { success: false, error: String(error) };
+    if (data?.success) {
+      setEmailVerified(true);
+      return { success: true, error: null };
+    }
+    return { success: false, error: data?.error ?? 'Verification failed' };
+  }, [session]);
 
   const saveUser = useCallback(async (u: User) => {
     if (!session) return;
@@ -3144,6 +3178,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         updatePassword,
         needsPasswordReset,
         clearPasswordReset,
+        emailVerified,
+        sendVerificationCode,
+        verifyEmailCode,
         saveUser,
         addWriteup,
         updateWriteup,

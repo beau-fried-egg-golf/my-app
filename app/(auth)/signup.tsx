@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -7,15 +8,17 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function SignupScreen() {
   const router = useRouter();
+  const { flow } = useLocalSearchParams<{ flow?: string }>();
   const { signUp } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +39,7 @@ export default function SignupScreen() {
       if (authError) {
         setError(authError.message);
       } else {
-        router.replace('/onboarding');
+        router.replace('/verify-email');
       }
     } catch (e: any) {
       setError(e.message ?? 'Something went wrong');
@@ -50,91 +53,97 @@ export default function SignupScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <LetterSpacedHeader text="Create Account" size={28} />
-          <Text style={styles.subtitle}>Sign up to get started</Text>
-          <Text style={styles.memberNote}>Already a FEGC member? Use the same email address as your membership for full access.</Text>
-        </View>
-
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
-
-        <View style={styles.form}>
-          <View style={styles.field}>
-            <Text style={styles.label}>Name *</Text>
-            <TextInput
-              style={styles.input}
-              value={name}
-              onChangeText={setName}
-              placeholder="Your name"
-              placeholderTextColor={Colors.gray}
-              autoFocus
-            />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <LetterSpacedHeader text="Create Account" size={28} />
+            {flow === 'member' ? (
+              <Text style={styles.memberNote}>
+                Use the same email address as your FEGC membership for full access.
+              </Text>
+            ) : (
+              <Text style={styles.subtitle}>Sign up to get started</Text>
+            )}
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Email *</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={Colors.gray}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
+          {error ? (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.form}>
+            <View style={styles.field}>
+              <Text style={styles.label}>Name *</Text>
+              <TextInput
+                style={styles.input}
+                value={name}
+                onChangeText={setName}
+                placeholder="Your name"
+                placeholderTextColor={Colors.gray}
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Email *</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={Colors.gray}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Password *</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="At least 6 characters"
+                placeholderTextColor={Colors.gray}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Confirm Password *</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                placeholder="Re-enter your password"
+                placeholderTextColor={Colors.gray}
+                secureTextEntry
+                onSubmitEditing={handleSignup}
+              />
+              {confirmPassword.length > 0 && !passwordsMatch ? (
+                <Text style={styles.errorInline}>Passwords do not match</Text>
+              ) : null}
+            </View>
           </View>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Password *</Text>
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="At least 6 characters"
-              placeholderTextColor={Colors.gray}
-              secureTextEntry
-            />
-          </View>
+          <Pressable
+            style={({ pressed }) => [
+              styles.button,
+              (!canSubmit || loading) && styles.buttonDisabled,
+              pressed && canSubmit && !loading && styles.buttonPressed,
+            ]}
+            onPress={handleSignup}
+          >
+            <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
+          </Pressable>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>Confirm Password *</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              placeholder="Re-enter your password"
-              placeholderTextColor={Colors.gray}
-              secureTextEntry
-              onSubmitEditing={handleSignup}
-            />
-            {confirmPassword.length > 0 && !passwordsMatch ? (
-              <Text style={styles.errorInline}>Passwords do not match</Text>
-            ) : null}
-          </View>
-        </View>
-
-        <Pressable
-          style={({ pressed }) => [
-            styles.button,
-            (!canSubmit || loading) && styles.buttonDisabled,
-            pressed && canSubmit && !loading && styles.buttonPressed,
-          ]}
-          onPress={handleSignup}
-        >
-          <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
-        </Pressable>
-
-        <Pressable style={styles.linkButton} onPress={() => router.back()}>
-          <Text style={styles.linkText}>
-            Already have an account? <Text style={styles.linkBold}>Sign In</Text>
-          </Text>
-        </Pressable>
-      </ScrollView>
+          <Pressable style={styles.linkButton} onPress={() => router.back()}>
+            <Text style={styles.linkText}>
+              Already have an account? <Text style={styles.linkBold}>Sign In</Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -158,11 +167,12 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sans,
   },
   memberNote: {
-    fontSize: 13,
-    color: Colors.gray,
-    marginTop: 8,
-    fontFamily: Fonts!.sans,
-    lineHeight: 18,
+    fontSize: 14,
+    color: Colors.orange,
+    marginTop: 12,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    lineHeight: 20,
   },
   errorBox: {
     backgroundColor: '#ffebee',

@@ -60,6 +60,22 @@ function PasswordResetNavigator() {
   return null;
 }
 
+function EmailVerificationNavigator() {
+  const { session, emailVerified, user } = useStore();
+  const router = useRouter();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (!session || !user) return;
+    if (emailVerified) return;
+    const currentPath = segments.join('/');
+    if (currentPath.startsWith('(auth)') || currentPath === 'verify-email') return;
+    router.replace('/verify-email');
+  }, [session, emailVerified, user, segments]);
+
+  return null;
+}
+
 function AppShell() {
   const { isLoading } = useStore();
   const isDesktop = useIsDesktop();
@@ -305,6 +321,10 @@ function AppShell() {
           name="reset-password"
           options={{ headerShown: false }}
         />
+        <Stack.Screen
+          name="verify-email"
+          options={{ headerShown: false }}
+        />
       </Stack>
       {isDesktop && actionPane && (
         <Suspense fallback={null}>
@@ -375,6 +395,7 @@ export default function RootLayout() {
       <InitialRouteEnforcer />
       <PushNotificationRegistrar />
       <PasswordResetNavigator />
+      <EmailVerificationNavigator />
       <UpgradeModal />
       <StatusBar style="dark" />
       <AppShell />

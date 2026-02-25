@@ -85,7 +85,7 @@ function BackButton() {
 }
 
 export default function TabLayout() {
-  const { session, isLoading, isAdmin } = useStore();
+  const { session, isLoading, isAdmin, emailVerified } = useStore();
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -105,6 +105,10 @@ export default function TabLayout() {
 
   if (!session) {
     return <Redirect href="/(auth)/login" />;
+  }
+
+  if (emailVerified === false) {
+    return <Redirect href="/verify-email" />;
   }
 
   return (

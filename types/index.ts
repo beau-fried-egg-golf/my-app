@@ -12,6 +12,7 @@ export interface Profile {
   favorite_ball: string;
   member_since: string;
   suspended?: boolean;
+  email_verified?: boolean;
   is_verified?: boolean;
   dms_disabled?: boolean;
   expo_push_token?: string | null;
@@ -84,6 +85,7 @@ export interface User {
   favoriteBall: string;
   memberSince: string;
   isVerified?: boolean;
+  emailVerified?: boolean;
   subscriptionTier?: string;
   subscriptionStatus?: string;
 }
@@ -263,6 +265,7 @@ export function profileToUser(p: Profile): User {
     favoriteBall: p.favorite_ball,
     memberSince: p.member_since,
     isVerified: p.is_verified,
+    emailVerified: p.email_verified,
     subscriptionTier: p.subscription_tier,
     subscriptionStatus: p.subscription_status,
   };

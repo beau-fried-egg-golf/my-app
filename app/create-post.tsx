@@ -54,7 +54,7 @@ export default function CreatePostScreen() {
     shareDescription?: string;
     shareImage?: string;
   }>();
-  const { user, addPost, isPaidMember, setShowUpgradeModal } = useStore();
+  const { user, addPost } = useStore();
   const [content, setContent] = useState('');
   const [photos, setPhotos] = useState<PhotoDraft[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -182,7 +182,6 @@ export default function CreatePostScreen() {
   }
 
   async function handleSubmit() {
-    if (!isPaidMember) { setShowUpgradeModal(true); return; }
     if (!canSubmit) return;
     setSubmitting(true);
     try {
