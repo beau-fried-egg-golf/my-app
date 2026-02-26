@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Dimensions, Image, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Dimensions, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -249,48 +249,57 @@ export default function GroupDetailScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          {isDesktop ? (
-            <>
-              {isMember ? (
-                <>
-                  <DesktopBlackButton label="GROUP CHAT" onPress={() => router.push(`/group-chat/${group.id}`)} />
-                  {!isCreator && (
-                    <DesktopOutlineButton label="LEAVE" onPress={handleLeave} />
-                  )}
-                </>
-              ) : (
-                <DesktopBlackButton label="JOIN GROUP" onPress={handleJoin} />
-              )}
-              <DesktopShareButton onPress={handleShare} />
-            </>
-          ) : (
-            <>
-              {isMember ? (
-                <>
-                  <Pressable
-                    style={styles.actionBtnPrimary}
-                    onPress={() => router.push(`/group-chat/${group.id}`)}
-                  >
-                    <Text style={styles.actionBtnPrimaryText}>Group Chat</Text>
-                  </Pressable>
-                  {!isCreator && (
-                    <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
-                      <Text style={styles.actionBtnOutlineText}>Leave</Text>
+        {isPaidMember ? (
+          <View style={styles.actionRow}>
+            {isDesktop ? (
+              <>
+                {isMember ? (
+                  <>
+                    <DesktopBlackButton label="GROUP CHAT" onPress={() => router.push(`/group-chat/${group.id}`)} />
+                    {!isCreator && (
+                      <DesktopOutlineButton label="LEAVE" onPress={handleLeave} />
+                    )}
+                  </>
+                ) : (
+                  <DesktopBlackButton label="JOIN GROUP" onPress={handleJoin} />
+                )}
+                <DesktopShareButton onPress={handleShare} />
+              </>
+            ) : (
+              <>
+                {isMember ? (
+                  <>
+                    <Pressable
+                      style={styles.actionBtnPrimary}
+                      onPress={() => router.push(`/group-chat/${group.id}`)}
+                    >
+                      <Text style={styles.actionBtnPrimaryText}>Group Chat</Text>
                     </Pressable>
-                  )}
-                </>
-              ) : (
-                <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
-                  <Text style={styles.actionBtnPrimaryText}>Join Group</Text>
+                    {!isCreator && (
+                      <Pressable style={styles.actionBtnOutline} onPress={handleLeave}>
+                        <Text style={styles.actionBtnOutlineText}>Leave</Text>
+                      </Pressable>
+                    )}
+                  </>
+                ) : (
+                  <Pressable style={styles.actionBtnPrimary} onPress={handleJoin}>
+                    <Text style={styles.actionBtnPrimaryText}>Join Group</Text>
+                  </Pressable>
+                )}
+                <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={16} color={Colors.black} />
                 </Pressable>
-              )}
-              <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
-                <Ionicons name="share-outline" size={16} color={Colors.black} />
-              </Pressable>
-            </>
-          )}
-        </View>
+              </>
+            )}
+          </View>
+        ) : (
+          <View style={styles.guestNote}>
+            <Text style={styles.guestNoteText}>Joining groups is a member benefit.</Text>
+            <Pressable onPress={() => Linking.openURL('https://www.thefriedegg.com/membership')}>
+              <Text style={styles.guestNoteLink}>Learn more</Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* Creator */}
         {creator && (
@@ -548,4 +557,23 @@ const styles = StyleSheet.create({
   dtBlackBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.white, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
   dtOutlineBtn: { borderRadius: 8, overflow: 'hidden', flexShrink: 0, borderWidth: 1.5, borderColor: Colors.black },
   dtOutlineBtnText: { fontSize: 14, fontFamily: Fonts!.sans, fontWeight: FontWeights.regular, color: Colors.black, letterSpacing: 0.5, lineHeight: DT_TEXT_HEIGHT },
+  guestNote: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 4,
+  },
+  guestNoteText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+  guestNoteLink: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.orange,
+    textDecorationLine: 'underline',
+  },
 });

@@ -49,7 +49,7 @@ function TabBarBackground() {
 function HeaderRight() {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, hasUnreadMessages, hasUnreadNotifications } = useStore();
+  const { user, hasUnreadMessages, hasUnreadNotifications, isPaidMember } = useStore();
   const isOnNotifications = pathname === '/notifications';
   const isOnConversations = pathname === '/conversations';
   return (
@@ -58,10 +58,12 @@ function HeaderRight() {
         <NotificationsIcon size={34} color={isOnNotifications ? Colors.orange : Colors.black} strokeWidth={isOnNotifications ? 1.875 : 1.5} />
         {hasUnreadNotifications && !isOnNotifications && <View style={styles.unreadBadge} />}
       </PlatformPressable>
-      <PlatformPressable onPress={() => router.push('/conversations')} style={[styles.headerPillBtn, isOnConversations && styles.headerPillBtnActive]}>
-        <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} strokeWidth={isOnConversations ? 1.875 : 1.5} />
-        {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
-      </PlatformPressable>
+      {isPaidMember && (
+        <PlatformPressable onPress={() => router.push('/conversations')} style={[styles.headerPillBtn, isOnConversations && styles.headerPillBtnActive]}>
+          <MessagingIcon size={34} color={isOnConversations ? Colors.orange : Colors.black} strokeWidth={isOnConversations ? 1.875 : 1.5} />
+          {hasUnreadMessages && !isOnConversations && <View style={styles.unreadBadge} />}
+        </PlatformPressable>
+      )}
       <PlatformPressable onPress={() => router.push('/profile')} style={styles.headerPillBtn}>
         {user?.image ? (
           <Image source={{ uri: user.image }} style={styles.profileImage} />

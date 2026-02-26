@@ -147,7 +147,6 @@ export default function WriteupDetailScreen() {
     getWriteupReplies,
     addWriteupReply,
     isPaidMember,
-    setShowUpgradeModal,
   } = useStore();
 
   const insets = useSafeAreaInsets();
@@ -233,7 +232,7 @@ export default function WriteupDetailScreen() {
   }
 
   function handleShare() {
-    if (!isPaidMember) { setShowUpgradeModal(true); return; }
+    if (!isPaidMember) return;
     const description = course?.short_name
       ? `${writeup!.title} - ${course.short_name}`
       : writeup!.title;
@@ -289,7 +288,7 @@ export default function WriteupDetailScreen() {
   }
 
   async function handleSendReply() {
-    if (!isPaidMember) { setShowUpgradeModal(true); return; }
+    if (!isPaidMember) return;
     if (!replyText.trim() || sendingReply) return;
     setSendingReply(true);
     try {
@@ -408,7 +407,7 @@ export default function WriteupDetailScreen() {
                 <View style={styles.photoActions}>
                   <Pressable
                     style={[styles.photoUpvote, photoUpvoted && styles.photoUpvoteActive]}
-                    onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } togglePhotoUpvote(photo.id); }}
+                    onPress={() => { if (!isPaidMember) return; togglePhotoUpvote(photo.id); }}
                   >
                     <Text style={styles.reactionEmoji}>{'\uD83D\uDC4D'}</Text>
                     <Text style={[styles.photoUpvoteText, photoUpvoted && styles.photoUpvoteTextActive]}>
@@ -432,7 +431,7 @@ export default function WriteupDetailScreen() {
               key={key}
               userIds={reactorIds}
               getUserName={getUserName}
-              onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } toggleWriteupReaction(writeup.id, key); }}
+              onPress={() => { if (!isPaidMember) return; toggleWriteupReaction(writeup.id, key); }}
               style={[styles.reactionButton, active && styles.reactionButtonActive]}
             >
               <Text style={styles.reactionEmoji}>{REACTION_EMOJI[key]}</Text>
@@ -449,15 +448,19 @@ export default function WriteupDetailScreen() {
       </View>
 
       {isDesktop ? (
-        <View style={styles.desktopActionsRow}>
-          <DesktopShareButton onPress={handleShare} />
-        </View>
+        isPaidMember ? (
+          <View style={styles.desktopActionsRow}>
+            <DesktopShareButton onPress={handleShare} />
+          </View>
+        ) : null
       ) : (
         <View style={styles.actions}>
-          <Pressable style={styles.flagButton} onPress={handleShare}>
-            <Ionicons name="share-outline" size={14} color={Colors.gray} />
-            <Text style={styles.flagText}>Share</Text>
-          </Pressable>
+          {isPaidMember && (
+            <Pressable style={styles.flagButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={14} color={Colors.gray} />
+              <Text style={styles.flagText}>Share</Text>
+            </Pressable>
+          )}
 
           {!isOwner && (
             <Pressable style={styles.flagButton} onPress={handleFlag}>
@@ -528,7 +531,7 @@ export default function WriteupDetailScreen() {
                 <Text style={styles.replyTime}> · {formatTime(reply.created_at)}</Text>
               </View>
               <Text style={styles.replyContent}>{reply.content}</Text>
-              {depth === 0 && (
+              {depth === 0 && isPaidMember && (
                 <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
                   <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
                   <Text style={styles.replyButtonText}>Reply</Text>
@@ -540,7 +543,7 @@ export default function WriteupDetailScreen() {
         ListEmptyComponent={
           <Text style={styles.noReplies}>No replies yet. Be the first!</Text>
         }
-        ListFooterComponent={isDesktop ? (
+        ListFooterComponent={isDesktop && isPaidMember ? (
           <View style={styles.desktopReplyInputBar}>
             {replyingTo && (
               <View style={styles.replyingToBanner}>
@@ -555,7 +558,7 @@ export default function WriteupDetailScreen() {
                 style={styles.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}
-                placeholder={isPaidMember ? "Write a reply..." : "Join FEGC to reply"}
+                placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
                 maxLength={2000}
@@ -579,7 +582,7 @@ export default function WriteupDetailScreen() {
           </View>
         ) : undefined}
       />
-      {!isDesktop && (
+      {!isDesktop && isPaidMember && (
         <>
           {replyingTo && (
             <View style={styles.replyingToBanner}>
@@ -595,7 +598,7 @@ export default function WriteupDetailScreen() {
                 style={styles.replyInput}
                 value={replyText}
                 onChangeText={setReplyText}
-                placeholder={isPaidMember ? "Write a reply..." : "Join FEGC to reply"}
+                placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
                 maxLength={2000}

@@ -11,14 +11,13 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { flow } = useLocalSearchParams<{ flow?: string }>();
   const { signUp } = useStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -57,13 +56,9 @@ export default function SignupScreen() {
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
             <LetterSpacedHeader text="Create Account" size={28} />
-            {flow === 'member' ? (
-              <Text style={styles.memberNote}>
-                Use the same email address as your FEGC membership for full access.
-              </Text>
-            ) : (
-              <Text style={styles.subtitle}>Sign up to get started</Text>
-            )}
+            <Text style={styles.subtitle}>
+              If you're a FEGC member, use the email associated with your membership for full access.
+            </Text>
           </View>
 
           {error ? (
@@ -165,14 +160,6 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 12,
     fontFamily: Fonts!.sans,
-  },
-  memberNote: {
-    fontSize: 14,
-    color: Colors.orange,
-    marginTop: 12,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    lineHeight: 20,
   },
   errorBox: {
     backgroundColor: '#ffebee',

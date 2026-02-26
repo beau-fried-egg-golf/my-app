@@ -2,7 +2,6 @@ import { useState } from 'react';
 import {
   Keyboard,
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -123,31 +122,15 @@ export default function LoginScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* ── Section 1: Already a FEGC member ── */}
-          <Text style={styles.sectionLabel}>Already a FEGC member?</Text>
           <Pressable
             style={({ pressed }) => [styles.outlineButton, pressed && styles.outlineButtonPressed]}
-            onPress={() => router.push({ pathname: '/(auth)/signup', params: { flow: 'member' } })}
+            onPress={() => router.push('/(auth)/signup')}
           >
-            <Text style={styles.outlineButtonText}>Create Your App Account</Text>
+            <Text style={styles.outlineButtonText}>Create Account</Text>
           </Pressable>
-
-          {/* ── Section 2: Not a member ── */}
-          <Text style={[styles.sectionLabel, { marginTop: 24 }]}>Not a member?</Text>
-          <View style={styles.sideBySide}>
-            <Pressable
-              style={({ pressed }) => [styles.outlineButton, styles.sideBySideBtn, pressed && styles.outlineButtonPressed]}
-              onPress={() => Linking.openURL('https://www.thefriedegg.com/membership')}
-            >
-              <Text style={styles.outlineButtonText}>Join FEGC</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [styles.outlineButton, styles.sideBySideBtn, pressed && styles.outlineButtonPressed]}
-              onPress={() => router.push({ pathname: '/(auth)/signup', params: { flow: 'guest' } })}
-            >
-              <Text style={styles.outlineButtonText}>Create Guest Account</Text>
-            </Pressable>
-          </View>
+          <Text style={styles.memberNote}>
+            If you're a FEGC member, use the email associated with your membership.
+          </Text>
         </ScrollView>
       </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
@@ -252,13 +235,6 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     fontFamily: Fonts!.sans,
   },
-  sectionLabel: {
-    fontSize: 15,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.black,
-    marginBottom: 10,
-  },
   outlineButton: {
     borderWidth: 1,
     borderColor: Colors.black,
@@ -276,11 +252,12 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.black,
   },
-  sideBySide: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  sideBySideBtn: {
-    flex: 1,
+  memberNote: {
+    fontSize: 14,
+    color: Colors.gray,
+    fontFamily: Fonts!.sans,
+    marginTop: 12,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });

@@ -103,7 +103,7 @@ export default function OnboardingScreen() {
       homeCourseId,
     });
     supabase.functions.invoke('send-welcome-email', { body: { user_id: user.id } }).catch(() => {});
-    router.replace('/');
+    router.replace('/welcome');
   }
 
   return (

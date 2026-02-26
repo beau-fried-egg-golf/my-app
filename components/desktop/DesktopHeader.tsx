@@ -120,7 +120,7 @@ function HoverIcon({ onPress, children }: { onPress: () => void; children: React
 export default function DesktopHeader({ onMenuPress }: DesktopHeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, hasUnreadMessages, hasUnreadNotifications } = useStore();
+  const { user, hasUnreadMessages, hasUnreadNotifications, isPaidMember } = useStore();
   const isOnNotifications = pathname === '/notifications';
   const isOnConversations = pathname === '/conversations';
   const isCompact = useIsCompactDesktop();
@@ -161,12 +161,14 @@ export default function DesktopHeader({ onMenuPress }: DesktopHeaderProps) {
             <View style={styles.badge} />
           )}
         </HoverIcon>
-        <HoverIcon onPress={() => router.push('/conversations')}>
-          <MessagingIcon size={48} color={Colors.black} />
-          {hasUnreadMessages && !isOnConversations && (
-            <View style={styles.badge} />
-          )}
-        </HoverIcon>
+        {isPaidMember && (
+          <HoverIcon onPress={() => router.push('/conversations')}>
+            <MessagingIcon size={48} color={Colors.black} />
+            {hasUnreadMessages && !isOnConversations && (
+              <View style={styles.badge} />
+            )}
+          </HoverIcon>
+        )}
         <HoverIcon onPress={() => router.push('/profile')}>
           {user?.image ? (
             <Image source={{ uri: user.image }} style={styles.avatar} />

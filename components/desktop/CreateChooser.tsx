@@ -447,7 +447,7 @@ function InviteForm({
 
 export default function CreateChooser() {
   const { activePane, closeActionPane } = useActionPane();
-  const { user, courses, addPost, addWriteup } = useStore();
+  const { user, courses, addPost, addWriteup, isPaidMember } = useStore();
 
   const reviewOnly = activePane === 'review-only';
   const [mode, setMode] = useState<Mode>(reviewOnly ? 'review' : 'post');
@@ -623,7 +623,9 @@ export default function CreateChooser() {
       {!reviewOnly && (
         <View style={styles.tabGroup}>
           <HoverTab label="POST" active={mode === 'post'} onPress={() => setMode('post')} />
-          <HoverTab label="REVIEW" active={mode === 'review'} onPress={() => setMode('review')} />
+          {isPaidMember && (
+            <HoverTab label="REVIEW" active={mode === 'review'} onPress={() => setMode('review')} />
+          )}
           <HoverTab label="INVITE" active={mode === 'invite'} onPress={() => setMode('invite')} />
         </View>
       )}

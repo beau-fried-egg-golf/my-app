@@ -736,21 +736,30 @@ export default function MeetupDetailScreen() {
         )}
 
         {/* Action Buttons */}
-        <View style={[styles.actionRow, isDesktop && styles.actionRowDesktop]}>
-          {isDesktop ? (
-            <>
-              {renderDesktopActionButtons()}
-              <DesktopShareButton onPress={handleShare} />
-            </>
-          ) : (
-            <>
-              {renderMobileActionButtons()}
-              <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
-                <Ionicons name="share-outline" size={16} color={Colors.black} />
-              </Pressable>
-            </>
-          )}
-        </View>
+        {isPaidMember ? (
+          <View style={[styles.actionRow, isDesktop && styles.actionRowDesktop]}>
+            {isDesktop ? (
+              <>
+                {renderDesktopActionButtons()}
+                <DesktopShareButton onPress={handleShare} />
+              </>
+            ) : (
+              <>
+                {renderMobileActionButtons()}
+                <Pressable style={styles.actionBtnOutline} onPress={handleShare}>
+                  <Ionicons name="share-outline" size={16} color={Colors.black} />
+                </Pressable>
+              </>
+            )}
+          </View>
+        ) : (
+          <View style={styles.guestNote}>
+            <Text style={styles.guestNoteText}>Joining meetups is a member benefit.</Text>
+            <Pressable onPress={() => Linking.openURL('https://www.thefriedegg.com/membership')}>
+              <Text style={styles.guestNoteLink}>Learn more</Text>
+            </Pressable>
+          </View>
+        )}
 
         {isFeMeetupWithPayment && (
           <View style={styles.policyNotice}>
@@ -1432,5 +1441,24 @@ const styles = StyleSheet.create({
     fontFamily: Fonts!.sansMedium,
     fontWeight: FontWeights.medium,
     color: Colors.gray,
+  },
+  guestNote: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    gap: 4,
+  },
+  guestNoteText: {
+    fontSize: 14,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+  guestNoteLink: {
+    fontSize: 14,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.orange,
+    textDecorationLine: 'underline',
   },
 });

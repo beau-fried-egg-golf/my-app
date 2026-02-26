@@ -1671,6 +1671,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const existing = follows.find(f => f.follower_id === userId && f.following_id === targetUserId);
 
         if (existing) {
+          // Prevent unfollowing The Fried Egg
+          const targetProfile = profiles.find(p => p.id === targetUserId);
+          if (targetProfile?.name?.toLowerCase().includes('fried egg')) return;
+
           // Optimistic remove
           setFollows(prev => prev.filter(f => f.id !== existing.id));
           const { error } = await supabase.from('follows').delete().eq('id', existing.id);
@@ -1704,7 +1708,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (__DEV__) Alert.alert('Follow Error', String(err));
       }
     },
-    [session, follows],
+    [session, follows, profiles],
   );
 
   const isFollowing = useCallback(

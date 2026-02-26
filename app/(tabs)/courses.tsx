@@ -408,8 +408,8 @@ export default function CoursesScreen() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="SEARCH COURSES"
-          ctaLabel="CREATE A REVIEW"
-          onCtaPress={() => openActionPane('review-only')}
+          ctaLabel={isPaidMember ? "CREATE A REVIEW" : undefined}
+          onCtaPress={isPaidMember ? () => openActionPane('review-only') : undefined}
         />
       )}
       <View style={styles.toolBar}>

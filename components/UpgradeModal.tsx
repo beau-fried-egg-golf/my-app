@@ -10,9 +10,9 @@ export default function UpgradeModal() {
     <Modal visible={showUpgradeModal} transparent animationType="fade" onRequestClose={() => setShowUpgradeModal(false)}>
       <View style={styles.overlay}>
         <View style={styles.content}>
-          <Text style={styles.title}>FEGC Membership Required</Text>
+          <Text style={styles.title}>Members Only</Text>
           <Text style={styles.body}>
-            This feature is available to Fried Egg Golf Club members.
+            This feature is reserved for Fried Egg Golf Club members. Learn more about membership benefits and what's included.
           </Text>
           <Pressable
             style={styles.primaryBtn}

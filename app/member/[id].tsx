@@ -82,7 +82,7 @@ function DesktopOutlineButton({ label, onPress }: { label: string; onPress: () =
 
 export default function MemberProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy, isPaidMember, setShowUpgradeModal } = useStore();
+  const { profiles, writeups, coursesPlayed, courses, groups, session, isFollowing, toggleFollow, getFollowerCount, getFollowingCount, getOrCreateConversation, isBlockedBy, isPaidMember } = useStore();
   const router = useRouter();
   const isDesktop = useIsDesktop();
   const desktopScrollProps = useDesktopScrollProps();
@@ -154,7 +154,7 @@ export default function MemberProfileScreen() {
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
         {(!profile.subscription_tier || profile.subscription_tier === 'free') && <GuestBadge style={{ alignSelf: 'center', marginTop: 6 }} />}
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-        {!isOwnProfile && isDesktop && (
+        {!isOwnProfile && isPaidMember && isDesktop && (
           <View style={styles.actionRow}>
             {isFollowing(profile.id) ? (
               <DesktopOutlineButton label="FOLLOWING" onPress={() => toggleFollow(profile.id)} />
@@ -165,7 +165,6 @@ export default function MemberProfileScreen() {
               <DesktopBlackButton
                 label="MESSAGE"
                 onPress={async () => {
-                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const convoId = await getOrCreateConversation(profile.id);
                   router.push(`/conversation/${convoId}`);
                 }}
@@ -173,7 +172,7 @@ export default function MemberProfileScreen() {
             )}
           </View>
         )}
-        {!isOwnProfile && !isDesktop && (
+        {!isOwnProfile && isPaidMember && !isDesktop && (
           <View style={styles.actionRow}>
             <Pressable
               style={[styles.actionBtn, isFollowing(profile.id) && styles.actionBtnActive]}
@@ -187,7 +186,6 @@ export default function MemberProfileScreen() {
               <Pressable
                 style={styles.actionBtn}
                 onPress={async () => {
-                  if (!isPaidMember) { setShowUpgradeModal(true); return; }
                   const convoId = await getOrCreateConversation(profile.id);
                   router.push(`/conversation/${convoId}`);
                 }}

@@ -123,6 +123,7 @@ export default function ProfileScreen() {
         <Text style={styles.name}>{user.name}</Text>
         {(user.city || user.state) ? <Text style={styles.location}>{[user.city, user.state].filter(Boolean).join(', ')}</Text> : null}
         {!isPaidMember && <GuestBadge style={{ alignSelf: 'center', marginTop: 6 }} />}
+
         {user.bio ? <Text style={styles.bio}>{user.bio}</Text> : null}
       </View>
 

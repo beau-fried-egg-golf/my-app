@@ -377,7 +377,7 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount, isPaidMember, setShowUpgradeModal } = useStore();
+  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount, isPaidMember } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -686,23 +686,26 @@ export default function FeedScreen() {
       >
         <PlatformPressable style={styles.modalBackdrop} onPress={() => setShowFabMenu(false)}>
           <View style={styles.modalSheet}>
-            <PlatformPressable
-              style={styles.modalOption}
-              onPress={() => {
-                setShowFabMenu(false);
-                if (!isPaidMember) { setShowUpgradeModal(true); return; }
-                router.push('/create-writeup');
-              }}
-            >
-              <View style={styles.modalIconBox}>
-                <Ionicons name="document-text-outline" size={22} color={Colors.black} />
-              </View>
-              <View>
-                <Text style={styles.modalOptionTitle}>Review</Text>
-                <Text style={styles.modalOptionDesc}>Write a course review</Text>
-              </View>
-            </PlatformPressable>
-            <View style={styles.modalSeparator} />
+            {isPaidMember && (
+              <>
+                <PlatformPressable
+                  style={styles.modalOption}
+                  onPress={() => {
+                    setShowFabMenu(false);
+                    router.push('/create-writeup');
+                  }}
+                >
+                  <View style={styles.modalIconBox}>
+                    <Ionicons name="document-text-outline" size={22} color={Colors.black} />
+                  </View>
+                  <View>
+                    <Text style={styles.modalOptionTitle}>Review</Text>
+                    <Text style={styles.modalOptionDesc}>Write a course review</Text>
+                  </View>
+                </PlatformPressable>
+                <View style={styles.modalSeparator} />
+              </>
+            )}
             <PlatformPressable
               style={styles.modalOption}
               onPress={() => {

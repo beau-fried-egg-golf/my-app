@@ -113,7 +113,7 @@ function HoverToggleBtn({ label, active, onPress }: { label: string; active: boo
 type MeetupSortOrder = 'date' | 'distance';
 
 export default function MeetupsScreen() {
-  const { meetups, courses, loadMeetups, isPaidMember, setShowUpgradeModal } = useStore();
+  const { meetups, courses, loadMeetups, isPaidMember } = useStore();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const isDesktop = useIsDesktop();
@@ -182,8 +182,8 @@ export default function MeetupsScreen() {
           searchQuery={desktopSearch}
           onSearchChange={setDesktopSearch}
           searchPlaceholder="SEARCH MEETUPS"
-          ctaLabel="CREATE A MEETUP"
-          onCtaPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } openActionPane('meetup'); }}
+          ctaLabel={isPaidMember ? "CREATE A MEETUP" : undefined}
+          onCtaPress={isPaidMember ? () => openActionPane('meetup') : undefined}
         />
       )}
       <FlatList
@@ -248,8 +248,8 @@ export default function MeetupsScreen() {
         }
         contentContainerStyle={styles.list}
       />
-      {!isDesktop && (
-        <PlatformPressable style={[styles.fab, { right: fabRight, bottom: 97 }]} onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } router.push('/create-meetup'); }}>
+      {!isDesktop && isPaidMember && (
+        <PlatformPressable style={[styles.fab, { right: fabRight, bottom: 97 }]} onPress={() => router.push('/create-meetup')}>
           <Ionicons name="add" size={28} color={Colors.black} />
         </PlatformPressable>
       )}

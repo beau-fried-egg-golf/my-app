@@ -99,7 +99,7 @@ function HoverToggleBtn({ label, active, onPress }: { label: string; active: boo
 type GroupSortOrder = 'default' | 'distance';
 
 export default function GroupsScreen() {
-  const { groups, courses, loadGroups, session, isPaidMember, setShowUpgradeModal } = useStore();
+  const { groups, courses, loadGroups, session, isPaidMember } = useStore();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const isDesktop = useIsDesktop();
@@ -171,8 +171,8 @@ export default function GroupsScreen() {
           searchQuery={desktopSearch}
           onSearchChange={setDesktopSearch}
           searchPlaceholder="SEARCH GROUPS"
-          ctaLabel="CREATE A GROUP"
-          onCtaPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } openActionPane('group'); }}
+          ctaLabel={isPaidMember ? "CREATE A GROUP" : undefined}
+          onCtaPress={isPaidMember ? () => openActionPane('group') : undefined}
         />
       )}
       <FlatList
@@ -237,8 +237,8 @@ export default function GroupsScreen() {
         }
         contentContainerStyle={styles.list}
       />
-      {!isDesktop && (
-        <PlatformPressable style={[styles.fab, { right: fabRight, bottom: 97 }]} onPress={() => { if (!isPaidMember) { setShowUpgradeModal(true); return; } router.push('/create-group'); }}>
+      {!isDesktop && isPaidMember && (
+        <PlatformPressable style={[styles.fab, { right: fabRight, bottom: 97 }]} onPress={() => router.push('/create-group')}>
           <Ionicons name="add" size={28} color={Colors.black} />
         </PlatformPressable>
       )}
