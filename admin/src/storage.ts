@@ -558,6 +558,18 @@ export async function togglePostHidden(postId: string, currentHidden: boolean): 
   await supabase.from('posts').update({ hidden: !currentHidden }).eq('id', postId);
 }
 
+export async function togglePostPinned(id: string, currentPinned: boolean): Promise<void> {
+  await supabase.from('posts').update({ pinned: !currentPinned }).eq('id', id);
+}
+
+export async function toggleWriteupPinned(id: string, currentPinned: boolean): Promise<void> {
+  await supabase.from('writeups').update({ pinned: !currentPinned }).eq('id', id);
+}
+
+export async function toggleMeetupPinned(id: string, currentPinned: boolean): Promise<void> {
+  await supabase.from('meetups').update({ pinned: !currentPinned }).eq('id', id);
+}
+
 export async function createFEPost(data: {
   user_id: string;
   content: string;
@@ -592,6 +604,11 @@ export async function createFEPost(data: {
   });
 
   if (activityError) throw activityError;
+
+  // Notify followers via push + in-app notifications
+  await supabase.functions.invoke('notify-fe-post', {
+    body: { post_id: postId, poster_name: 'The Fried Egg' },
+  });
 }
 
 // ---- Email Templates (Supabase Management API) ----

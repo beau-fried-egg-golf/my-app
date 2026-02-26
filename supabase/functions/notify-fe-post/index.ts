@@ -57,6 +57,19 @@ serve(async (req: Request) => {
     );
   }
 
+  // Create in-app notification rows for each follower
+  const notifRows = followers.map((f: { follower_id: string }) => ({
+    id: crypto.randomUUID(),
+    user_id: f.follower_id,
+    type: "fe_content",
+    actor_id: friedEgg.id,
+    post_id,
+    is_read: false,
+    created_at: new Date().toISOString(),
+  }));
+
+  await supabase.from("notifications").insert(notifRows);
+
   // Send push to each follower via send-push
   const results = await Promise.allSettled(
     followers.map((f: { follower_id: string }) =>

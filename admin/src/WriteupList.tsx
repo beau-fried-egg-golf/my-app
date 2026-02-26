@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { getCourses, getWriteups, updateWriteup, deleteWriteup } from './storage';
+import { getCourses, getWriteups, updateWriteup, deleteWriteup, toggleWriteupPinned } from './storage';
 import type { Course, Writeup } from './types';
 
 function formatDate(iso: string): string {
@@ -42,6 +42,13 @@ export default function WriteupList() {
     if (!window.confirm('Delete this review permanently?')) return;
     await deleteWriteup(id);
     setWriteups(writeups.filter((w) => w.id !== id));
+  }
+
+  async function handleTogglePin(id: string) {
+    const w = writeups.find(w => w.id === id);
+    if (!w) return;
+    await toggleWriteupPinned(id, !!w.pinned);
+    setWriteups(writeups.map(w => w.id === id ? { ...w, pinned: !w.pinned } : w));
   }
 
   const filtered = useMemo(() => {
@@ -115,6 +122,11 @@ export default function WriteupList() {
                   <Link to={`/writeups/${w.id}`} className="link">
                     <span className="truncate" style={{ display: 'inline-block' }}>{w.title}</span>
                   </Link>
+                  {w.pinned && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, backgroundColor: '#fef3c7', color: '#92400e' }}>
+                      PINNED
+                    </span>
+                  )}
                 </td>
                 <td>{getCourseName(w.course_id)}</td>
                 <td>{w.user_id.slice(0, 8)}</td>
@@ -128,6 +140,13 @@ export default function WriteupList() {
                 </td>
                 <td>
                   <div className="btn-group">
+                    <button
+                      className="btn btn-sm"
+                      style={w.pinned ? { backgroundColor: '#fef3c7', color: '#92400e' } : undefined}
+                      onClick={() => handleTogglePin(w.id)}
+                    >
+                      {w.pinned ? 'Unpin' : 'Pin'}
+                    </button>
                     <button
                       className="btn btn-sm"
                       onClick={() => toggleHidden(w.id)}

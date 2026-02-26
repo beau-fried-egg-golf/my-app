@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -86,15 +87,19 @@ export default function EditProfileScreen() {
   if (!user) return null;
 
   async function pickImage() {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const url = await uploadPhoto(result.assets[0].uri, user!.id);
-      setImage(url);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const url = await uploadPhoto(result.assets[0].uri, user!.id);
+        setImage(url);
+      }
+    } catch (err: any) {
+      Alert.alert('Upload failed', err?.message ?? 'Could not upload photo. Please try again.');
     }
   }
 

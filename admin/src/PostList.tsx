@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getPosts, deletePost } from './storage';
+import { getPosts, deletePost, togglePostPinned } from './storage';
 import type { Post } from './types';
 
 function formatDate(iso: string): string {
@@ -24,6 +24,13 @@ export default function PostList() {
     if (!window.confirm('Delete this post permanently?')) return;
     await deletePost(id);
     setPosts(prev => prev.filter(p => p.id !== id));
+  }
+
+  async function handleTogglePin(id: string) {
+    const post = posts.find(p => p.id === id);
+    if (!post) return;
+    await togglePostPinned(id, !!post.pinned);
+    setPosts(prev => prev.map(p => p.id === id ? { ...p, pinned: !p.pinned } : p));
   }
 
   const filtered = useMemo(() => {
@@ -77,6 +84,11 @@ export default function PostList() {
                       {p.content.length > 80 ? p.content.slice(0, 80) + '...' : p.content}
                     </span>
                   </Link>
+                  {p.pinned && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, backgroundColor: '#fef3c7', color: '#92400e' }}>
+                      PINNED
+                    </span>
+                  )}
                 </td>
                 <td>
                   <Link to={`/users/${p.user_id}`} className="link">
@@ -89,6 +101,13 @@ export default function PostList() {
                 <td>{p.reply_count}</td>
                 <td>
                   <div className="btn-group">
+                    <button
+                      className="btn btn-sm"
+                      style={p.pinned ? { backgroundColor: '#fef3c7', color: '#92400e' } : undefined}
+                      onClick={() => handleTogglePin(p.id)}
+                    >
+                      {p.pinned ? 'Unpin' : 'Pin'}
+                    </button>
                     <button
                       className="btn btn-sm btn-danger"
                       onClick={() => handleDelete(p.id)}

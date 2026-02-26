@@ -100,6 +100,13 @@ function getNotificationText(n: Notification): { parts: { text: string; bold: bo
           { text: ' was denied.', bold: false },
         ],
       };
+    case 'fe_content':
+      return {
+        parts: [
+          { text: n.actor_name ?? 'The Fried Egg', bold: true },
+          { text: ' shared a new post', bold: false },
+        ],
+      };
     default:
       return { parts: [{ text: 'New notification', bold: false }] };
   }
@@ -119,6 +126,7 @@ function getNavTarget(n: Notification): string | null {
     case 'group_join':
       return n.group_id ? `/group/${n.group_id}` : null;
     case 'post_reply':
+    case 'fe_content':
       return n.post_id ? `/post/${n.post_id}` : null;
     case 'writeup_reply':
       return n.writeup_id ? `/writeup/${n.writeup_id}` : null;

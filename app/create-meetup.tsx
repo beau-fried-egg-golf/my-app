@@ -13,6 +13,7 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
@@ -43,6 +44,9 @@ export default function CreateMeetupScreen() {
   const [courseId, setCourseId] = useState<string | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [meetupDate, setMeetupDate] = useState('');
+  const [meetupTime, setMeetupTime] = useState('08:00');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
   const [cost, setCost] = useState('Free');
   const [totalSlots, setTotalSlots] = useState('4');
   const [hostTakesSlot, setHostTakesSlot] = useState(true);
@@ -71,10 +75,11 @@ export default function CreateMeetupScreen() {
     setName(existing.name);
     setDescription(existing.description ?? '');
     setCourseId(existing.course_id);
-    // Format date for datetime-local input
+    // Split date and time for separate pickers
     const d = new Date(existing.meetup_date);
-    const localDate = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
-    setMeetupDate(localDate);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+    setMeetupDate(local.toISOString().slice(0, 10));
+    setMeetupTime(local.toISOString().slice(11, 16));
     setCost(existing.cost ?? 'Free');
     setTotalSlots(String(existing.total_slots ?? 4));
     setHostTakesSlot(existing.host_takes_slot ?? true);
@@ -159,7 +164,7 @@ export default function CreateMeetupScreen() {
         description: description.trim(),
         course_id: courseId,
         location_name: selectedCourse.short_name,
-        meetup_date: new Date(meetupDate).toISOString(),
+        meetup_date: new Date(`${meetupDate}T${meetupTime || '08:00'}`).toISOString(),
         cost: costDisplay,
         total_slots: parseInt(totalSlots, 10) || 4,
         host_takes_slot: isFeCoordinated ? false : hostTakesSlot,
@@ -291,33 +296,105 @@ export default function CreateMeetupScreen() {
           </>
         )}
 
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Date & Time *</Text>
-          {Platform.OS === 'web' ? (
-            <input
-              type="datetime-local"
-              value={meetupDate}
-              onChange={(e: any) => setMeetupDate(e.target.value)}
-              style={{
-                border: `1px solid ${Colors.border}`,
-                borderRadius: 8,
-                padding: '12px 14px',
-                fontSize: 16,
-                fontFamily: Fonts!.sans,
-                color: Colors.black,
-                width: '100%',
-                boxSizing: 'border-box' as const,
-              }}
-            />
-          ) : (
-            <TextInput
-              style={styles.textInput}
-              value={meetupDate}
-              onChangeText={setMeetupDate}
-              placeholder="YYYY-MM-DDTHH:MM"
-              placeholderTextColor={Colors.gray}
-            />
-          )}
+        <View style={styles.fieldRow}>
+          <View style={[styles.field, { flex: 1, marginRight: 8 }]}>
+            <Text style={styles.fieldLabel}>Date *</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                value={meetupDate}
+                onChange={(e: any) => setMeetupDate(e.target.value)}
+                style={{
+                  border: `1px solid ${Colors.border}`,
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  fontSize: 16,
+                  fontFamily: Fonts!.sans,
+                  color: Colors.black,
+                  width: '100%',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
+            ) : (
+              <>
+                <Pressable style={styles.textInput} onPress={() => setShowDatePicker(true)}>
+                  <Text style={meetupDate ? { fontSize: 16, color: Colors.black, fontFamily: Fonts!.sans } : { fontSize: 16, color: Colors.gray, fontFamily: Fonts!.sans }}>
+                    {meetupDate ? new Date(meetupDate + 'T00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Select date'}
+                  </Text>
+                </Pressable>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={meetupDate ? new Date(meetupDate + 'T00:00') : new Date()}
+                    mode="date"
+                    display="inline"
+                    onChange={(_, selectedDate) => {
+                      setShowDatePicker(false);
+                      if (selectedDate) {
+                        const y = selectedDate.getFullYear();
+                        const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                        const d = String(selectedDate.getDate()).padStart(2, '0');
+                        setMeetupDate(`${y}-${m}-${d}`);
+                      }
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </View>
+          <View style={[styles.field, { flex: 1, marginLeft: 8 }]}>
+            <Text style={styles.fieldLabel}>Time *</Text>
+            {Platform.OS === 'web' ? (
+              <input
+                type="time"
+                value={meetupTime}
+                onChange={(e: any) => setMeetupTime(e.target.value)}
+                style={{
+                  border: `1px solid ${Colors.border}`,
+                  borderRadius: 8,
+                  padding: '12px 14px',
+                  fontSize: 16,
+                  fontFamily: Fonts!.sans,
+                  color: Colors.black,
+                  width: '100%',
+                  boxSizing: 'border-box' as const,
+                }}
+              />
+            ) : (
+              <>
+                <Pressable style={styles.textInput} onPress={() => setShowTimePicker(true)}>
+                  <Text style={{ fontSize: 16, color: Colors.black, fontFamily: Fonts!.sans }}>
+                    {(() => {
+                      const [h, m] = (meetupTime || '08:00').split(':').map(Number);
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      const h12 = h % 12 || 12;
+                      return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+                    })()}
+                  </Text>
+                </Pressable>
+                {showTimePicker && (
+                  <DateTimePicker
+                    value={(() => {
+                      const [h, m] = (meetupTime || '08:00').split(':').map(Number);
+                      const d = new Date();
+                      d.setHours(h, m, 0, 0);
+                      return d;
+                    })()}
+                    mode="time"
+                    display="spinner"
+                    minuteInterval={5}
+                    onChange={(_, selectedDate) => {
+                      setShowTimePicker(false);
+                      if (selectedDate) {
+                        const hh = String(selectedDate.getHours()).padStart(2, '0');
+                        const mm = String(selectedDate.getMinutes()).padStart(2, '0');
+                        setMeetupTime(`${hh}:${mm}`);
+                      }
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </View>
         </View>
 
         <View style={styles.fieldRow}>

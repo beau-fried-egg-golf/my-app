@@ -11,7 +11,7 @@ import { Activity, Profile, Writeup, Post } from '@/types';
 import LinkPreview from '@/components/LinkPreview';
 import VerifiedBadge from '@/components/VerifiedBadge';
 import TutorialPopup from '@/components/TutorialPopup';
-import { SearchIcon } from '@/components/icons/CustomIcons';
+import { SearchIcon, ThumbtackIcon } from '@/components/icons/CustomIcons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
@@ -65,7 +65,7 @@ const REACTION_EMOJI: Record<string, string> = {
   laugh: '\uD83D\uDE02',
 };
 
-function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Activity; onPress: () => void; writeups: Writeup[]; profiles: Profile[]; posts: Post[] }) {
+function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { item: Activity; onPress: () => void; writeups: Writeup[]; profiles: Profile[]; posts: Post[]; isPinned?: boolean }) {
   const isDesktop = useIsDesktop();
   const userProfile = profiles.find(p => p.id === item.user_id);
   const thumbnail = item.type === 'writeup' && item.writeup_id
@@ -75,6 +75,13 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
       : undefined;
 
   const isVerified = !!userProfile?.is_verified;
+
+  const pinnedLabel = isPinned ? (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+      <ThumbtackIcon size={12} color={Colors.gray} strokeWidth={1.5} />
+      <Text style={{ fontSize: 11, color: Colors.gray, fontFamily: Fonts.sansMedium }}>Pinned</Text>
+    </View>
+  ) : null;
 
   if (item.type === 'post') {
     const name = item.user_name ?? '';
@@ -98,6 +105,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <View style={styles.activityIcon} />
         )}
         <View style={styles.activityContent}>
+          {pinnedLabel}
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
@@ -235,6 +243,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           </View>
         )}
         <View style={styles.activityContent}>
+          {pinnedLabel}
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
@@ -295,6 +304,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts }: { item: Acti
           <View style={styles.activityIcon} />
         )}
         <View style={styles.activityContent}>
+          {pinnedLabel}
           <View style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
@@ -377,7 +387,7 @@ function formatTime(iso: string): string {
 }
 
 export default function FeedScreen() {
-  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount, isPaidMember } = useStore();
+  const { activities, writeups, profiles, posts, session, user, followingIds, toggleFollow, isFollowing, getFollowerCount, isPaidMember, pinnedContent } = useStore();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -487,6 +497,24 @@ export default function FeedScreen() {
     reviews: ['writeup'],
   };
 
+  const pinnedItems = useMemo(() => {
+    const items: Activity[] = [];
+    if (pinnedContent.post) items.push(pinnedContent.post);
+    if (pinnedContent.writeup) items.push(pinnedContent.writeup);
+    if (pinnedContent.meetup) items.push(pinnedContent.meetup);
+    return items;
+  }, [pinnedContent]);
+
+  const pinnedEntityIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of pinnedItems) {
+      if (item.post_id) ids.add(item.post_id);
+      if (item.writeup_id) ids.add(item.writeup_id);
+      if (item.meetup_id) ids.add(item.meetup_id);
+    }
+    return ids;
+  }, [pinnedItems]);
+
   const filteredActivities = useMemo(() => {
     return activities.filter(a => {
       if (a.type === 'played') return false;
@@ -497,9 +525,13 @@ export default function FeedScreen() {
         const fields = [a.user_name, a.course_name, a.meetup_name, a.group_name, a.post_content, a.writeup_title, a.target_user_name];
         if (!fields.some(f => f?.toLowerCase().includes(q))) return false;
       }
+      // Deduplicate: remove items that are shown as pinned
+      if (a.post_id && pinnedEntityIds.has(a.post_id) && a.type === 'post') return false;
+      if (a.writeup_id && pinnedEntityIds.has(a.writeup_id) && a.type === 'writeup') return false;
+      if (a.meetup_id && pinnedEntityIds.has(a.meetup_id) && (a.type === 'meetup_created')) return false;
       return true;
     });
-  }, [activities, feedFilter, followingIds, activityFilter, searchQuery]);
+  }, [activities, feedFilter, followingIds, activityFilter, searchQuery, pinnedEntityIds]);
 
   return (
     <ResponsiveContainer>
@@ -552,7 +584,7 @@ export default function FeedScreen() {
       */}
       <FlatList
         {...desktopScrollProps}
-        data={filteredActivities.slice(0, displayCount)}
+        data={[...pinnedItems, ...filteredActivities.slice(0, displayCount)]}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={isDesktop ? styles.desktopCard : undefined}>
@@ -561,6 +593,7 @@ export default function FeedScreen() {
             writeups={writeups}
             profiles={profiles}
             posts={posts}
+            isPinned={item.id.startsWith('pinned-')}
             onPress={() => {
               if (item.type === 'group_created' && item.group_id) router.push(`/group/${item.group_id}`);
               else if ((item.type === 'meetup_created' || item.type === 'meetup_signup') && item.meetup_id) router.push(`/meetup/${item.meetup_id}`);

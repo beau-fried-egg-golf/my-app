@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMeetups, deleteMeetup, suspendMeetup } from './storage';
+import { getMeetups, deleteMeetup, suspendMeetup, toggleMeetupPinned } from './storage';
 import type { Meetup } from './types';
 
 type FEFilter = 'all' | 'yes' | 'no';
@@ -41,6 +41,13 @@ export default function MeetupList() {
   async function handleSuspendToggle(id: string, currentlySuspended: boolean) {
     await suspendMeetup(id, !currentlySuspended);
     setMeetups(meetups.map(m => m.id === id ? { ...m, suspended: !currentlySuspended } : m));
+  }
+
+  async function handleTogglePin(id: string) {
+    const meetup = meetups.find(m => m.id === id);
+    if (!meetup) return;
+    await toggleMeetupPinned(id, !!meetup.pinned);
+    setMeetups(meetups.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m));
   }
 
   return (
@@ -91,6 +98,11 @@ export default function MeetupList() {
               <tr key={m.id} style={m.suspended ? { opacity: 0.5 } : undefined}>
                 <td>
                   <Link to={`/meetups/${m.id}`} className="link"><strong>{m.name}</strong></Link>
+                  {m.pinned && (
+                    <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, backgroundColor: '#fef3c7', color: '#92400e' }}>
+                      PINNED
+                    </span>
+                  )}
                   {m.suspended && (
                     <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, padding: '1px 5px', borderRadius: 4, backgroundColor: '#fecaca', color: '#991b1b' }}>
                       SUSPENDED
@@ -110,6 +122,13 @@ export default function MeetupList() {
                 <td>
                   <div className="btn-group">
                     <Link to={`/meetups/${m.id}/edit`} className="btn btn-sm">Edit</Link>
+                    <button
+                      className="btn btn-sm"
+                      style={m.pinned ? { backgroundColor: '#fef3c7', color: '#92400e' } : undefined}
+                      onClick={() => handleTogglePin(m.id)}
+                    >
+                      {m.pinned ? 'Unpin' : 'Pin'}
+                    </button>
                     <button
                       className="btn btn-sm"
                       style={m.suspended ? { backgroundColor: '#d1fae5', color: '#065f46' } : { backgroundColor: '#fef3c7', color: '#92400e' }}

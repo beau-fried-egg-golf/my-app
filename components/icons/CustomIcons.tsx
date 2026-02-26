@@ -163,6 +163,20 @@ export function SearchIcon({ size = 24, color = '#1B1A1A' }: IconProps) {
   );
 }
 
+export function ThumbtackIcon({ size = 24, color = '#1B1A1A', strokeWidth = 1.5 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M9.5 3.5H14.5V7L16.5 11.5C16.5 11.5 17 13 15 14.5H13V20.5M13 14.5H9C7 13 7.5 11.5 7.5 11.5L9.5 7V3.5"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function GolfBagIcon({ size = 24, color = '#1B1A1A' }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">

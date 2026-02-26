@@ -59,6 +59,7 @@ export interface Writeup {
   hidden: boolean;
   photos?: Photo[];
   upvote_count?: number;
+  pinned?: boolean;
 }
 
 export interface PostPhoto {
@@ -84,6 +85,7 @@ export interface Post {
   link_title?: string | null;
   link_description?: string | null;
   link_image?: string | null;
+  pinned?: boolean;
 }
 
 export interface PostReply {
@@ -140,6 +142,7 @@ export interface Meetup {
   image: string | null;
   is_fe_coordinated: boolean;
   suspended?: boolean;
+  pinned?: boolean;
   stripe_payment_url: string | null;
   cost_cents?: number | null;
   created_at: string;

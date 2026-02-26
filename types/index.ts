@@ -170,6 +170,7 @@ export interface Writeup {
   reply_count: number;
   author_name?: string;
   author_verified?: boolean;
+  pinned?: boolean;
 }
 
 export interface CoursePlayed {
@@ -205,6 +206,7 @@ export interface Post {
   link_title?: string | null;
   link_description?: string | null;
   link_image?: string | null;
+  pinned?: boolean;
 }
 
 export interface PostReply {
@@ -348,6 +350,7 @@ export interface Meetup {
   image: string | null;
   is_fe_coordinated: boolean;
   suspended?: boolean;
+  pinned?: boolean;
   stripe_payment_url: string | null;
   cost_cents?: number | null;
   created_at: string;
@@ -396,7 +399,7 @@ export interface MessageReaction {
   created_at: string;
 }
 
-export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply' | 'waitlist_spot_available' | 'cancellation_approved' | 'cancellation_denied';
+export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply' | 'waitlist_spot_available' | 'cancellation_approved' | 'cancellation_denied' | 'fe_content';
 
 export interface CancellationRequest {
   id: string;

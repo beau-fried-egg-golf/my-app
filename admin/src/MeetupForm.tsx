@@ -12,6 +12,7 @@ interface MeetupFormData {
   course_id: string | null;
   location_name: string;
   meetup_date: string;
+  meetup_time: string;
   cost: string;
   total_slots: number;
   host_takes_slot: boolean;
@@ -28,6 +29,7 @@ const EMPTY_FORM: MeetupFormData = {
   course_id: null,
   location_name: '',
   meetup_date: '',
+  meetup_time: '08:00',
   cost: '',
   total_slots: 4,
   host_takes_slot: true,
@@ -62,7 +64,8 @@ export default function MeetupForm() {
             host_id: existing.host_id,
             course_id: existing.course_id,
             location_name: existing.location_name,
-            meetup_date: existing.meetup_date ? existing.meetup_date.slice(0, 16) : '',
+            meetup_date: existing.meetup_date ? (() => { const d = new Date(existing.meetup_date); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); })() : '',
+            meetup_time: existing.meetup_date ? (() => { const d = new Date(existing.meetup_date); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(11, 16); })() : '08:00',
             cost: existing.cost,
             total_slots: existing.total_slots,
             host_takes_slot: existing.host_takes_slot,
@@ -116,7 +119,7 @@ export default function MeetupForm() {
       host_id: form.host_id,
       course_id: form.course_id || null,
       location_name: form.location_name,
-      meetup_date: form.meetup_date ? new Date(form.meetup_date).toISOString() : now,
+      meetup_date: form.meetup_date ? new Date(`${form.meetup_date}T${form.meetup_time || '08:00'}`).toISOString() : now,
       cost: costDisplay,
       total_slots: form.total_slots,
       host_takes_slot: form.host_takes_slot,
@@ -200,8 +203,12 @@ export default function MeetupForm() {
 
         <div className="form-row">
           <div className="form-group">
-            <label className="form-label">Date & Time</label>
-            <input className="form-input" type="datetime-local" value={form.meetup_date} onChange={(e) => handleChange('meetup_date', e.target.value)} required />
+            <label className="form-label">Date</label>
+            <input className="form-input" type="date" value={form.meetup_date} onChange={(e) => handleChange('meetup_date', e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Time</label>
+            <input className="form-input" type="time" value={form.meetup_time} onChange={(e) => handleChange('meetup_time', e.target.value)} required />
           </div>
           <div className="form-group">
             <label className="form-label">Cost</label>

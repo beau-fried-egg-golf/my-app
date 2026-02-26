@@ -147,6 +147,7 @@ interface StoreContextType {
   isPaidMember: boolean;
   showUpgradeModal: boolean;
   setShowUpgradeModal: (show: boolean) => void;
+  pinnedContent: { post: Activity | null; writeup: Activity | null; meetup: Activity | null };
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -186,6 +187,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isPaidMember, setIsPaidMember] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [pinnedContent, setPinnedContent] = useState<{ post: Activity | null; writeup: Activity | null; meetup: Activity | null }>({ post: null, writeup: null, meetup: null });
 
   const followingIds = React.useMemo(() => {
     const currentUserId = session?.user?.id;
@@ -439,14 +441,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (blockerRes.data) setBlockedUserIds(new Set(blockerRes.data.map((b: UserBlock) => b.blocked_id)));
       if (blockedRes.data) setBlockedByIds(new Set(blockedRes.data.map((b: UserBlock) => b.blocker_id)));
 
-      const [activitiesRes] = await Promise.all([
+      const [activitiesRes, , , , , pinnedRes] = await Promise.all([
         loadActivities(loadedCourses),
         currentUserId ? loadConversations(currentUserId) : Promise.resolve(),
         currentUserId ? loadGroupsData(currentUserId) : Promise.resolve(),
         currentUserId ? loadMeetupsData(currentUserId) : Promise.resolve(),
         currentUserId ? loadNotificationsData(currentUserId) : Promise.resolve(),
+        loadPinnedContent(),
       ]);
       if (activitiesRes) setActivities(activitiesRes);
+      if (pinnedRes) setPinnedContent(pinnedRes);
     } catch (e) {
       console.error('Failed to load data', e);
     } finally {
@@ -654,6 +658,83 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         meetup_name: a.meetup_id ? meetupMap.get(a.meetup_id)?.name ?? '' : undefined,
       };
     });
+  }
+
+  async function loadPinnedContent(): Promise<{ post: Activity | null; writeup: Activity | null; meetup: Activity | null }> {
+    const [pinnedPostRes, pinnedWriteupRes, pinnedMeetupRes] = await Promise.all([
+      supabase.from('posts').select('id, user_id, content, created_at, link_url, link_title, link_description, link_image').eq('pinned', true).eq('hidden', false).order('created_at', { ascending: false }).limit(1),
+      supabase.from('writeups').select('id, user_id, course_id, title, created_at').eq('pinned', true).eq('hidden', false).order('created_at', { ascending: false }).limit(1),
+      supabase.from('meetups').select('id, host_id, name, course_id, created_at').eq('pinned', true).order('created_at', { ascending: false }).limit(1),
+    ]);
+
+    const result: { post: Activity | null; writeup: Activity | null; meetup: Activity | null } = { post: null, writeup: null, meetup: null };
+
+    // Collect user IDs for profile lookup
+    const userIds: string[] = [];
+    const pinnedPost = pinnedPostRes.data?.[0];
+    const pinnedWriteup = pinnedWriteupRes.data?.[0];
+    const pinnedMeetup = pinnedMeetupRes.data?.[0];
+    if (pinnedPost) userIds.push(pinnedPost.user_id);
+    if (pinnedWriteup) userIds.push(pinnedWriteup.user_id);
+    if (pinnedMeetup?.host_id) userIds.push(pinnedMeetup.host_id);
+
+    const profileMap = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase.from('profiles').select('id, name').in('id', [...new Set(userIds)]);
+      for (const p of profiles ?? []) profileMap.set(p.id, p.name);
+    }
+
+    if (pinnedPost) {
+      result.post = {
+        id: `pinned-post-${pinnedPost.id}`,
+        type: 'post',
+        user_id: pinnedPost.user_id,
+        post_id: pinnedPost.id,
+        writeup_id: null,
+        course_id: null,
+        target_user_id: null,
+        created_at: pinnedPost.created_at,
+        user_name: profileMap.get(pinnedPost.user_id) ?? 'Member',
+        post_content: pinnedPost.content,
+      };
+    }
+
+    if (pinnedWriteup) {
+      const courseList = coursesRef.current;
+      const courseName = courseList.find(c => c.id === pinnedWriteup.course_id)?.short_name ?? '';
+      result.writeup = {
+        id: `pinned-writeup-${pinnedWriteup.id}`,
+        type: 'writeup',
+        user_id: pinnedWriteup.user_id,
+        writeup_id: pinnedWriteup.id,
+        post_id: null,
+        course_id: pinnedWriteup.course_id,
+        target_user_id: null,
+        created_at: pinnedWriteup.created_at,
+        user_name: profileMap.get(pinnedWriteup.user_id) ?? 'Member',
+        writeup_title: pinnedWriteup.title,
+        course_name: courseName,
+      };
+    }
+
+    if (pinnedMeetup) {
+      result.meetup = {
+        id: `pinned-meetup-${pinnedMeetup.id}`,
+        type: 'meetup_created',
+        user_id: pinnedMeetup.host_id ?? '',
+        writeup_id: null,
+        post_id: null,
+        course_id: pinnedMeetup.course_id ?? null,
+        meetup_id: pinnedMeetup.id,
+        target_user_id: null,
+        created_at: pinnedMeetup.created_at,
+        user_name: pinnedMeetup.host_id ? (profileMap.get(pinnedMeetup.host_id) ?? 'Member') : 'Member',
+        meetup_name: pinnedMeetup.name,
+        course_name: pinnedMeetup.course_id ? (coursesRef.current.find(c => c.id === pinnedMeetup.course_id)?.short_name ?? '') : undefined,
+      };
+    }
+
+    return result;
   }
 
   async function loadPosts(): Promise<Post[]> {
@@ -3306,6 +3387,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         isPaidMember,
         showUpgradeModal,
         setShowUpgradeModal,
+        pinnedContent,
       }}
     >
       {children}
