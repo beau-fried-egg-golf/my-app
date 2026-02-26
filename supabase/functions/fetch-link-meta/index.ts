@@ -7,15 +7,19 @@ const corsHeaders = {
 };
 
 function decodeHtmlEntities(str: string): string {
+  const named: Record<string, string> = {
+    amp: "&", lt: "<", gt: ">", quot: '"', apos: "'",
+    rsquo: "\u2019", lsquo: "\u2018", rdquo: "\u201D", ldquo: "\u201C",
+    ndash: "\u2013", mdash: "\u2014", hellip: "\u2026",
+    trade: "\u2122", copy: "\u00A9", reg: "\u00AE",
+    nbsp: " ", bull: "\u2022", middot: "\u00B7",
+    laquo: "\u00AB", raquo: "\u00BB",
+    cent: "\u00A2", pound: "\u00A3", euro: "\u20AC", yen: "\u00A5",
+  };
   return str
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&#x([0-9a-fA-F]+);/g, (_, n) => String.fromCharCode(parseInt(n, 16)))
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'")
-    .replace(/&#39;/g, "'");
+    .replace(/&([a-zA-Z]+);/g, (full, name) => named[name] ?? named[name.toLowerCase()] ?? full);
 }
 
 function extractMeta(html: string): {
