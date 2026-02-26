@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getEvents, deleteEvent, duplicateEvent } from './eventStorage';
-import type { Event } from './eventTypes';
+import { getEvents, deleteEvent, duplicateEvent, getAddOns } from './eventStorage';
+import type { Event, AddOn } from './eventTypes';
 import { generateEventEmbedHTML } from './generateEventEmbedHTML';
 import AnnotationPreview from './AnnotationPreview';
 import AnnotationExport from './AnnotationExport';
@@ -30,6 +30,8 @@ export default function EventList() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   const [exportHtml, setExportHtml] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [addOnCache, setAddOnCache] = useState<Record<string, AddOn[]>>({});
 
   useEffect(() => {
     loadEvents();
@@ -53,6 +55,18 @@ export default function EventList() {
     const newId = await duplicateEvent(id);
     if (newId) {
       navigate(`/events/${newId}/edit`);
+    }
+  }
+
+  async function toggleExpand(eventId: string) {
+    if (expandedId === eventId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(eventId);
+    if (!addOnCache[eventId]) {
+      const addOns = await getAddOns(eventId);
+      setAddOnCache(prev => ({ ...prev, [eventId]: addOns }));
     }
   }
 
@@ -107,39 +121,87 @@ export default function EventList() {
               const statusStyle = STATUS_COLORS[e.status] ?? STATUS_COLORS.draft;
               const booked = e.total_booked ?? 0;
               const pct = Math.min(100, Math.round((booked / e.total_capacity) * 100));
+              const isExpanded = expandedId === e.id;
+              const addOns = addOnCache[e.id];
+              const addOnsWithCap = addOns?.filter(a => a.capacity != null) ?? [];
               return (
-                <tr key={e.id}>
-                  <td>
-                    <strong>{e.name}</strong>
-                    <div style={{ fontSize: 12, color: '#888' }}>{e.slug}</div>
-                  </td>
-                  <td>{formatDate(e.date)}</td>
-                  <td>{e.location ?? '–'}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div className="capacity-bar">
-                        <div className="capacity-bar-fill" style={{ width: `${pct}%` }} />
+                <Fragment key={e.id}>
+                  <tr onClick={() => toggleExpand(e.id)} style={{ cursor: 'pointer' }}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ display: 'inline-block', width: 16, fontSize: 12, color: '#888', transition: 'transform 0.15s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}>&#9654;</span>
+                        <div>
+                          <strong>{e.name}</strong>
+                          <div style={{ fontSize: 12, color: '#888' }}>{e.slug}</div>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{booked}/{e.total_capacity}</span>
-                    </div>
-                  </td>
-                  <td>{formatCents(e.total_revenue ?? 0)}</td>
-                  <td>
-                    <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>
-                      {e.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="btn-group">
-                      <Link to={`/events/${e.id}/edit`} className="btn btn-sm">Edit</Link>
-                      <Link to={`/events/${e.id}/bookings`} className="btn btn-sm">Bookings</Link>
-                      <button className="btn btn-sm" onClick={() => handlePreview(e.slug)}>Preview</button>
-                      <button className="btn btn-sm" onClick={() => handleExport(e.slug)}>Export</button>
-                      <button className="btn btn-sm" onClick={() => handleDuplicate(e.id)}>Dup</button>
-                      <button className="btn btn-sm btn-danger" onClick={() => setConfirmDelete(e.id)}>Del</button>
-                    </div>
-                  </td>
-                </tr>
+                    </td>
+                    <td>{formatDate(e.date)}</td>
+                    <td>{e.location ?? '–'}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="capacity-bar">
+                          <div className="capacity-bar-fill" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{booked}/{e.total_capacity}</span>
+                      </div>
+                    </td>
+                    <td>{formatCents(e.total_revenue ?? 0)}</td>
+                    <td>
+                      <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>
+                        {e.status}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="btn-group" onClick={ev => ev.stopPropagation()}>
+                        <Link to={`/events/${e.id}/edit`} className="btn btn-sm">Edit</Link>
+                        <Link to={`/events/${e.id}/bookings`} className="btn btn-sm">Bookings</Link>
+                        <button className="btn btn-sm" onClick={() => handlePreview(e.slug)}>Preview</button>
+                        <button className="btn btn-sm" onClick={() => handleExport(e.slug)}>Export</button>
+                        <button className="btn btn-sm" onClick={() => handleDuplicate(e.id)}>Dup</button>
+                        <button className="btn btn-sm btn-danger" onClick={() => setConfirmDelete(e.id)}>Del</button>
+                      </div>
+                    </td>
+                  </tr>
+                  {isExpanded && (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '12px 16px 16px 38px', background: '#fafafa' }}>
+                        {!addOns ? (
+                          <span style={{ color: '#888', fontSize: 13 }}>Loading add-ons...</span>
+                        ) : addOnsWithCap.length === 0 ? (
+                          <span style={{ color: '#888', fontSize: 13 }}>No capacity-tracked add-ons</span>
+                        ) : (
+                          <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, textTransform: 'uppercase', color: '#888', marginBottom: 8 }}>Add-on Capacity</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {addOnsWithCap.map(a => {
+                                const sold = a.sold_count ?? 0;
+                                const cap = a.capacity!;
+                                const remaining = cap - sold;
+                                const aPct = Math.min(100, Math.round((sold / cap) * 100));
+                                const barColor = aPct >= 90 ? '#ef4444' : aPct >= 70 ? '#f59e0b' : '#22c55e';
+                                return (
+                                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                    <span style={{ fontSize: 13, minWidth: 140 }}>{a.name}</span>
+                                    <div className="capacity-bar" style={{ flex: 1, maxWidth: 200 }}>
+                                      <div className="capacity-bar-fill" style={{ width: `${aPct}%`, background: barColor }} />
+                                    </div>
+                                    <span style={{ fontSize: 13, whiteSpace: 'nowrap', minWidth: 80 }}>
+                                      {sold}/{cap} sold
+                                    </span>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: remaining <= 5 ? '#ef4444' : '#166534' }}>
+                                      {remaining} left
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               );
             })}
           </tbody>
