@@ -566,7 +566,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
         if (g.description) html += '<div class="evt-ticket-desc" style="margin-bottom:8px">' + esc(g.description) + '</div>';
         groupAddOns.forEach(function(a) {
           groupedIds.add(a.id);
-          html += renderAddOn(a);
+          html += renderAddOn(a, g);
         });
       });
       var ungrouped = state.addOns.filter(function(a) { return !groupedIds.has(a.id); });
@@ -635,14 +635,18 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     return html;
   }
 
-  function renderAddOn(a) {
+  function renderAddOn(a, group) {
     var soldOut = a.available !== null && a.available <= 0;
     var checked = state.selectedAddOns.indexOf(a.id) >= 0;
     var aoQty = state.addOnQtys[a.id] || 1;
     var maxQty = a.available !== null ? Math.min(a.max_per_order || 1, a.available) : (a.max_per_order || 1);
     var showQty = checked && maxQty > 1;
+    var isRadio = group && group.selection_type === 'one_only';
+    var inputType = isRadio ? 'radio' : 'checkbox';
+    var inputName = isRadio ? ' name="addon-group-' + group.id + '"' : '';
+    var groupAttr = group ? ' data-addon-group="' + group.id + '"' : '';
     var html = '<label class="evt-addon' + (checked ? ' evt-addon-selected' : '') + (soldOut ? ' evt-addon-sold-out' : '') + '"' + (showQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + '>' +
-      '<input type="checkbox" data-addon-id="' + a.id + '"' + (checked ? ' checked' : '') + (soldOut ? ' disabled' : '') + ' />' +
+      '<input type="' + inputType + '"' + inputName + ' data-addon-id="' + a.id + '"' + groupAttr + (checked ? ' checked' : '') + (soldOut ? ' disabled' : '') + ' />' +
       '<div class="evt-addon-info"><div class="evt-addon-name">' + esc(a.name) + '</div>' +
       (a.description ? '<div class="evt-addon-desc">' + esc(a.description) + '</div>' : '') +
       (!soldOut && a.available !== null ? '<div style="font-size:11px;color:#92400e;margin-top:2px">' + a.available + ' remaining</div>' : '') +
@@ -749,7 +753,21 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     ROOT.querySelectorAll('[data-addon-id]').forEach(function(el) {
       el.addEventListener('change', function() {
         var id = el.getAttribute('data-addon-id');
-        if (el.checked) { if (state.selectedAddOns.indexOf(id) < 0) state.selectedAddOns.push(id); }
+        var groupId = el.getAttribute('data-addon-group');
+        if (el.checked) {
+          // If this is a one_only group, deselect other add-ons in the same group
+          if (groupId) {
+            var group = state.addOnGroups.find(function(g) { return g.id === groupId; });
+            if (group && group.selection_type === 'one_only') {
+              var groupAddOnIds = state.addOns.filter(function(a) { return a.add_on_group_id === groupId; }).map(function(a) { return a.id; });
+              groupAddOnIds.forEach(function(gid) {
+                if (gid !== id) { delete state.addOnQtys[gid]; }
+              });
+              state.selectedAddOns = state.selectedAddOns.filter(function(x) { return groupAddOnIds.indexOf(x) < 0; });
+            }
+          }
+          if (state.selectedAddOns.indexOf(id) < 0) state.selectedAddOns.push(id);
+        }
         else { state.selectedAddOns = state.selectedAddOns.filter(function(x) { return x !== id; }); delete state.addOnQtys[id]; }
         render();
       });
