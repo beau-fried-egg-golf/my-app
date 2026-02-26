@@ -139,6 +139,9 @@ serve(async (req: Request) => {
           <td style="padding:8px 0;font-size:12px;font-family:monospace;text-align:right;">${booking_id.slice(0, 8)}</td>
         </tr>
       </table>
+      <p style="color:#999999;font-size:13px;line-height:1.5;margin:24px 0 0;border-top:1px solid #eee;padding-top:16px;">
+        Need to cancel? <a href="mailto:events@thefriedegg.com?subject=${encodeURIComponent(`Cancellation Request — ${event.name}`)}&body=${encodeURIComponent(`Hi,\n\nI'd like to request a cancellation and refund for my booking.\n\nName: ${booking.first_name} ${booking.last_name}\nEmail: ${booking.email}\nEvent: ${event.name}\nDate: ${eventDate}\nBooking ID: ${booking_id.slice(0, 8)}\nAmount: ${total}\n\nThank you`)}" style="color:#1a1a1a;text-decoration:underline;">Request a refund</a>
+      </p>
     `;
   } else if (type === "waitlist_confirmation" && waitlist_id) {
     const { data: entry } = await supabase
