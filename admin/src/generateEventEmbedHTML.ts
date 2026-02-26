@@ -650,7 +650,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
       '<span class="evt-addon-price">' + (soldOut ? '<span class="evt-badge-sold-out">Sold Out</span>' : fmtPrice(a.price)) + '</span>' +
     '</label>';
     if (showQty) {
-      html += '<div class="evt-qty evt-qty-inline" style="margin-top:-1px;border-top:1px solid var(--evt-border)">';
+      html += '<div class="evt-qty evt-qty-inline" style="margin-top:-2px">';
       html += '<span class="evt-qty-label">Quantity</span>';
       html += '<button class="evt-qty-btn" data-action="ao-qty-minus" data-ao-id="' + a.id + '"' + (aoQty <= 1 ? ' disabled' : '') + '>&minus;</button>';
       html += '<input class="evt-qty-val" type="text" value="' + aoQty + '" readonly />';
