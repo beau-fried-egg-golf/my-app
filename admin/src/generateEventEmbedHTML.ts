@@ -265,13 +265,14 @@ export function generateEventEmbedHTML(slug: string): string {
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border: 1px solid var(--evt-border);
+  border: 2px solid var(--evt-border);
   border-radius: var(--evt-radius);
   margin-bottom: 6px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, background 0.15s;
 }
 .evt-addon:hover { border-color: #ccc; }
+.evt-addon.evt-addon-selected { border-color: var(--evt-accent); background: var(--evt-bg-alt); }
 .evt-addon.evt-addon-sold-out { opacity: 0.5; cursor: default; }
 .evt-addon input[type="checkbox"] {
   margin-top: 2px;
@@ -640,7 +641,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     var aoQty = state.addOnQtys[a.id] || 1;
     var maxQty = a.available !== null ? Math.min(a.max_per_order || 1, a.available) : (a.max_per_order || 1);
     var showQty = checked && maxQty > 1;
-    var html = '<label class="evt-addon' + (soldOut ? ' evt-addon-sold-out' : '') + '"' + (showQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + '>' +
+    var html = '<label class="evt-addon' + (checked ? ' evt-addon-selected' : '') + (soldOut ? ' evt-addon-sold-out' : '') + '"' + (showQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + '>' +
       '<input type="checkbox" data-addon-id="' + a.id + '"' + (checked ? ' checked' : '') + (soldOut ? ' disabled' : '') + ' />' +
       '<div class="evt-addon-info"><div class="evt-addon-name">' + esc(a.name) + '</div>' +
       (a.description ? '<div class="evt-addon-desc">' + esc(a.description) + '</div>' : '') +
