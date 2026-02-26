@@ -32,6 +32,7 @@ export interface TicketType {
   waitlist_enabled: boolean;
   min_per_order: number;
   max_per_order: number;
+  requires_code: boolean;
   sold_count: number;
   available: number | null;
   on_sale: boolean;

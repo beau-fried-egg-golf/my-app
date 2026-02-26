@@ -131,8 +131,10 @@ serve(async (req: Request) => {
     const saleStarted = !tt.sale_starts_at || new Date(tt.sale_starts_at) <= now;
     const saleEnded = tt.sale_ends_at && new Date(tt.sale_ends_at) < now;
     const saleStatus = saleEnded ? "ended" : saleStarted ? "active" : "not_started";
+    const { access_code, ...rest } = tt;
     return {
-      ...tt,
+      ...rest,
+      requires_code: !!access_code,
       sold_count: bookingCounts.get(tt.id) ?? 0,
       available: tt.capacity ? tt.capacity - (bookingCounts.get(tt.id) ?? 0) : null,
       on_sale: saleStatus === "active",

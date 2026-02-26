@@ -63,6 +63,12 @@ export default function EventWidget({ slug }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
+  // Access code state
+  const [unlockedTicketIds, setUnlockedTicketIds] = useState<Set<string>>(new Set());
+  const [ticketCodeInputs, setTicketCodeInputs] = useState<Record<string, string>>({});
+  const [ticketCodes, setTicketCodes] = useState<Record<string, string>>({}); // stored codes for submission
+  const [codeErrors, setCodeErrors] = useState<Record<string, string>>({});
+
   // Success state
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [bookingId, setBookingId] = useState('');
@@ -100,8 +106,8 @@ export default function EventWidget({ slug }: Props) {
         const requiredIds = data.add_ons.filter(a => a.required).map(a => a.id);
         setSelectedAddOnIds(requiredIds);
 
-        // Auto-select first available ticket if only one
-        const available = data.ticket_types.filter(t => t.available === null || t.available > 0);
+        // Auto-select first available open (non-code-gated) ticket if only one
+        const available = data.ticket_types.filter(t => (t.available === null || t.available > 0) && !t.requires_code);
         if (available.length === 1) {
           setSelectedTicketId(available[0].id);
         }
@@ -146,6 +152,29 @@ export default function EventWidget({ slug }: Props) {
     setAddOnQuantities(prev => ({ ...prev, [id]: qty }));
   }
 
+  function handleCodeChange(ticketId: string, code: string) {
+    setTicketCodeInputs(prev => ({ ...prev, [ticketId]: code }));
+    setCodeErrors(prev => { const next = { ...prev }; delete next[ticketId]; return next; });
+  }
+
+  async function handleCodeSubmit(ticketId: string) {
+    const code = (ticketCodeInputs[ticketId] ?? '').trim();
+    if (!code) return;
+
+    // Validate the code server-side by attempting a lightweight check
+    // We'll validate by trying to create a booking — but that's heavy.
+    // Instead, add a simple validation endpoint or validate client-side.
+    // For now, we send the code with the booking and the server validates.
+    // But we want instant feedback, so we'll call get-event with the code as a token param.
+    // Actually, simplest: trust the unlock on submit and let the server reject.
+    // Better UX: verify the code against a lightweight RPC.
+    // Simplest approach that works: just unlock it locally and let server validate on submit.
+    // The server will reject with invalid_access_code if wrong.
+    setTicketCodes(prev => ({ ...prev, [ticketId]: code }));
+    setUnlockedTicketIds(prev => new Set([...prev, ticketId]));
+    setTicketCodeInputs(prev => { const next = { ...prev }; delete next[ticketId]; return next; });
+  }
+
   async function handleSubmit() {
     if (!event || !selectedTicketId || !formData.first_name || !formData.last_name || !formData.email) return;
 
@@ -174,6 +203,7 @@ export default function EventWidget({ slug }: Props) {
           add_on_ids: selectedAddOnIds,
           add_on_quantities: selectedAddOnIds.map(id => addOnQuantities[id] ?? 1),
           quantity,
+          access_code: ticketCodes[selectedTicketId] || undefined,
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
@@ -192,8 +222,16 @@ export default function EventWidget({ slug }: Props) {
               ? 'This ticket type just sold out. Please select a different ticket.'
               : 'This event just sold out.',
           );
+        } else if (data.error === 'invalid_access_code') {
+          // Re-lock the ticket so user can re-enter the code
+          if (selectedTicketId) {
+            setUnlockedTicketIds(prev => { const next = new Set(prev); next.delete(selectedTicketId); return next; });
+            setCodeErrors(prev => ({ ...prev, [selectedTicketId]: 'Invalid access code' }));
+            setSelectedTicketId(null);
+          }
+          setSubmitError('The access code for this ticket is incorrect.');
         } else {
-          setSubmitError(data.error || 'Booking failed. Please try again.');
+          setSubmitError(data.detail || data.error || 'Booking failed. Please try again.');
         }
         return;
       }
@@ -334,6 +372,11 @@ export default function EventWidget({ slug }: Props) {
         onSelect={handleTicketSelect}
         quantity={quantity}
         onQuantityChange={setQuantity}
+        unlockedTicketIds={unlockedTicketIds}
+        ticketCodeInputs={ticketCodeInputs}
+        onCodeChange={handleCodeChange}
+        onCodeSubmit={handleCodeSubmit}
+        codeErrors={codeErrors}
       />
 
       {addOns.length > 0 && (

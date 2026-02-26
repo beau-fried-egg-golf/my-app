@@ -28,6 +28,7 @@ serve(async (req: Request) => {
     phone,
     notes,
     quantity = 1,
+    access_code,
     form_responses = [],
     success_url,
     cancel_url,
@@ -44,6 +45,22 @@ serve(async (req: Request) => {
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
+
+  // Validate access code if ticket type requires one
+  const { data: ticketCheck } = await supabase
+    .from("ticket_types")
+    .select("access_code")
+    .eq("id", ticket_type_id)
+    .single();
+
+  if (ticketCheck?.access_code) {
+    if (!access_code || access_code.trim().toLowerCase() !== ticketCheck.access_code.trim().toLowerCase()) {
+      return new Response(
+        JSON.stringify({ error: "invalid_access_code", detail: "The access code is incorrect." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
 
   // Atomic capacity check + booking creation
   const { data: result, error: rpcError } = await supabase.rpc("attempt_event_booking", {

@@ -221,6 +221,43 @@ export function generateEventEmbedHTML(slug: string): string {
   color: var(--evt-color);
 }
 
+/* Access code */
+.evt-ticket.evt-locked { opacity: 0.7; cursor: default; }
+.evt-code-row {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  padding: 8px 18px 10px;
+  background: var(--evt-bg-alt);
+  border: 2px solid var(--evt-border);
+  border-top: none;
+  border-radius: 0 0 var(--evt-radius) var(--evt-radius);
+  margin-bottom: 8px;
+}
+.evt-code-input {
+  flex: 1; min-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid var(--evt-border);
+  border-radius: var(--evt-radius);
+  font-family: var(--evt-font);
+  font-size: 13px;
+  outline: none;
+  background: var(--evt-bg);
+  color: var(--evt-color);
+}
+.evt-code-input:focus { border-color: var(--evt-accent); }
+.evt-code-btn {
+  padding: 6px 14px;
+  background: var(--evt-accent);
+  color: var(--evt-accent-text);
+  border: none;
+  border-radius: var(--evt-radius);
+  font-family: var(--evt-font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.evt-code-btn:hover { opacity: 0.85; }
+.evt-code-error { width: 100%; font-size: 12px; color: #dc2626; margin-top: 2px; }
+
 /* Add-ons */
 .evt-addons { margin-bottom: 24px; }
 .evt-addon {
@@ -384,7 +421,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
 
   var API = '${FUNCTIONS_URL}';
   var SLUG = '${slug}';
-  var state = { step: 'loading', event: null, tickets: [], addOns: [], addOnGroups: [], formFields: [], selectedTicket: null, selectedAddOns: [], addOnQtys: {}, formData: {}, quantity: 1 };
+  var state = { step: 'loading', event: null, tickets: [], addOns: [], addOnGroups: [], formFields: [], selectedTicket: null, selectedAddOns: [], addOnQtys: {}, formData: {}, quantity: 1, unlockedTickets: {}, ticketCodes: {}, codeErrors: {} };
 
   // Check for Stripe redirect
   var params = new URLSearchParams(window.location.search);
@@ -434,6 +471,15 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
       .catch(function() { state.step = 'error'; state.errorMsg = 'Failed to load event.'; render(); });
   }
 
+  function unlockTicket(tid) {
+    var code = (state.ticketCodes[tid] || '').trim();
+    if (!code) return;
+    // Unlock locally — server validates on submit
+    state.unlockedTickets[tid] = code;
+    delete state.codeErrors[tid];
+    render();
+  }
+
   function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   function fmtPrice(cents) { return cents === 0 ? 'Free' : '$' + (cents / 100).toFixed(2); }
@@ -471,11 +517,13 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
       var soldOut = t.available !== null && t.available <= 0;
       var notOnSale = t.sale_status === 'not_started';
       var saleEnded = t.sale_status === 'ended';
-      var disabled = soldOut || notOnSale || saleEnded;
+      var locked = t.requires_code && !state.unlockedTickets[t.id];
+      var disabled = soldOut || notOnSale || saleEnded || locked;
       var sel = state.selectedTicket === t.id;
       var hasQty = sel && !disabled && t.max_per_order > 1;
-      html += '<div class="evt-ticket' + (sel ? ' evt-selected' : '') + (disabled ? ' evt-sold-out' : '') + '"' + (hasQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + ' data-ticket-id="' + t.id + '">';
-      html += '<div><div class="evt-ticket-name">' + esc(t.name) + '</div>';
+      var hasCodeRow = locked && !soldOut && !notOnSale && !saleEnded;
+      html += '<div class="evt-ticket' + (sel ? ' evt-selected' : '') + (disabled ? ' evt-sold-out' : '') + (locked ? ' evt-locked' : '') + '"' + ((hasQty || hasCodeRow) ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + ' data-ticket-id="' + t.id + '">';
+      html += '<div><div class="evt-ticket-name">' + (locked ? '&#128274; ' : '') + esc(t.name) + '</div>';
       if (t.description) html += '<div class="evt-ticket-desc">' + esc(t.description) + '</div>';
       html += '</div>';
       html += '<div class="evt-ticket-right">';
@@ -487,6 +535,14 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
         if (t.available !== null) html += '<div class="evt-ticket-avail">' + t.available + ' left</div>';
       }
       html += '</div></div>';
+      // Access code input row
+      if (hasCodeRow) {
+        html += '<div class="evt-code-row">';
+        html += '<input class="evt-code-input" data-code-ticket="' + t.id + '" placeholder="Enter access code" value="' + esc(state.ticketCodes[t.id] || '') + '" />';
+        html += '<button class="evt-code-btn" data-action="unlock-ticket" data-ticket-id="' + t.id + '">Unlock</button>';
+        if (state.codeErrors[t.id]) html += '<div class="evt-code-error">' + esc(state.codeErrors[t.id]) + '</div>';
+        html += '</div>';
+      }
       // Inline quantity stepper inside selected ticket card
       if (sel && !disabled && t.max_per_order > 1) {
         html += '<div class="evt-qty evt-qty-inline">';
@@ -636,18 +692,41 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
   }
 
   function bindEvents() {
-    // Ticket selection (reset quantity on change)
-    ROOT.querySelectorAll('[data-ticket-id]').forEach(function(el) {
+    // Ticket selection (reset quantity on change, skip locked)
+    ROOT.querySelectorAll('.evt-ticket[data-ticket-id]').forEach(function(el) {
       el.addEventListener('click', function() {
         if (el.classList.contains('evt-sold-out')) return;
+        if (el.classList.contains('evt-locked')) return;
         var newId = el.getAttribute('data-ticket-id');
         if (state.selectedTicket !== newId) {
           state.selectedTicket = newId;
-          // Reset quantity to min_per_order of the new ticket
           var t = state.tickets.find(function(t) { return t.id === newId; });
           state.quantity = t ? (t.min_per_order || 1) : 1;
         }
         render();
+      });
+    });
+
+    // Access code inputs — save on input
+    ROOT.querySelectorAll('[data-code-ticket]').forEach(function(el) {
+      el.addEventListener('input', function() {
+        state.ticketCodes[el.getAttribute('data-code-ticket')] = el.value;
+      });
+      el.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var tid = el.getAttribute('data-code-ticket');
+          unlockTicket(tid);
+        }
+      });
+    });
+
+    // Unlock buttons
+    ROOT.querySelectorAll('[data-action="unlock-ticket"]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var tid = el.getAttribute('data-ticket-id');
+        unlockTicket(tid);
       });
     });
 
@@ -760,6 +839,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
         add_on_ids: state.selectedAddOns,
         add_on_quantities: state.selectedAddOns.map(function(id) { return state.addOnQtys[id] || 1; }),
         quantity: state.quantity || 1,
+        access_code: state.unlockedTickets[state.selectedTicket] || undefined,
         first_name: fn.trim(),
         last_name: ln.trim(),
         email: em.trim(),
@@ -774,7 +854,14 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     .then(function(res) {
       if (!res.ok) {
         if (res.data.error === 'sold_out') { state.step = 'sold_out'; }
-        else { state.step = 'error'; state.errorMsg = res.data.error || 'Booking failed.'; }
+        else if (res.data.error === 'invalid_access_code') {
+          // Re-lock the ticket so user can re-enter
+          delete state.unlockedTickets[state.selectedTicket];
+          state.codeErrors[state.selectedTicket] = 'Invalid access code';
+          state.selectedTicket = null;
+          state.step = 'tickets';
+        }
+        else { state.step = 'error'; state.errorMsg = res.data.detail || res.data.error || 'Booking failed.'; }
         render();
         return;
       }

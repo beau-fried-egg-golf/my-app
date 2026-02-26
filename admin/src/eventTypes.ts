@@ -38,6 +38,7 @@ export interface TicketType {
   waitlist_enabled: boolean;
   min_per_order: number;
   max_per_order: number;
+  access_code: string | null;
   created_at: string;
   updated_at: string;
   // Computed

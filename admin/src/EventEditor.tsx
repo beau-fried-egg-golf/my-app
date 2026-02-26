@@ -154,6 +154,7 @@ export default function EventEditor() {
       waitlist_enabled: false,
       min_per_order: 1,
       max_per_order: 1,
+      access_code: null,
       created_at: '',
       updated_at: '',
       _key: key,
@@ -472,7 +473,7 @@ export default function EventEditor() {
               </div>
               <div className="form-group">
                 <label className="form-label">Price ($)</label>
-                <input className="form-input" type="number" step="0.01" min={0} value={(tt.price / 100).toFixed(2)} onChange={e => updateTicketType(tt._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
+                <input className="form-input" type="number" step="0.01" min={0} value={tt.price / 100} onChange={e => updateTicketType(tt._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
               </div>
             </div>
             <div className="form-group">
@@ -512,6 +513,11 @@ export default function EventEditor() {
                 <label className="form-label">Sale Ends At</label>
                 <input className="form-input" type="datetime-local" value={isoToTz(tt.sale_ends_at, form.timezone)} onChange={e => updateTicketType(tt._key, 'sale_ends_at', tzToIso(e.target.value, form.timezone))} />
               </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Access Code (blank = open to all)</label>
+              <input className="form-input" value={tt.access_code ?? ''} onChange={e => updateTicketType(tt._key, 'access_code', e.target.value || null)} placeholder="e.g. MEMBER2026" />
+              {tt.access_code && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>Customers must enter this code to select this ticket.</div>}
             </div>
             <div className="form-group">
               <label className="form-checkbox-label">
@@ -571,7 +577,7 @@ export default function EventEditor() {
                     </div>
                     <div className="form-group">
                       <label className="form-label">Price ($)</label>
-                      <input className="form-input" type="number" step="0.01" min={0} value={(a.price / 100).toFixed(2)} onChange={e => updateAddOn(a._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
+                      <input className="form-input" type="number" step="0.01" min={0} value={a.price / 100} onChange={e => updateAddOn(a._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
                     </div>
                   </div>
                   <div className="form-row">
@@ -620,7 +626,7 @@ export default function EventEditor() {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Price ($)</label>
-                    <input className="form-input" type="number" step="0.01" min={0} value={(a.price / 100).toFixed(2)} onChange={e => updateAddOn(a._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
+                    <input className="form-input" type="number" step="0.01" min={0} value={a.price / 100} onChange={e => updateAddOn(a._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
                   </div>
                 </div>
                 <div className="form-row">
