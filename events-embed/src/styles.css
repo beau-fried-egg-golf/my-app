@@ -213,6 +213,102 @@ body {
   color: #991b1b;
 }
 
+/* Sale status badges */
+.fegc-badge-coming-soon {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #e0e7ff;
+  color: #3730a3;
+}
+
+.fegc-badge-sale-ended {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* Quantity stepper */
+.fegc-qty-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.fegc-qty-inline {
+  margin: 0;
+  padding: 8px 16px 12px 46px;
+  background: #faf9f5;
+  border: 2px solid #1a1a1a;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  margin-top: -2px;
+  margin-bottom: 8px;
+}
+
+.fegc-ticket-option.selected.has-qty {
+  border-radius: 8px 8px 0 0;
+  margin-bottom: 0;
+}
+
+.fegc-qty-label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 12px;
+}
+
+.fegc-qty-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.fegc-qty-btn:first-of-type {
+  border-radius: 6px 0 0 6px;
+}
+
+.fegc-qty-btn:last-of-type {
+  border-radius: 0 6px 6px 0;
+}
+
+.fegc-qty-btn:hover:not(:disabled) {
+  background: #f5f5f0;
+}
+
+.fegc-qty-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.fegc-qty-value {
+  width: 40px;
+  height: 32px;
+  border-top: 1px solid #d1d5db;
+  border-bottom: 1px solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  background: #fff;
+}
+
 /* Add-on selector */
 .fegc-addon-group {
   margin-bottom: 16px;
@@ -256,6 +352,11 @@ body {
   background: #faf9f5;
 }
 
+.fegc-addon-option.selected.has-qty {
+  border-radius: 6px 6px 0 0;
+  margin-bottom: 0;
+}
+
 .fegc-addon-option.sold-out {
   opacity: 0.5;
   cursor: not-allowed;
@@ -284,6 +385,11 @@ body {
 .fegc-addon-desc {
   font-size: 12px;
   color: #888;
+}
+
+.fegc-addon-avail {
+  font-size: 11px;
+  color: #92400e;
 }
 
 .fegc-addon-price {

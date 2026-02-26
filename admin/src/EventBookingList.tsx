@@ -130,6 +130,7 @@ export default function EventBookingList() {
               <th>Name</th>
               <th>Email</th>
               <th>Ticket</th>
+              <th>Qty</th>
               <th>Amount</th>
               <th>Status</th>
               <th>Created</th>
@@ -144,6 +145,7 @@ export default function EventBookingList() {
                   <td><strong>{b.first_name} {b.last_name}</strong></td>
                   <td>{b.email}</td>
                   <td>{b.ticket_type_name}</td>
+                  <td>{b.quantity ?? 1}</td>
                   <td><strong>{formatCents(b.total_amount)}</strong></td>
                   <td>
                     <span className="badge" style={{ background: statusStyle.bg, color: statusStyle.color }}>

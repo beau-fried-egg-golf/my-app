@@ -56,7 +56,9 @@ export default function EventWidget({ slug }: Props) {
 
   // Selection state
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
   const [selectedAddOnIds, setSelectedAddOnIds] = useState<string[]>([]);
+  const [addOnQuantities, setAddOnQuantities] = useState<Record<string, number>>({});
   const [formData, setFormData] = useState<FormData>(EMPTY_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -108,18 +110,40 @@ export default function EventWidget({ slug }: Props) {
       .finally(() => setLoading(false));
   }, [slug]);
 
+  function handleTicketSelect(id: string) {
+    setSelectedTicketId(id);
+    // Reset quantity to the new ticket's min_per_order
+    const tt = ticketTypes.find(t => t.id === id);
+    setQuantity(tt?.min_per_order ?? 1);
+  }
+
   function toggleAddOn(id: string) {
-    setSelectedAddOnIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id],
-    );
+    setSelectedAddOnIds(prev => {
+      if (prev.includes(id)) {
+        // Remove quantity tracking when deselecting
+        setAddOnQuantities(q => { const next = { ...q }; delete next[id]; return next; });
+        return prev.filter(x => x !== id);
+      }
+      return [...prev, id];
+    });
   }
 
   function selectOneInGroup(groupId: string, addOnId: string) {
     const groupAddOnIds = addOns.filter(a => a.add_on_group_id === groupId).map(a => a.id);
+    // Clean up quantities for deselected group items
+    setAddOnQuantities(q => {
+      const next = { ...q };
+      groupAddOnIds.forEach(id => { if (id !== addOnId) delete next[id]; });
+      return next;
+    });
     setSelectedAddOnIds(prev => [
       ...prev.filter(id => !groupAddOnIds.includes(id)),
       addOnId,
     ]);
+  }
+
+  function handleAddOnQtyChange(id: string, qty: number) {
+    setAddOnQuantities(prev => ({ ...prev, [id]: qty }));
   }
 
   async function handleSubmit() {
@@ -148,6 +172,8 @@ export default function EventWidget({ slug }: Props) {
           event_id: event.id,
           ticket_type_id: selectedTicketId,
           add_on_ids: selectedAddOnIds,
+          add_on_quantities: selectedAddOnIds.map(id => addOnQuantities[id] ?? 1),
+          quantity,
           first_name: formData.first_name,
           last_name: formData.last_name,
           email: formData.email,
@@ -305,16 +331,20 @@ export default function EventWidget({ slug }: Props) {
       <TicketSelector
         ticketTypes={ticketTypes}
         selectedId={selectedTicketId}
-        onSelect={setSelectedTicketId}
+        onSelect={handleTicketSelect}
+        quantity={quantity}
+        onQuantityChange={setQuantity}
       />
 
-      {selectedTicketId && addOns.length > 0 && (
+      {addOns.length > 0 && (
         <AddOnSelector
           addOnGroups={addOnGroups}
           addOns={addOns}
           selectedIds={selectedAddOnIds}
+          addOnQuantities={addOnQuantities}
           onToggle={toggleAddOn}
           onSelectOne={selectOneInGroup}
+          onAddOnQtyChange={handleAddOnQtyChange}
         />
       )}
 
@@ -330,7 +360,9 @@ export default function EventWidget({ slug }: Props) {
 
       <OrderSummary
         ticket={selectedTicket}
+        quantity={quantity}
         selectedAddOns={selectedAddOnsData}
+        addOnQuantities={addOnQuantities}
         submitting={submitting}
         onSubmit={handleSubmit}
       />

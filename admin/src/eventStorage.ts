@@ -30,18 +30,18 @@ export async function getEvents(filters?: {
   const { data: events } = await query;
   if (!events?.length) return [];
 
-  // Get booking counts + revenue per event
+  // Get booking counts (summing quantity) + revenue per event
   const eventIds = events.map(e => e.id);
   const { data: bookings } = await supabase
     .from('event_bookings')
-    .select('event_id, status, total_amount')
+    .select('event_id, status, total_amount, quantity')
     .in('event_id', eventIds)
     .in('status', ['pending', 'confirmed']);
 
   const countMap = new Map<string, number>();
   const revenueMap = new Map<string, number>();
   for (const b of bookings ?? []) {
-    countMap.set(b.event_id, (countMap.get(b.event_id) ?? 0) + 1);
+    countMap.set(b.event_id, (countMap.get(b.event_id) ?? 0) + (b.quantity ?? 1));
     if (b.status === 'confirmed') {
       revenueMap.set(b.event_id, (revenueMap.get(b.event_id) ?? 0) + b.total_amount);
     }
@@ -104,17 +104,17 @@ export async function getTicketTypes(eventId: string): Promise<TicketType[]> {
 
   if (!tickets?.length) return [];
 
-  // Get sold counts
+  // Get sold counts (summing quantity)
   const ticketIds = tickets.map(t => t.id);
   const { data: bookings } = await supabase
     .from('event_bookings')
-    .select('ticket_type_id')
+    .select('ticket_type_id, quantity')
     .in('ticket_type_id', ticketIds)
     .in('status', ['pending', 'confirmed']);
 
   const countMap = new Map<string, number>();
   for (const b of bookings ?? []) {
-    countMap.set(b.ticket_type_id, (countMap.get(b.ticket_type_id) ?? 0) + 1);
+    countMap.set(b.ticket_type_id, (countMap.get(b.ticket_type_id) ?? 0) + (b.quantity ?? 1));
   }
 
   return tickets.map(t => ({
@@ -181,11 +181,11 @@ export async function getAddOns(eventId: string): Promise<AddOn[]> {
 
   if (!addOns?.length) return [];
 
-  // Get sold counts
+  // Get sold counts (summing quantity)
   const addOnIds = addOns.map(a => a.id);
   const { data: bookingAddOns } = await supabase
     .from('event_booking_add_ons')
-    .select('add_on_id, booking_id')
+    .select('add_on_id, booking_id, quantity')
     .in('add_on_id', addOnIds);
 
   if (!bookingAddOns?.length) {
@@ -204,7 +204,7 @@ export async function getAddOns(eventId: string): Promise<AddOn[]> {
   const countMap = new Map<string, number>();
   for (const ba of bookingAddOns) {
     if (activeIds.has(ba.booking_id)) {
-      countMap.set(ba.add_on_id, (countMap.get(ba.add_on_id) ?? 0) + 1);
+      countMap.set(ba.add_on_id, (countMap.get(ba.add_on_id) ?? 0) + ((ba as any).quantity ?? 1));
     }
   }
 
@@ -465,7 +465,7 @@ export async function getEventStats(eventId: string): Promise<EventStats> {
 
   const { data: bookings } = await supabase
     .from('event_bookings')
-    .select('status, total_amount')
+    .select('status, total_amount, quantity')
     .eq('event_id', eventId);
 
   const { data: waitlist } = await supabase
@@ -476,11 +476,12 @@ export async function getEventStats(eventId: string): Promise<EventStats> {
 
   let confirmed = 0, pending = 0, cancelled = 0, refunded = 0, revenue = 0;
   for (const b of bookings ?? []) {
+    const qty = b.quantity ?? 1;
     switch (b.status) {
-      case 'confirmed': confirmed++; revenue += b.total_amount; break;
-      case 'pending': pending++; break;
-      case 'cancelled': cancelled++; break;
-      case 'refunded': refunded++; break;
+      case 'confirmed': confirmed += qty; revenue += b.total_amount; break;
+      case 'pending': pending += qty; break;
+      case 'cancelled': cancelled += qty; break;
+      case 'refunded': refunded += qty; break;
     }
   }
 
@@ -506,7 +507,7 @@ export function exportBookingsCsv(
 ): string {
   const headers = [
     'First Name', 'Last Name', 'Email', 'Phone',
-    'Ticket Type', 'Status', 'Total ($)',
+    'Ticket Type', 'Quantity', 'Status', 'Total ($)',
     'Notes', 'Created At',
     ...formFields.map(f => f.label),
   ];
@@ -523,6 +524,7 @@ export function exportBookingsCsv(
       b.email,
       b.phone ?? '',
       b.ticket_type_name ?? '',
+      String(b.quantity ?? 1),
       b.status,
       (b.total_amount / 100).toFixed(2),
       b.notes ?? '',

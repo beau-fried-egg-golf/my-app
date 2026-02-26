@@ -88,27 +88,22 @@ serve(async (req: Request) => {
     .eq("event_id", event.id)
     .order("sort_order");
 
-  // Count bookings for availability
+  // Count bookings for availability (sum quantity)
   const { data: bookings } = await supabase
     .from("event_bookings")
-    .select("ticket_type_id")
+    .select("ticket_type_id, quantity")
     .eq("event_id", event.id)
     .in("status", ["pending", "confirmed"]);
 
   const bookingCounts = new Map<string, number>();
   let totalBooked = 0;
   for (const b of bookings ?? []) {
-    bookingCounts.set(b.ticket_type_id, (bookingCounts.get(b.ticket_type_id) ?? 0) + 1);
-    totalBooked++;
+    const qty = (b as any).quantity ?? 1;
+    bookingCounts.set(b.ticket_type_id, (bookingCounts.get(b.ticket_type_id) ?? 0) + qty);
+    totalBooked += qty;
   }
 
-  // Count add-on bookings
-  const { data: addOnBookings } = await supabase
-    .from("event_booking_add_ons")
-    .select("add_on_id, booking_id")
-    .in("booking_id", (bookings ?? []).map((b: any) => b.id) || ["00000000-0000-0000-0000-000000000000"]);
-
-  // Actually we need booking IDs. Let me re-query with IDs
+  // Get active booking IDs for add-on counting
   const { data: bookingsWithIds } = await supabase
     .from("event_bookings")
     .select("id, ticket_type_id")
@@ -121,20 +116,29 @@ serve(async (req: Request) => {
   if (activeBookingIds.length > 0) {
     const { data: aoBookings } = await supabase
       .from("event_booking_add_ons")
-      .select("add_on_id")
+      .select("add_on_id, quantity")
       .in("booking_id", activeBookingIds);
 
     for (const ab of aoBookings ?? []) {
-      addOnCounts.set(ab.add_on_id, (addOnCounts.get(ab.add_on_id) ?? 0) + 1);
+      const aoQty = (ab as any).quantity ?? 1;
+      addOnCounts.set(ab.add_on_id, (addOnCounts.get(ab.add_on_id) ?? 0) + aoQty);
     }
   }
 
-  // Enrich ticket types with availability
-  const enrichedTickets = (ticketTypes ?? []).map((tt: any) => ({
-    ...tt,
-    sold_count: bookingCounts.get(tt.id) ?? 0,
-    available: tt.capacity ? tt.capacity - (bookingCounts.get(tt.id) ?? 0) : null,
-  }));
+  // Enrich ticket types with availability and sale status
+  const now = new Date();
+  const enrichedTickets = (ticketTypes ?? []).map((tt: any) => {
+    const saleStarted = !tt.sale_starts_at || new Date(tt.sale_starts_at) <= now;
+    const saleEnded = tt.sale_ends_at && new Date(tt.sale_ends_at) < now;
+    const saleStatus = saleEnded ? "ended" : saleStarted ? "active" : "not_started";
+    return {
+      ...tt,
+      sold_count: bookingCounts.get(tt.id) ?? 0,
+      available: tt.capacity ? tt.capacity - (bookingCounts.get(tt.id) ?? 0) : null,
+      on_sale: saleStatus === "active",
+      sale_status: saleStatus,
+    };
+  });
 
   // Enrich add-ons with availability
   const enrichedAddOns = (addOns ?? []).map((ao: any) => ({
@@ -147,6 +151,7 @@ serve(async (req: Request) => {
     JSON.stringify({
       event: {
         ...event,
+        timezone: event.timezone ?? "America/New_York",
         total_booked: totalBooked,
         spots_remaining: event.total_capacity - totalBooked,
       },

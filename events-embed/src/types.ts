@@ -14,6 +14,7 @@ export interface EventData {
   image_url: string | null;
   policy_url: string | null;
   faq_url: string | null;
+  timezone: string;
   total_booked: number;
   spots_remaining: number;
 }
@@ -33,6 +34,8 @@ export interface TicketType {
   max_per_order: number;
   sold_count: number;
   available: number | null;
+  on_sale: boolean;
+  sale_status: 'not_started' | 'active' | 'ended';
 }
 
 export interface AddOnGroup {
@@ -53,6 +56,7 @@ export interface AddOn {
   capacity: number | null;
   sort_order: number;
   required: boolean;
+  max_per_order: number;
   sold_count: number;
   available: number | null;
 }

@@ -21,11 +21,13 @@ serve(async (req: Request) => {
     event_id,
     ticket_type_id,
     add_on_ids = [],
+    add_on_quantities = [],
     first_name,
     last_name,
     email,
     phone,
     notes,
+    quantity = 1,
     form_responses = [],
     success_url,
     cancel_url,
@@ -53,6 +55,8 @@ serve(async (req: Request) => {
     p_phone: phone || null,
     p_notes: notes || null,
     p_add_on_ids: add_on_ids,
+    p_quantity: quantity,
+    p_add_on_qtys: add_on_quantities,
   });
 
   if (rpcError) {
@@ -111,12 +115,12 @@ serve(async (req: Request) => {
   // Build Stripe line items
   const lineItems: string[][] = [];
 
-  // Ticket line item
+  // Ticket line item (unit_amount is per-ticket, quantity from request)
   lineItems.push([
     `line_items[0][price_data][currency]`, "usd",
     `line_items[0][price_data][unit_amount]`, String(ticket?.price ?? 0),
     `line_items[0][price_data][product_data][name]`, `${event?.name ?? "Event"} — ${ticket?.name ?? "Ticket"}`,
-    `line_items[0][quantity]`, "1",
+    `line_items[0][quantity]`, String(quantity),
   ]);
 
   // Add-on line items
@@ -128,11 +132,14 @@ serve(async (req: Request) => {
 
     (addOns ?? []).forEach((ao: any, idx: number) => {
       const i = idx + 1;
+      // Find the add-on's position in add_on_ids to get its quantity
+      const aoIdx = add_on_ids.indexOf(ao.id);
+      const aoQty = aoIdx >= 0 && aoIdx < add_on_quantities.length ? add_on_quantities[aoIdx] : 1;
       lineItems.push([
         `line_items[${i}][price_data][currency]`, "usd",
         `line_items[${i}][price_data][unit_amount]`, String(ao.price),
         `line_items[${i}][price_data][product_data][name]`, ao.name,
-        `line_items[${i}][quantity]`, "1",
+        `line_items[${i}][quantity]`, String(aoQty),
       ]);
     });
   }

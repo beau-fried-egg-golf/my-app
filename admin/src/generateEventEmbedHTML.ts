@@ -155,6 +155,71 @@ export function generateEventEmbedHTML(slug: string): string {
   padding: 2px 8px;
   border-radius: 3px;
 }
+.evt-badge-sale {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  margin-top: 4px;
+  display: inline-block;
+}
+.evt-badge-coming-soon { background: #e0e7ff; color: #3730a3; }
+.evt-badge-sale-ended { background: #f3f4f6; color: #6b7280; }
+
+/* Quantity stepper */
+.evt-qty {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+.evt-qty-inline {
+  margin: 0;
+  padding: 6px 18px 10px;
+  background: var(--evt-bg-alt);
+  border: 2px solid var(--evt-accent);
+  border-top: none;
+  border-radius: 0 0 var(--evt-radius) var(--evt-radius);
+  margin-top: -10px;
+  margin-bottom: 8px;
+}
+.evt-qty-label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-right: 12px;
+}
+.evt-qty-btn {
+  width: 32px; height: 32px;
+  border: 1px solid var(--evt-border);
+  background: var(--evt-bg);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--evt-font);
+  color: var(--evt-color);
+  transition: background 0.15s;
+}
+.evt-qty-btn:first-of-type { border-radius: var(--evt-radius) 0 0 var(--evt-radius); }
+.evt-qty-btn:last-of-type { border-radius: 0 var(--evt-radius) var(--evt-radius) 0; }
+.evt-qty-btn:hover { background: var(--evt-bg-alt); }
+.evt-qty-btn:disabled { opacity: 0.3; cursor: default; }
+.evt-qty-val {
+  width: 40px; height: 32px;
+  border-top: 1px solid var(--evt-border);
+  border-bottom: 1px solid var(--evt-border);
+  border-left: none; border-right: none;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--evt-font);
+  background: var(--evt-bg);
+  color: var(--evt-color);
+}
 
 /* Add-ons */
 .evt-addons { margin-bottom: 24px; }
@@ -319,7 +384,7 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
 
   var API = '${FUNCTIONS_URL}';
   var SLUG = '${slug}';
-  var state = { step: 'loading', event: null, tickets: [], addOns: [], addOnGroups: [], formFields: [], selectedTicket: null, selectedAddOns: [], formData: {} };
+  var state = { step: 'loading', event: null, tickets: [], addOns: [], addOnGroups: [], formFields: [], selectedTicket: null, selectedAddOns: [], addOnQtys: {}, formData: {}, quantity: 1 };
 
   // Check for Stripe redirect
   var params = new URLSearchParams(window.location.search);
@@ -404,28 +469,36 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     html += '<div class="evt-section-title">Select Ticket</div>';
     state.tickets.forEach(function(t) {
       var soldOut = t.available !== null && t.available <= 0;
+      var notOnSale = t.sale_status === 'not_started';
+      var saleEnded = t.sale_status === 'ended';
+      var disabled = soldOut || notOnSale || saleEnded;
       var sel = state.selectedTicket === t.id;
-      html += '<div class="evt-ticket' + (sel ? ' evt-selected' : '') + (soldOut ? ' evt-sold-out' : '') + '" data-ticket-id="' + t.id + '">';
+      var hasQty = sel && !disabled && t.max_per_order > 1;
+      html += '<div class="evt-ticket' + (sel ? ' evt-selected' : '') + (disabled ? ' evt-sold-out' : '') + '"' + (hasQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + ' data-ticket-id="' + t.id + '">';
       html += '<div><div class="evt-ticket-name">' + esc(t.name) + '</div>';
       if (t.description) html += '<div class="evt-ticket-desc">' + esc(t.description) + '</div>';
       html += '</div>';
       html += '<div class="evt-ticket-right">';
       if (soldOut) { html += '<span class="evt-badge-sold-out">Sold Out</span>'; }
+      else if (notOnSale) { html += '<span class="evt-badge-sale evt-badge-coming-soon">Coming Soon</span>'; }
+      else if (saleEnded) { html += '<span class="evt-badge-sale evt-badge-sale-ended">Sale Ended</span>'; }
       else {
         html += '<div class="evt-ticket-price">' + fmtPrice(t.price) + '</div>';
         if (t.available !== null) html += '<div class="evt-ticket-avail">' + t.available + ' left</div>';
       }
       html += '</div></div>';
+      // Inline quantity stepper inside selected ticket card
+      if (sel && !disabled && t.max_per_order > 1) {
+        html += '<div class="evt-qty evt-qty-inline">';
+        html += '<span class="evt-qty-label">Quantity</span>';
+        html += '<button class="evt-qty-btn" data-action="qty-minus"' + (state.quantity <= (t.min_per_order || 1) ? ' disabled' : '') + '>&minus;</button>';
+        html += '<input class="evt-qty-val" type="text" value="' + state.quantity + '" readonly />';
+        html += '<button class="evt-qty-btn" data-action="qty-plus"' + (state.quantity >= t.max_per_order ? ' disabled' : '') + '>+</button>';
+        html += '</div>';
+      }
     });
-    html += '<button class="evt-btn" ' + (!state.selectedTicket ? 'disabled' : '') + ' data-action="to-details">Continue</button>';
-    return html;
-  }
 
-  function renderDetails() {
-    var ticket = state.tickets.find(function(t) { return t.id === state.selectedTicket; });
-    var html = renderHeader();
-
-    // Add-ons
+    // Add-ons (shown alongside tickets)
     if (state.addOns.length > 0) {
       html += '<div class="evt-addons"><div class="evt-section-title">Add-Ons</div>';
       var groupedIds = new Set();
@@ -443,6 +516,14 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
       ungrouped.forEach(function(a) { html += renderAddOn(a); });
       html += '</div>';
     }
+
+    html += '<button class="evt-btn" ' + (!state.selectedTicket ? 'disabled' : '') + ' data-action="to-details">Continue</button>';
+    return html;
+  }
+
+  function renderDetails() {
+    var ticket = state.tickets.find(function(t) { return t.id === state.selectedTicket; });
+    var html = renderHeader();
 
     // Form
     html += '<div class="evt-form"><div class="evt-section-title">Your Information</div>';
@@ -472,13 +553,22 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
     html += '<input class="evt-input" data-field="notes" placeholder="Notes (optional)" value="' + esc(state.formData.notes || '') + '" />';
     html += '</div>';
 
-    // Order summary
-    var total = ticket ? ticket.price : 0;
+    // Order summary (with quantity)
+    var qty = state.quantity || 1;
+    var ticketLineTotal = ticket ? ticket.price * qty : 0;
+    var total = ticketLineTotal;
     html += '<div class="evt-summary">';
-    html += '<div class="evt-line"><span>' + esc(ticket ? ticket.name : 'Ticket') + '</span><span>' + fmtPrice(ticket ? ticket.price : 0) + '</span></div>';
+    var ticketLabel = ticket ? (qty > 1 ? qty + 'x ' + esc(ticket.name) : esc(ticket.name)) : 'Ticket';
+    html += '<div class="evt-line"><span>' + ticketLabel + '</span><span>' + fmtPrice(ticketLineTotal) + '</span></div>';
     state.selectedAddOns.forEach(function(aoId) {
       var ao = state.addOns.find(function(a) { return a.id === aoId; });
-      if (ao) { total += ao.price; html += '<div class="evt-line"><span>' + esc(ao.name) + '</span><span>' + fmtPrice(ao.price) + '</span></div>'; }
+      if (ao) {
+        var aoQ = state.addOnQtys[ao.id] || 1;
+        var aoLineTotal = ao.price * aoQ;
+        total += aoLineTotal;
+        var aoLabel = aoQ > 1 ? aoQ + 'x ' + esc(ao.name) : esc(ao.name);
+        html += '<div class="evt-line"><span>' + aoLabel + '</span><span>' + fmtPrice(aoLineTotal) + '</span></div>';
+      }
     });
     html += '<div class="evt-total"><span>Total</span><span>' + fmtPrice(total) + '</span></div>';
     html += '</div>';
@@ -491,13 +581,26 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
   function renderAddOn(a) {
     var soldOut = a.available !== null && a.available <= 0;
     var checked = state.selectedAddOns.indexOf(a.id) >= 0;
-    return '<label class="evt-addon' + (soldOut ? ' evt-addon-sold-out' : '') + '">' +
+    var aoQty = state.addOnQtys[a.id] || 1;
+    var maxQty = a.available !== null ? Math.min(a.max_per_order || 1, a.available) : (a.max_per_order || 1);
+    var showQty = checked && maxQty > 1;
+    var html = '<label class="evt-addon' + (soldOut ? ' evt-addon-sold-out' : '') + '"' + (showQty ? ' style="border-radius:var(--evt-radius) var(--evt-radius) 0 0;margin-bottom:0"' : '') + '>' +
       '<input type="checkbox" data-addon-id="' + a.id + '"' + (checked ? ' checked' : '') + (soldOut ? ' disabled' : '') + ' />' +
       '<div class="evt-addon-info"><div class="evt-addon-name">' + esc(a.name) + '</div>' +
       (a.description ? '<div class="evt-addon-desc">' + esc(a.description) + '</div>' : '') +
+      (!soldOut && a.available !== null ? '<div style="font-size:11px;color:#92400e;margin-top:2px">' + a.available + ' remaining</div>' : '') +
       '</div>' +
       '<span class="evt-addon-price">' + (soldOut ? '<span class="evt-badge-sold-out">Sold Out</span>' : fmtPrice(a.price)) + '</span>' +
     '</label>';
+    if (showQty) {
+      html += '<div class="evt-qty evt-qty-inline" style="margin-top:-1px;border-top:1px solid var(--evt-border)">';
+      html += '<span class="evt-qty-label">Quantity</span>';
+      html += '<button class="evt-qty-btn" data-action="ao-qty-minus" data-ao-id="' + a.id + '"' + (aoQty <= 1 ? ' disabled' : '') + '>&minus;</button>';
+      html += '<input class="evt-qty-val" type="text" value="' + aoQty + '" readonly />';
+      html += '<button class="evt-qty-btn" data-action="ao-qty-plus" data-ao-id="' + a.id + '"' + (aoQty >= maxQty ? ' disabled' : '') + '>+</button>';
+      html += '</div>';
+    }
+    return html;
   }
 
   function render() {
@@ -533,13 +636,33 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
   }
 
   function bindEvents() {
-    // Ticket selection
+    // Ticket selection (reset quantity on change)
     ROOT.querySelectorAll('[data-ticket-id]').forEach(function(el) {
       el.addEventListener('click', function() {
         if (el.classList.contains('evt-sold-out')) return;
-        state.selectedTicket = el.getAttribute('data-ticket-id');
+        var newId = el.getAttribute('data-ticket-id');
+        if (state.selectedTicket !== newId) {
+          state.selectedTicket = newId;
+          // Reset quantity to min_per_order of the new ticket
+          var t = state.tickets.find(function(t) { return t.id === newId; });
+          state.quantity = t ? (t.min_per_order || 1) : 1;
+        }
         render();
       });
+    });
+
+    // Quantity stepper
+    var qtyMinus = ROOT.querySelector('[data-action="qty-minus"]');
+    if (qtyMinus) qtyMinus.addEventListener('click', function() {
+      var t = state.tickets.find(function(t) { return t.id === state.selectedTicket; });
+      var min = t ? (t.min_per_order || 1) : 1;
+      if (state.quantity > min) { state.quantity--; render(); }
+    });
+    var qtyPlus = ROOT.querySelector('[data-action="qty-plus"]');
+    if (qtyPlus) qtyPlus.addEventListener('click', function() {
+      var t = state.tickets.find(function(t) { return t.id === state.selectedTicket; });
+      var max = t ? t.max_per_order : 1;
+      if (state.quantity < max) { state.quantity++; render(); }
     });
 
     // Add-on toggles
@@ -547,8 +670,29 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
       el.addEventListener('change', function() {
         var id = el.getAttribute('data-addon-id');
         if (el.checked) { if (state.selectedAddOns.indexOf(id) < 0) state.selectedAddOns.push(id); }
-        else { state.selectedAddOns = state.selectedAddOns.filter(function(x) { return x !== id; }); }
+        else { state.selectedAddOns = state.selectedAddOns.filter(function(x) { return x !== id; }); delete state.addOnQtys[id]; }
         render();
+      });
+    });
+
+    // Add-on quantity steppers
+    ROOT.querySelectorAll('[data-action="ao-qty-minus"]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = el.getAttribute('data-ao-id');
+        var cur = state.addOnQtys[id] || 1;
+        if (cur > 1) { state.addOnQtys[id] = cur - 1; render(); }
+      });
+    });
+    ROOT.querySelectorAll('[data-action="ao-qty-plus"]').forEach(function(el) {
+      el.addEventListener('click', function(e) {
+        e.preventDefault();
+        var id = el.getAttribute('data-ao-id');
+        var ao = state.addOns.find(function(a) { return a.id === id; });
+        var maxPerOrder = ao ? (ao.max_per_order || 1) : 1;
+        var maxQ = ao && ao.available !== null ? Math.min(maxPerOrder, ao.available) : maxPerOrder;
+        var cur = state.addOnQtys[id] || 1;
+        if (cur < maxQ) { state.addOnQtys[id] = cur + 1; render(); }
       });
     });
 
@@ -614,6 +758,8 @@ textarea.evt-input { resize: vertical; min-height: 60px; }
         event_id: state.event.id,
         ticket_type_id: state.selectedTicket,
         add_on_ids: state.selectedAddOns,
+        add_on_quantities: state.selectedAddOns.map(function(id) { return state.addOnQtys[id] || 1; }),
+        quantity: state.quantity || 1,
         first_name: fn.trim(),
         last_name: ln.trim(),
         email: em.trim(),

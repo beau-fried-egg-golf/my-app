@@ -16,6 +16,7 @@ export interface Event {
   image_url: string | null;
   policy_url: string | null;
   faq_url: string | null;
+  timezone: string;
   created_at: string;
   updated_at: string;
   // Computed
@@ -68,6 +69,7 @@ export interface AddOn {
   visibility: 'public' | 'hidden';
   sale_starts_at: string | null;
   sale_ends_at: string | null;
+  max_per_order: number;
   created_at: string;
   updated_at: string;
   // Computed
@@ -87,6 +89,7 @@ export interface EventBooking {
   stripe_payment_intent_id: string | null;
   total_amount: number; // cents
   ticket_price_at_purchase: number; // cents
+  quantity: number;
   notes: string | null;
   expires_at: string | null;
   created_at: string;
@@ -102,6 +105,7 @@ export interface BookingAddOn {
   booking_id: string;
   add_on_id: string;
   price_at_purchase: number;
+  quantity: number;
   created_at: string;
   // Enriched
   add_on_name?: string;

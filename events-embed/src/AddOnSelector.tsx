@@ -4,8 +4,10 @@ interface Props {
   addOnGroups: AddOnGroup[];
   addOns: AddOn[];
   selectedIds: string[];
+  addOnQuantities: Record<string, number>;
   onToggle: (id: string) => void;
   onSelectOne: (groupId: string, addOnId: string) => void;
+  onAddOnQtyChange: (id: string, qty: number) => void;
 }
 
 function formatPrice(cents: number): string {
@@ -13,7 +15,71 @@ function formatPrice(cents: number): string {
   return '+$' + (cents / 100).toLocaleString();
 }
 
-export default function AddOnSelector({ addOnGroups, addOns, selectedIds, onToggle, onSelectOne }: Props) {
+function AddOnCard({ ao, isSelected, soldOut, inputType, inputName, onToggle, addOnQuantities, onAddOnQtyChange }: {
+  ao: AddOn;
+  isSelected: boolean;
+  soldOut: boolean;
+  inputType: 'checkbox' | 'radio';
+  inputName?: string;
+  onToggle: () => void;
+  addOnQuantities: Record<string, number>;
+  onAddOnQtyChange: (id: string, qty: number) => void;
+}) {
+  const qty = addOnQuantities[ao.id] ?? 1;
+  // Cap stepper at the lesser of max_per_order and available capacity
+  const maxQty = ao.available !== null ? Math.min(ao.max_per_order, ao.available) : ao.max_per_order;
+  const showQty = isSelected && maxQty > 1;
+
+  return (
+    <div>
+      <label className={`fegc-addon-option${isSelected ? ' selected' : ''}${soldOut ? ' sold-out' : ''}${showQty ? ' has-qty' : ''}`}>
+        <input
+          type={inputType}
+          name={inputName}
+          checked={isSelected}
+          onChange={onToggle}
+          disabled={inputType === 'checkbox' ? ((soldOut && !isSelected) || ao.required) : soldOut}
+        />
+        <div className="fegc-addon-info">
+          <span className="fegc-addon-name">
+            {ao.name}
+            {ao.required && <span className="fegc-required-tag">Required</span>}
+          </span>
+          {ao.description && <span className="fegc-addon-desc">{ao.description}</span>}
+          {soldOut && <span className="fegc-badge-sold-out">Sold Out</span>}
+          {!soldOut && ao.available !== null && (
+            <span className="fegc-addon-avail">{ao.available} remaining</span>
+          )}
+        </div>
+        <span className="fegc-addon-price">{formatPrice(ao.price)}</span>
+      </label>
+      {showQty && (
+        <div className="fegc-qty-stepper fegc-qty-inline">
+          <span className="fegc-qty-label">Quantity</span>
+          <button
+            type="button"
+            className="fegc-qty-btn"
+            disabled={qty <= 1}
+            onClick={() => onAddOnQtyChange(ao.id, qty - 1)}
+          >
+            &minus;
+          </button>
+          <span className="fegc-qty-value">{qty}</span>
+          <button
+            type="button"
+            className="fegc-qty-btn"
+            disabled={qty >= maxQty}
+            onClick={() => onAddOnQtyChange(ao.id, qty + 1)}
+          >
+            +
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AddOnSelector({ addOnGroups, addOns, selectedIds, addOnQuantities, onToggle, onSelectOne, onAddOnQtyChange }: Props) {
   if (addOns.length === 0) return null;
 
   // Group add-ons
@@ -36,41 +102,18 @@ export default function AddOnSelector({ addOnGroups, addOns, selectedIds, onTogg
               const soldOut = ao.available !== null && ao.available <= 0;
               const isSelected = selectedIds.includes(ao.id);
 
-              if (group.selection_type === 'one_only') {
-                return (
-                  <label key={ao.id} className={`fegc-addon-option${isSelected ? ' selected' : ''}${soldOut ? ' sold-out' : ''}`}>
-                    <input
-                      type="radio"
-                      name={`addon-group-${group.id}`}
-                      checked={isSelected}
-                      onChange={() => onSelectOne(group.id, ao.id)}
-                      disabled={soldOut}
-                    />
-                    <div className="fegc-addon-info">
-                      <span className="fegc-addon-name">{ao.name}</span>
-                      {ao.description && <span className="fegc-addon-desc">{ao.description}</span>}
-                      {soldOut && <span className="fegc-badge-sold-out">Sold Out</span>}
-                    </div>
-                    <span className="fegc-addon-price">{formatPrice(ao.price)}</span>
-                  </label>
-                );
-              }
-
               return (
-                <label key={ao.id} className={`fegc-addon-option${isSelected ? ' selected' : ''}${soldOut ? ' sold-out' : ''}`}>
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={() => onToggle(ao.id)}
-                    disabled={soldOut && !isSelected}
-                  />
-                  <div className="fegc-addon-info">
-                    <span className="fegc-addon-name">{ao.name}</span>
-                    {ao.description && <span className="fegc-addon-desc">{ao.description}</span>}
-                    {soldOut && <span className="fegc-badge-sold-out">Sold Out</span>}
-                  </div>
-                  <span className="fegc-addon-price">{formatPrice(ao.price)}</span>
-                </label>
+                <AddOnCard
+                  key={ao.id}
+                  ao={ao}
+                  isSelected={isSelected}
+                  soldOut={soldOut}
+                  inputType={group.selection_type === 'one_only' ? 'radio' : 'checkbox'}
+                  inputName={group.selection_type === 'one_only' ? `addon-group-${group.id}` : undefined}
+                  onToggle={() => group.selection_type === 'one_only' ? onSelectOne(group.id, ao.id) : onToggle(ao.id)}
+                  addOnQuantities={addOnQuantities}
+                  onAddOnQtyChange={onAddOnQtyChange}
+                />
               );
             })}
           </div>
@@ -83,22 +126,16 @@ export default function AddOnSelector({ addOnGroups, addOns, selectedIds, onTogg
             const soldOut = ao.available !== null && ao.available <= 0;
             const isSelected = selectedIds.includes(ao.id);
             return (
-              <label key={ao.id} className={`fegc-addon-option${isSelected ? ' selected' : ''}${soldOut ? ' sold-out' : ''}`}>
-                <input
-                  type="checkbox"
-                  checked={isSelected || ao.required}
-                  onChange={() => !ao.required && onToggle(ao.id)}
-                  disabled={(soldOut && !isSelected) || ao.required}
-                />
-                <div className="fegc-addon-info">
-                  <span className="fegc-addon-name">
-                    {ao.name}
-                    {ao.required && <span className="fegc-required-tag">Required</span>}
-                  </span>
-                  {ao.description && <span className="fegc-addon-desc">{ao.description}</span>}
-                </div>
-                <span className="fegc-addon-price">{formatPrice(ao.price)}</span>
-              </label>
+              <AddOnCard
+                key={ao.id}
+                ao={ao}
+                isSelected={isSelected}
+                soldOut={soldOut}
+                inputType="checkbox"
+                onToggle={() => !ao.required && onToggle(ao.id)}
+                addOnQuantities={addOnQuantities}
+                onAddOnQtyChange={onAddOnQtyChange}
+              />
             );
           })}
         </div>

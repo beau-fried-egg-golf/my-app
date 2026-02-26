@@ -12,21 +12,62 @@ import { generateEventEmbedHTML } from './generateEventEmbedHTML';
 import AnnotationPreview from './AnnotationPreview';
 import AnnotationExport from './AnnotationExport';
 
-/** Convert a UTC ISO string to a `datetime-local` input value (browser-local time) */
-function isoToLocal(iso: string | null | undefined): string {
+const TIMEZONE_OPTIONS = [
+  { value: 'America/New_York', label: 'Eastern (ET)' },
+  { value: 'America/Chicago', label: 'Central (CT)' },
+  { value: 'America/Denver', label: 'Mountain (MT)' },
+  { value: 'America/Los_Angeles', label: 'Pacific (PT)' },
+  { value: 'America/Phoenix', label: 'Arizona (no DST)' },
+  { value: 'Pacific/Honolulu', label: 'Hawaii (HT)' },
+];
+
+/** Convert a UTC ISO string to a `datetime-local` input value in the given timezone */
+function isoToTz(iso: string | null | undefined, tz: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  const pad = (n: number) => n.toString().padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // Format in the target timezone
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 }
 
-/** Convert a `datetime-local` input value (browser-local time) to a UTC ISO string */
-function localToIso(value: string): string | null {
+/** Convert a `datetime-local` input value in the given timezone to a UTC ISO string */
+function tzToIso(value: string, tz: string): string | null {
   if (!value) return null;
-  const d = new Date(value);
-  if (isNaN(d.getTime())) return null;
-  return d.toISOString();
+  // value is like "2026-03-15T14:00" — interpret it as being in the target timezone
+  // Create a formatter for the target tz to find the UTC offset
+  const fake = new Date(value + 'Z'); // temporary date to get tz offset
+  if (isNaN(fake.getTime())) return null;
+
+  // Use Intl to find the offset for this date in the target timezone
+  const utcStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+    timeZoneName: 'longOffset',
+  }).format(fake);
+
+  // Extract offset from the formatted string (e.g., "GMT-05:00")
+  const offsetMatch = utcStr.match(/GMT([+-]\d{2}):?(\d{2})/);
+  if (!offsetMatch) {
+    // Fallback: treat as browser-local
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  const offsetHours = parseInt(offsetMatch[1]);
+  const offsetMinutes = parseInt(offsetMatch[2]) * (offsetHours < 0 ? -1 : 1);
+  const totalOffsetMs = (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+
+  // The value is in the target tz, so UTC = local - offset
+  const localMs = new Date(value + 'Z').getTime();
+  const utcMs = localMs - totalOffsetMs;
+  return new Date(utcMs).toISOString();
 }
 
 function generateSlug(name: string): string {
@@ -55,6 +96,7 @@ const EMPTY_EVENT: EventForm = {
   image_url: null,
   policy_url: null,
   faq_url: null,
+  timezone: 'America/New_York',
 };
 
 export default function EventEditor() {
@@ -175,6 +217,7 @@ export default function EventEditor() {
       visibility: 'public',
       sale_starts_at: null,
       sale_ends_at: null,
+      max_per_order: 1,
       created_at: '',
       updated_at: '',
       _key: key,
@@ -362,17 +405,31 @@ export default function EventEditor() {
           </div>
         </div>
 
+        {/* Timezone */}
+        <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 16 }}>Timezone</h2>
+        <div className="form-group">
+          <label className="form-label">Event Timezone</label>
+          <select className="form-input" value={form.timezone} onChange={e => handleChange('timezone', e.target.value)}>
+            {TIMEZONE_OPTIONS.map(tz => (
+              <option key={tz.value} value={tz.value}>{tz.label}</option>
+            ))}
+          </select>
+          <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+            All date/time inputs below are in this timezone. Stored as UTC.
+          </div>
+        </div>
+
         {/* Registration Window */}
         <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 16 }}>Registration Window</h2>
 
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">Opens At</label>
-            <input className="form-input" type="datetime-local" value={isoToLocal(form.registration_opens_at)} onChange={e => handleChange('registration_opens_at', localToIso(e.target.value))} />
+            <input className="form-input" type="datetime-local" value={isoToTz(form.registration_opens_at, form.timezone)} onChange={e => handleChange('registration_opens_at', tzToIso(e.target.value, form.timezone))} />
           </div>
           <div className="form-group">
             <label className="form-label">Closes At</label>
-            <input className="form-input" type="datetime-local" value={isoToLocal(form.registration_closes_at)} onChange={e => handleChange('registration_closes_at', localToIso(e.target.value))} />
+            <input className="form-input" type="datetime-local" value={isoToTz(form.registration_closes_at, form.timezone)} onChange={e => handleChange('registration_closes_at', tzToIso(e.target.value, form.timezone))} />
           </div>
         </div>
 
@@ -386,10 +443,26 @@ export default function EventEditor() {
         {/* Ticket Types */}
         <h2 style={{ fontSize: 18, marginTop: 32, marginBottom: 16 }}>Ticket Types</h2>
 
+        {isEditing && ticketTypes.length > 0 && (() => {
+          const totalSold = ticketTypes.reduce((sum, tt) => sum + (tt.sold_count ?? 0), 0);
+          const pct = form.total_capacity > 0 ? Math.min(100, Math.round((totalSold / form.total_capacity) * 100)) : 0;
+          const barColor = pct >= 90 ? '#dc2626' : pct >= 70 ? '#d97706' : '#16a34a';
+          return (
+            <div style={{ marginBottom: 16, padding: 12, background: '#faf9f5', borderRadius: 6, border: '1px solid #e5e5e5' }}>
+              <div style={{ fontSize: 13, color: '#888', marginBottom: 6 }}>
+                All variants share event capacity of <strong>{form.total_capacity}</strong> — {totalSold} booked ({pct}%)
+              </div>
+              <div style={{ height: 6, background: '#e5e5e5', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: barColor, borderRadius: 3, transition: 'width 0.3s' }} />
+              </div>
+            </div>
+          );
+        })()}
+
         {ticketTypes.map((tt, idx) => (
-          <div key={tt._key} style={{ border: '1px solid #e5e5e5', borderRadius: 8, padding: 16, marginBottom: 12 }}>
+          <div key={tt._key} style={{ borderLeft: '3px solid #d1d5db', border: '1px solid #e5e5e5', borderLeftWidth: 3, borderLeftColor: '#888', borderRadius: 8, padding: 16, marginBottom: 12 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <strong>Ticket {idx + 1}</strong>
+              <strong>Ticket {idx + 1}{tt.name ? `: ${tt.name}` : ''}</strong>
               <button type="button" className="btn btn-sm btn-danger" onClick={() => removeTicketType(tt._key, tt._new)}>Remove</button>
             </div>
             <div className="form-row">
@@ -408,7 +481,7 @@ export default function EventEditor() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Capacity (blank = unlimited)</label>
+                <label className="form-label">Capacity (blank = shares event pool only)</label>
                 <input className="form-input form-input-sm" type="number" min={0} value={tt.capacity ?? ''} onChange={e => updateTicketType(tt._key, 'capacity', e.target.value ? parseInt(e.target.value) : null)} />
               </div>
               <div className="form-group">
@@ -422,15 +495,29 @@ export default function EventEditor() {
             </div>
             <div className="form-row">
               <div className="form-group">
+                <label className="form-label">Min per Order</label>
+                <input className="form-input form-input-sm" type="number" min={1} value={tt.min_per_order} onChange={e => updateTicketType(tt._key, 'min_per_order', parseInt(e.target.value) || 1)} />
+              </div>
+              <div className="form-group">
                 <label className="form-label">Max per Order</label>
                 <input className="form-input form-input-sm" type="number" min={1} value={tt.max_per_order} onChange={e => updateTicketType(tt._key, 'max_per_order', parseInt(e.target.value) || 1)} />
               </div>
+            </div>
+            <div className="form-row">
               <div className="form-group">
-                <label className="form-checkbox-label" style={{ paddingTop: 20 }}>
-                  <input type="checkbox" checked={tt.waitlist_enabled} onChange={e => updateTicketType(tt._key, 'waitlist_enabled', e.target.checked)} />
-                  Waitlist enabled
-                </label>
+                <label className="form-label">Sale Starts At</label>
+                <input className="form-input" type="datetime-local" value={isoToTz(tt.sale_starts_at, form.timezone)} onChange={e => updateTicketType(tt._key, 'sale_starts_at', tzToIso(e.target.value, form.timezone))} />
               </div>
+              <div className="form-group">
+                <label className="form-label">Sale Ends At</label>
+                <input className="form-input" type="datetime-local" value={isoToTz(tt.sale_ends_at, form.timezone)} onChange={e => updateTicketType(tt._key, 'sale_ends_at', tzToIso(e.target.value, form.timezone))} />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-checkbox-label">
+                <input type="checkbox" checked={tt.waitlist_enabled} onChange={e => updateTicketType(tt._key, 'waitlist_enabled', e.target.checked)} />
+                Waitlist enabled
+              </label>
             </div>
             {tt.sold_count !== undefined && tt.sold_count > 0 && (
               <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
@@ -493,12 +580,21 @@ export default function EventEditor() {
                       <input className="form-input form-input-sm" type="number" min={0} value={a.capacity ?? ''} onChange={e => updateAddOn(a._key, 'capacity', e.target.value ? parseInt(e.target.value) : null)} />
                     </div>
                     <div className="form-group">
-                      <label className="form-checkbox-label" style={{ paddingTop: 20 }}>
-                        <input type="checkbox" checked={a.required} onChange={e => updateAddOn(a._key, 'required', e.target.checked)} />
-                        Required
-                      </label>
+                      <label className="form-label">Max per Order</label>
+                      <input className="form-input form-input-sm" type="number" min={1} value={a.max_per_order ?? 1} onChange={e => updateAddOn(a._key, 'max_per_order', parseInt(e.target.value) || 1)} />
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label className="form-checkbox-label">
+                      <input type="checkbox" checked={a.required} onChange={e => updateAddOn(a._key, 'required', e.target.checked)} />
+                      Required
+                    </label>
+                  </div>
+                  {a.sold_count !== undefined && a.sold_count > 0 && (
+                    <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                      {a.sold_count} sold{a.capacity ? ` / ${a.capacity} capacity` : ' (unlimited)'}
+                    </div>
+                  )}
                 </div>
               ))}
               <button type="button" className="btn btn-sm" onClick={() => addAddOn(g.id)}>+ Add Add-on to Group</button>
@@ -527,6 +623,21 @@ export default function EventEditor() {
                     <input className="form-input" type="number" step="0.01" min={0} value={(a.price / 100).toFixed(2)} onChange={e => updateAddOn(a._key, 'price', Math.round(parseFloat(e.target.value || '0') * 100))} />
                   </div>
                 </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Capacity (blank = unlimited)</label>
+                    <input className="form-input form-input-sm" type="number" min={0} value={a.capacity ?? ''} onChange={e => updateAddOn(a._key, 'capacity', e.target.value ? parseInt(e.target.value) : null)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Max per Order</label>
+                    <input className="form-input form-input-sm" type="number" min={1} value={a.max_per_order ?? 1} onChange={e => updateAddOn(a._key, 'max_per_order', parseInt(e.target.value) || 1)} />
+                  </div>
+                </div>
+                {a.sold_count !== undefined && a.sold_count > 0 && (
+                  <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+                    {a.sold_count} sold{a.capacity ? ` / ${a.capacity} capacity` : ' (unlimited)'}
+                  </div>
+                )}
               </div>
             ))}
           </div>

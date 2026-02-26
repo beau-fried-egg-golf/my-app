@@ -77,15 +77,23 @@ export default function EventBookingDetail() {
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24, marginBottom: 24 }}>
           <div>
             <div className="stat-label">Ticket Type</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{booking.ticket_type_name}</div>
           </div>
           <div>
+            <div className="stat-label">Quantity</div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{booking.quantity ?? 1}</div>
+          </div>
+          <div>
             <div className="stat-label">Total Amount</div>
             <div style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{formatCents(booking.total_amount)}</div>
-            <div style={{ fontSize: 12, color: '#888' }}>Ticket: {formatCents(booking.ticket_price_at_purchase)}</div>
+            <div style={{ fontSize: 12, color: '#888' }}>
+              {(booking.quantity ?? 1) > 1
+                ? `${booking.quantity} × ${formatCents(booking.ticket_price_at_purchase)} per ticket`
+                : `Ticket: ${formatCents(booking.ticket_price_at_purchase)}`}
+            </div>
           </div>
           <div>
             <div className="stat-label">Created</div>
@@ -120,16 +128,24 @@ export default function EventBookingDetail() {
                 <thead>
                   <tr>
                     <th>Add-On</th>
+                    <th>Qty</th>
                     <th>Price</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {booking.add_ons.map(ao => (
-                    <tr key={ao.id}>
-                      <td>{ao.add_on_name}</td>
-                      <td>{formatCents(ao.price_at_purchase)}</td>
-                    </tr>
-                  ))}
+                  {booking.add_ons.map(ao => {
+                    const aoQty = ao.quantity ?? 1;
+                    return (
+                      <tr key={ao.id}>
+                        <td>{ao.add_on_name}</td>
+                        <td>{aoQty}</td>
+                        <td>
+                          {formatCents(ao.price_at_purchase * aoQty)}
+                          {aoQty > 1 && <span style={{ fontSize: 12, color: '#888', marginLeft: 4 }}>({aoQty} x {formatCents(ao.price_at_purchase)})</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
