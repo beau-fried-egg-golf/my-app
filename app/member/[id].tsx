@@ -154,14 +154,14 @@ export default function MemberProfileScreen() {
         {(profile.city || profile.state) ? <Text style={styles.location}>{[profile.city, profile.state].filter(Boolean).join(', ')}</Text> : null}
         {(!profile.subscription_tier || profile.subscription_tier === 'free') && <GuestBadge style={{ alignSelf: 'center', marginTop: 6 }} />}
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-        {!isOwnProfile && isPaidMember && isDesktop && (
+        {!isOwnProfile && session && isDesktop && (
           <View style={styles.actionRow}>
             {isFollowing(profile.id) ? (
               <DesktopOutlineButton label="FOLLOWING" onPress={() => toggleFollow(profile.id)} />
             ) : (
               <DesktopBlackButton label="FOLLOW" onPress={() => toggleFollow(profile.id)} />
             )}
-            {!isBlockedBy(profile.id) && !profile.dms_disabled && (
+            {isPaidMember && !isBlockedBy(profile.id) && !profile.dms_disabled && (
               <DesktopBlackButton
                 label="MESSAGE"
                 onPress={async () => {
@@ -172,7 +172,7 @@ export default function MemberProfileScreen() {
             )}
           </View>
         )}
-        {!isOwnProfile && isPaidMember && !isDesktop && (
+        {!isOwnProfile && session && !isDesktop && (
           <View style={styles.actionRow}>
             <Pressable
               style={[styles.actionBtn, isFollowing(profile.id) && styles.actionBtnActive]}
@@ -182,7 +182,7 @@ export default function MemberProfileScreen() {
                 {isFollowing(profile.id) ? 'Following' : 'Follow'}
               </Text>
             </Pressable>
-            {!isBlockedBy(profile.id) && !profile.dms_disabled && (
+            {isPaidMember && !isBlockedBy(profile.id) && !profile.dms_disabled && (
               <Pressable
                 style={styles.actionBtn}
                 onPress={async () => {

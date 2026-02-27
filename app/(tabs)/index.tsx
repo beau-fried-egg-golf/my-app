@@ -394,12 +394,12 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
           </View>
         )}
         <View style={styles.activityContent}>
-          <View style={styles.activityRow}>
+          <Text style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> created a group </Text>
             <Text style={styles.activityTextBold}>{groupName}</Text>
-          </View>
+          </Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </PlatformPressable>
@@ -420,18 +420,15 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
         )}
         <View style={styles.activityContent}>
           {pinnedLabel}
-          <View style={styles.activityRow}>
+          <Text style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> created a meetup </Text>
             <Text style={styles.activityTextBold}>{meetupName}</Text>
-          </View>
-          {item.course_name ? (
-            <View style={styles.activityRow}>
-              <Text style={styles.activityText}>at </Text>
-              <Text style={styles.activityTextBold}>{item.course_name}</Text>
-            </View>
-          ) : null}
+            {item.course_name ? (
+              <Text style={styles.activityText}> at <Text style={styles.activityTextBold}>{item.course_name}</Text></Text>
+            ) : null}
+          </Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </PlatformPressable>
@@ -451,18 +448,15 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
           </View>
         )}
         <View style={styles.activityContent}>
-          <View style={styles.activityRow}>
+          <Text style={styles.activityRow}>
             <Text style={styles.activityTextBold}>{name}</Text>
             {isVerified && <VerifiedBadge size={12} />}
             <Text style={styles.activityText}> signed up for </Text>
             <Text style={styles.activityTextBold}>{meetupName}</Text>
-          </View>
-          {item.course_name ? (
-            <View style={styles.activityRow}>
-              <Text style={styles.activityText}>at </Text>
-              <Text style={styles.activityTextBold}>{item.course_name}</Text>
-            </View>
-          ) : null}
+            {item.course_name ? (
+              <Text style={styles.activityText}> at <Text style={styles.activityTextBold}>{item.course_name}</Text></Text>
+            ) : null}
+          </Text>
           <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
         </View>
       </PlatformPressable>
@@ -706,7 +700,7 @@ export default function FeedScreen() {
   const filteredActivities = useMemo(() => {
     return activities.filter(a => {
       if (a.type === 'played') return false;
-      if (feedFilter === 'FOLLOWING' && !followingIds.has(a.user_id)) return false;
+      if (feedFilter === 'FOLLOWING' && a.user_id !== session?.user?.id && !followingIds.has(a.user_id)) return false;
       if (activityFilter !== 'all' && !ACTIVITY_TYPE_MAP[activityFilter]?.includes(a.type)) return false;
       if (searchQuery.trim()) {
         const q = searchQuery.trim().toLowerCase();
@@ -772,7 +766,7 @@ export default function FeedScreen() {
       */}
       <FlatList
         {...desktopScrollProps}
-        data={[...pinnedItems, ...filteredActivities.slice(0, displayCount)]}
+        data={[...(feedFilter === 'ALL' ? pinnedItems : []), ...filteredActivities.slice(0, displayCount)]}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={isDesktop ? styles.desktopCard : undefined}>

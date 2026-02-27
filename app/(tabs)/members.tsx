@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Image, Keyboard, Platform, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Animated, FlatList, Image, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
@@ -172,6 +172,8 @@ export default function MembersScreen() {
     return result;
   }, [profiles, sortOrder, userLocation, courses, search]);
 
+  const gridData = sortedProfiles;
+
   if (!session) return null;
 
   function renderMember({ item }: { item: Profile }) {
@@ -180,32 +182,63 @@ export default function MembersScreen() {
     const isMe = item.id === session?.user?.id;
     const distance = getMemberDistance(item);
 
+    if (isDesktop) {
+      return (
+        <View style={styles.desktopCard}>
+          <Image source={require('@/assets/images/member-card-bg.png')} style={styles.cardBg} />
+          <PlatformPressable
+            style={styles.cardInner}
+            onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
+          >
+            {item.image ? (
+              <Image source={{ uri: item.image }} style={styles.cardAvatar} />
+            ) : (
+              <View style={styles.cardAvatarPlaceholder}>
+                <Ionicons name="person" size={36} color={Colors.gray} />
+              </View>
+            )}
+            <View style={styles.cardInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+                {item.is_verified && <VerifiedBadge size={13} />}
+              </View>
+              {(item.city || item.state) ? (
+                <Text style={styles.cardLocation} numberOfLines={1}>{[item.city, item.state].filter(Boolean).join(', ')}</Text>
+              ) : null}
+              <Text style={styles.cardMeta} numberOfLines={1}>
+                {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
+                {distance != null ? ` · ${Math.round(distance)} mi` : ''}
+              </Text>
+            </View>
+          </PlatformPressable>
+        </View>
+      );
+    }
+
     return (
-      <View style={isDesktop ? styles.desktopCard : undefined}>
-        <PlatformPressable
-          style={[styles.row, isDesktop && styles.rowDesktop]}
-          onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
-        >
-          {item.image ? (
-            <Image source={{ uri: item.image }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={22} color={Colors.gray} />
-            </View>
-          )}
-          <View style={styles.info}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={styles.name}>{item.name}</Text>
-              {item.is_verified && <VerifiedBadge size={14} />}
-            </View>
-            <Text style={styles.meta}>
-              {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
-              {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
-              {distance != null ? ` · ${Math.round(distance)} mi` : ''}
-            </Text>
+      <PlatformPressable
+        style={styles.row}
+        onPress={() => isMe ? router.push('/profile') : router.push(`/member/${item.id}`)}
+      >
+        {item.image ? (
+          <Image source={{ uri: item.image }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={22} color={Colors.gray} />
           </View>
-        </PlatformPressable>
-      </View>
+        )}
+        <View style={styles.info}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={styles.name}>{item.name}</Text>
+            {item.is_verified && <VerifiedBadge size={14} />}
+          </View>
+          <Text style={styles.meta}>
+            {(item.city || item.state) ? `${[item.city, item.state].filter(Boolean).join(', ')} · ` : ''}
+            {count} review{count !== 1 ? 's' : ''} · {played} course{played !== 1 ? 's' : ''}
+            {distance != null ? ` · ${Math.round(distance)} mi` : ''}
+          </Text>
+        </View>
+      </PlatformPressable>
     );
   }
 
@@ -249,19 +282,32 @@ export default function MembersScreen() {
           </View>
         )}
       </View>
-      <FlatList
-        {...desktopScrollProps}
-        data={sortedProfiles}
-        keyExtractor={(item) => item.id}
-        renderItem={renderMember}
-        ItemSeparatorComponent={isDesktop ? undefined : () => <View style={styles.separator} />}
-        contentContainerStyle={[styles.list, { paddingBottom: isSearchExpanded ? searchBarBottom + 56 : 160 }]}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyText}>No members yet</Text>
-          </View>
-        }
-      />
+      {isDesktop ? (
+        <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: 160 }]}>
+          {gridData.length > 0 ? gridData.map(item => (
+            <View key={item.id} style={styles.gridItem}>
+              {renderMember({ item })}
+            </View>
+          )) : (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No members yet</Text>
+            </View>
+          )}
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={gridData}
+          keyExtractor={(item) => item.id}
+          renderItem={renderMember}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          contentContainerStyle={[styles.list, { paddingBottom: isSearchExpanded ? searchBarBottom + 56 : 160 }]}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>No members yet</Text>
+            </View>
+          }
+        />
+      )}
       {!isDesktop && (
         <Animated.View style={[styles.searchFab, {
           width: animatedWidth,
@@ -400,18 +446,78 @@ const styles = StyleSheet.create({
   info: { flex: 1, marginLeft: 12 },
   name: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   meta: { fontSize: 13, color: Colors.gray, marginTop: 2, fontFamily: Fonts!.sans },
+  // Desktop 3-column grid
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 12,
+    paddingTop: 4,
+  } as any,
+  gridItem: {
+    width: '33.333%',
+    padding: 6,
+  } as any,
   desktopCard: {
+    height: 210,
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    borderRadius: 10,
-    marginHorizontal: 16,
-    marginVertical: 8,
+    borderRadius: 12,
     backgroundColor: Colors.white,
     overflow: 'hidden',
   },
-  rowDesktop: {
-    borderBottomWidth: 0,
+  cardBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 84,
+    resizeMode: 'cover',
+  } as any,
+  cardInner: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 48,
+    paddingHorizontal: 12,
   },
+  cardAvatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+  },
+  cardAvatarPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.lightGray,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardInfo: {
+    marginTop: 12,
+    alignItems: 'center',
+    width: '100%',
+  } as any,
+  cardName: {
+    fontSize: 15,
+    fontFamily: Fonts!.sansBold,
+    fontWeight: FontWeights.bold,
+    color: Colors.black,
+    textAlign: 'center',
+  } as any,
+  cardLocation: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 2,
+    textAlign: 'center',
+  } as any,
+  cardMeta: {
+    fontSize: 12,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    marginTop: 4,
+    textAlign: 'center',
+  } as any,
   separator: { height: 1, backgroundColor: Colors.lightGray, marginLeft: 72 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyText: { fontSize: 15, color: Colors.gray, marginTop: 8, fontFamily: Fonts!.sans },
