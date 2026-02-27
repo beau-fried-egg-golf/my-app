@@ -12,6 +12,8 @@
     { "source": "/group/:id", "destination": "/group/[id].html" },
     { "source": "/group-chat/:id", "destination": "/group-chat/[id].html" },
     { "source": "/meetup/:id", "destination": "/meetup/[id].html" },
-    { "source": "/meetup-chat/:id", "destination": "/meetup-chat/[id].html" }
+    { "source": "/meetup-chat/:id", "destination": "/meetup-chat/[id].html" },
+
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
