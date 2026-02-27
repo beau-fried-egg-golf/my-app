@@ -33,8 +33,11 @@ function InitialRouteEnforcer() {
   const router = useRouter();
 
   useEffect(() => {
-    // On web, let Expo Router handle the URL naturally for deep linking
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === 'web') {
+      // Only enforce on root path — preserve deep links for refresh/URL sharing
+      const path = window.location.pathname;
+      if (path !== '/' && path !== '') return;
+    }
     requestAnimationFrame(() => {
       router.replace('/(tabs)/');
     });
