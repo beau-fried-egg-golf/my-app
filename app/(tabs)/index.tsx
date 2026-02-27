@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert, Animated, FlatList, Image, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Alert, Animated, FlatList, Image, Keyboard, Modal, PanResponder, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { supabase } from '@/data/supabase';
 import PlatformPressable from '@/components/PlatformPressable';
 import { useRouter } from 'expo-router';
@@ -65,15 +65,186 @@ const REACTION_EMOJI: Record<string, string> = {
   laugh: '\uD83D\uDE02',
 };
 
+function PostWithGallery({ children, onPress }: { children: (props: { contentWidth: number }) => React.ReactNode; onPress: () => void }) {
+  const [contentWidth, setContentWidth] = useState(0);
+  return (
+    <PlatformPressable
+      style={styles.activityItem}
+      onPress={onPress}
+      onLayout={(e: any) => {
+        // Full row width minus paddingHorizontal (32) minus avatar (36) minus avatar marginRight (12)
+        const w = e.nativeEvent.layout.width - 32 - 48;
+        if (w > 0 && w !== contentWidth) setContentWidth(w);
+      }}
+    >
+      {children({ contentWidth })}
+    </PlatformPressable>
+  );
+}
+
+function PhotoGallery({ photos, containerWidth }: { photos: string[]; containerWidth: number }) {
+  const isDesktop = useIsDesktop();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const imageWidth = containerWidth;
+  const containerRef = useRef<View>(null);
+  const translateX = useRef(new Animated.Value(0)).current;
+
+  // Refs so PanResponder/DOM closures always see current values
+  const stateRef = useRef({ activeIndex: 0, imageWidth: containerWidth, photosLen: photos.length });
+  stateRef.current = { activeIndex, imageWidth, photosLen: photos.length };
+
+  const animateTo = (index: number) => {
+    setActiveIndex(index);
+    stateRef.current.activeIndex = index;
+    Animated.spring(translateX, {
+      toValue: -index * imageWidth,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 12,
+    }).start();
+  };
+  const animateToRef = useRef(animateTo);
+  animateToRef.current = animateTo;
+
+  // PanResponder for native — images follow finger, then spring into place
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderMove: (_, gs) => {
+        const { activeIndex: idx, imageWidth: w } = stateRef.current;
+        translateX.setValue(-idx * w + gs.dx);
+      },
+      onPanResponderRelease: (_, gs) => {
+        const { activeIndex: idx, photosLen, imageWidth: w } = stateRef.current;
+        if (gs.dx < -40 && idx < photosLen - 1) {
+          animateToRef.current(idx + 1);
+        } else if (gs.dx > 40 && idx > 0) {
+          animateToRef.current(idx - 1);
+        } else {
+          Animated.spring(translateX, {
+            toValue: -idx * w,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 12,
+          }).start();
+        }
+      },
+    })
+  ).current;
+
+  // Web: native DOM listeners — images follow pointer, then spring into place
+  useEffect(() => {
+    if (Platform.OS !== 'web' || photos.length <= 1) return;
+    const node = containerRef.current as unknown as HTMLElement | null;
+    if (!node || typeof node.addEventListener !== 'function') return;
+
+    let startX = 0;
+    let dragging = false;
+    const onDown = (e: PointerEvent) => {
+      startX = e.clientX;
+      dragging = true;
+      e.stopPropagation();
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      e.stopPropagation();
+      const dx = e.clientX - startX;
+      const { activeIndex: idx, imageWidth: w } = stateRef.current;
+      translateX.setValue(-idx * w + dx);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      e.stopPropagation();
+      const dx = e.clientX - startX;
+      const { activeIndex: idx, photosLen, imageWidth: w } = stateRef.current;
+      if (dx < -40 && idx < photosLen - 1) {
+        animateToRef.current(idx + 1);
+      } else if (dx > 40 && idx > 0) {
+        animateToRef.current(idx - 1);
+      } else {
+        Animated.spring(translateX, {
+          toValue: -idx * w,
+          useNativeDriver: true,
+          tension: 50,
+          friction: 12,
+        }).start();
+      }
+    };
+    node.addEventListener('pointerdown', onDown, { capture: true });
+    node.addEventListener('pointermove', onMove, { capture: true });
+    node.addEventListener('pointerup', onUp, { capture: true });
+    return () => {
+      node.removeEventListener('pointerdown', onDown, { capture: true } as any);
+      node.removeEventListener('pointermove', onMove, { capture: true } as any);
+      node.removeEventListener('pointerup', onUp, { capture: true } as any);
+    };
+  }, [photos.length, translateX]);
+
+  if (!containerWidth) return null;
+
+  if (photos.length === 1) {
+    return (
+      <Image
+        source={{ uri: photos[0] }}
+        style={[styles.galleryImage, { width: imageWidth, height: imageWidth * 0.65 }]}
+      />
+    );
+  }
+
+  const goNext = () => { if (activeIndex < photos.length - 1) animateTo(activeIndex + 1); };
+  const goPrev = () => { if (activeIndex > 0) animateTo(activeIndex - 1); };
+
+  return (
+    <View>
+      <View
+        ref={containerRef}
+        style={[styles.galleryContainer, { width: imageWidth, height: imageWidth * 0.65 }]}
+        {...(Platform.OS !== 'web' ? panResponder.panHandlers : {})}
+      >
+        <Animated.View
+          style={{
+            flexDirection: 'row',
+            width: imageWidth * photos.length,
+            transform: [{ translateX }],
+          }}
+        >
+          {photos.map((uri, i) => (
+            <Image
+              key={i}
+              source={{ uri }}
+              style={[styles.galleryImage, { width: imageWidth, height: imageWidth * 0.65 }]}
+            />
+          ))}
+        </Animated.View>
+        {isDesktop && activeIndex > 0 && (
+          <Pressable style={[styles.galleryArrow, styles.galleryArrowLeft]} onPress={goPrev}>
+            <Ionicons name="chevron-back" size={20} color={Colors.white} />
+          </Pressable>
+        )}
+        {isDesktop && activeIndex < photos.length - 1 && (
+          <Pressable style={[styles.galleryArrow, styles.galleryArrowRight]} onPress={goNext}>
+            <Ionicons name="chevron-forward" size={20} color={Colors.white} />
+          </Pressable>
+        )}
+      </View>
+      <View style={styles.galleryDots}>
+        {photos.map((_, i) => (
+          <View
+            key={i}
+            style={[styles.galleryDot, i === activeIndex && styles.galleryDotActive]}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { item: Activity; onPress: () => void; writeups: Writeup[]; profiles: Profile[]; posts: Post[]; isPinned?: boolean }) {
   const isDesktop = useIsDesktop();
   const userProfile = profiles.find(p => p.id === item.user_id);
-  const thumbnail = item.type === 'writeup' && item.writeup_id
-    ? writeups.find(w => w.id === item.writeup_id)?.photos[0]?.url
-    : item.type === 'post' && item.post_id
-      ? posts.find(p => p.id === item.post_id)?.photos[0]?.url
-      : undefined;
-
   const isVerified = !!userProfile?.is_verified;
 
   const pinnedLabel = isPinned ? (
@@ -87,58 +258,61 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
     const name = item.user_name ?? '';
     const post = item.post_id ? posts.find(p => p.id === item.post_id) : null;
     const isLinkPost = !!post?.link_url;
-    const contentPreview = (item.post_content ?? '').length > 80
-      ? (item.post_content ?? '').slice(0, 80) + '...'
-      : item.post_content ?? '';
+    const postContent = item.post_content ?? '';
     const reactionSummary = post
       ? Object.entries(post.reactions)
           .filter(([, ids]) => ids.length > 0)
           .map(([key, ids]) => `${REACTION_EMOJI[key] ?? key} ${ids.length}`)
           .join('  ')
       : '';
+    const photos = post?.photos ?? [];
 
     return (
-      <PlatformPressable style={styles.activityItem} onPress={onPress}>
-        {userProfile?.image ? (
-          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
-        ) : (
-          <View style={styles.activityIcon} />
-        )}
-        <View style={styles.activityContent}>
-          {pinnedLabel}
-          <View style={styles.activityRow}>
-            <Text style={styles.activityTextBold}>{name}</Text>
-            {isVerified && <VerifiedBadge size={12} />}
-            <Text style={styles.activityText}> posted</Text>
-          </View>
-          {contentPreview ? (
-            <Text style={styles.postPreview} numberOfLines={2}>{contentPreview}</Text>
-          ) : null}
-          {isLinkPost && post ? (
-            <LinkPreview
-              url={post.link_url!}
-              title={post.link_title}
-              description={post.link_description}
-              image={post.link_image}
-            />
-          ) : null}
-          <View style={styles.socialRow}>
-            {reactionSummary ? (
-              <Text style={styles.reactionSummary}>{reactionSummary}</Text>
-            ) : null}
-            {post && post.reply_count > 0 ? (
-              <View style={styles.commentCount}>
-                <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
-                <Text style={styles.commentCountText}>{post.reply_count} {post.reply_count === 1 ? 'comment' : 'comments'}</Text>
+      <PostWithGallery onPress={onPress}>
+        {({ contentWidth }) => (
+          <>
+            {userProfile?.image ? (
+              <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+            ) : (
+              <View style={styles.activityIcon} />
+            )}
+            <View style={styles.activityContent}>
+              {pinnedLabel}
+              <View style={styles.activityRow}>
+                <Text style={styles.activityTextBold}>{name}</Text>
+                {isVerified && <VerifiedBadge size={12} />}
+                <Text style={styles.activityText}> posted</Text>
               </View>
-            ) : null}
-          </View>
-          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
-        </View>
-        {!isLinkPost && thumbnail && (
-          <Image source={{ uri: thumbnail }} style={isDesktop ? styles.thumbnailDesktop : styles.thumbnail} />
+              {postContent ? (
+                <Text style={styles.postPreview} numberOfLines={2}>{postContent}</Text>
+              ) : null}
+              {isLinkPost && post ? (
+                <LinkPreview
+                  url={post.link_url!}
+                  title={post.link_title}
+                  description={post.link_description}
+                  image={post.link_image}
+                />
+              ) : null}
+              {!isLinkPost && photos.length > 0 && (
+                <PhotoGallery photos={photos.map(p => p.url)} containerWidth={contentWidth} />
+              )}
+              <View style={styles.socialRow}>
+                {reactionSummary ? (
+                  <Text style={styles.reactionSummary}>{reactionSummary}</Text>
+                ) : null}
+                {post && post.reply_count > 0 ? (
+                  <View style={styles.commentCount}>
+                    <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
+                    <Text style={styles.commentCountText}>{post.reply_count} {post.reply_count === 1 ? 'comment' : 'comments'}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+            </View>
+          </>
         )}
-      </PlatformPressable>
+      </PostWithGallery>
     );
   }
 
@@ -296,33 +470,45 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
   if (item.type === 'writeup') {
     const name = item.user_name ?? '';
     const writeup = item.writeup_id ? writeups.find(w => w.id === item.writeup_id) : null;
+    const writeupContent = writeup?.content ?? '';
+    const photos = writeup?.photos?.filter(p => !p.hidden) ?? [];
+
     return (
-      <PlatformPressable style={styles.activityItem} onPress={onPress}>
-        {userProfile?.image ? (
-          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
-        ) : (
-          <View style={styles.activityIcon} />
-        )}
-        <View style={styles.activityContent}>
-          {pinnedLabel}
-          <View style={styles.activityRow}>
-            <Text style={styles.activityTextBold}>{name}</Text>
-            {isVerified && <VerifiedBadge size={12} />}
-            <Text style={styles.activityText}> posted a review on{' '}</Text>
-          </View>
-          <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
-          {writeup && writeup.reply_count > 0 ? (
-            <View style={styles.commentCount}>
-              <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
-              <Text style={styles.commentCountText}>{writeup.reply_count} {writeup.reply_count === 1 ? 'comment' : 'comments'}</Text>
+      <PostWithGallery onPress={onPress}>
+        {({ contentWidth }) => (
+          <>
+            {userProfile?.image ? (
+              <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+            ) : (
+              <View style={styles.activityIcon} />
+            )}
+            <View style={styles.activityContent}>
+              {pinnedLabel}
+              <View style={styles.activityRow}>
+                <Text style={styles.activityTextBold}>{name}</Text>
+                {isVerified && <VerifiedBadge size={12} />}
+                <Text style={styles.activityText}> posted a review on{' '}</Text>
+              </View>
+              <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
+              {writeupContent ? (
+                <Text style={styles.postPreview} numberOfLines={2}>{writeupContent}</Text>
+              ) : null}
+              {photos.length > 0 && (
+                <PhotoGallery photos={photos.map(p => p.url)} containerWidth={contentWidth} />
+              )}
+              <View style={styles.socialRow}>
+                {writeup && writeup.reply_count > 0 ? (
+                  <View style={styles.commentCount}>
+                    <Ionicons name="chatbubble-outline" size={12} color={Colors.gray} />
+                    <Text style={styles.commentCountText}>{writeup.reply_count} {writeup.reply_count === 1 ? 'comment' : 'comments'}</Text>
+                  </View>
+                ) : null}
+              </View>
+              <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
             </View>
-          ) : null}
-          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
-        </View>
-        {thumbnail && (
-          <Image source={{ uri: thumbnail }} style={isDesktop ? styles.thumbnailDesktop : styles.thumbnail} />
+          </>
         )}
-      </PlatformPressable>
+      </PostWithGallery>
     );
   }
 
@@ -1025,6 +1211,48 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 8,
     marginLeft: 12,
+  },
+  galleryContainer: {
+    marginTop: 10,
+    borderRadius: 10,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  galleryImage: {
+    borderRadius: 10,
+    resizeMode: 'cover',
+  } as any,
+  galleryArrow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -16,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as any,
+  galleryArrowLeft: {
+    left: 8,
+  },
+  galleryArrowRight: {
+    right: 8,
+  },
+  galleryDots: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 8,
+  },
+  galleryDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Colors.lightGray,
+  },
+  galleryDotActive: {
+    backgroundColor: Colors.darkGray,
   },
   activityTime: {
     fontSize: 12,
