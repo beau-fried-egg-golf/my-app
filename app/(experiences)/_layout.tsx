@@ -73,6 +73,14 @@ export default function ExperiencesLayout() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="events"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="event/[slug]"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="reservations"
           options={{ headerShown: false }}
         />

@@ -9,6 +9,7 @@ import {
 } from './eventStorage';
 import type { Event, TicketType, AddOnGroup, AddOn, EventFormField } from './eventTypes';
 import { generateEventEmbedHTML } from './generateEventEmbedHTML';
+import ImageUpload from './ImageUpload';
 import AnnotationPreview from './AnnotationPreview';
 import AnnotationExport from './AnnotationExport';
 
@@ -390,10 +391,7 @@ export default function EventEditor() {
           </div>
         </div>
 
-        <div className="form-group">
-          <label className="form-label">Image URL</label>
-          <input className="form-input" value={form.image_url ?? ''} onChange={e => handleChange('image_url', e.target.value || null)} />
-        </div>
+        <ImageUpload value={form.image_url} onChange={url => handleChange('image_url', url)} label="Event Image" />
 
         <div className="form-row">
           <div className="form-group">

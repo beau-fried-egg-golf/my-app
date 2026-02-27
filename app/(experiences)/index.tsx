@@ -25,6 +25,8 @@ export default function ExperiencesHome() {
     packages,
     featuredPackages,
     loadPackages,
+    events,
+    loadEvents,
     myReservations,
     loadMyReservations,
     isLoading,
@@ -33,6 +35,7 @@ export default function ExperiencesHome() {
   useEffect(() => {
     loadLocations();
     loadPackages();
+    loadEvents();
     loadMyReservations();
   }, []);
 
@@ -124,7 +127,7 @@ export default function ExperiencesHome() {
         )}
 
         {/* Browse by Type */}
-        {locations.length > 0 && (
+        {(locations.length > 0 || events.length > 0) && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Browse</Text>
             <View style={styles.browseGrid}>
@@ -153,6 +156,18 @@ export default function ExperiencesHome() {
                 <Text style={styles.browseTileLabel}>Tee Times</Text>
               </Pressable>
             </View>
+            <Pressable
+              style={[styles.browseTile, styles.browseTileFull]}
+              onPress={() => router.push('/(experiences)/events')}
+            >
+              <Image
+                source={require('@/assets/images/events-hero.png')}
+                style={styles.browseTileImage}
+              />
+              <View style={styles.browseTileOverlay} />
+              <Ionicons name="calendar-outline" size={28} color={Colors.white} />
+              <Text style={styles.browseTileLabel}>Events</Text>
+            </Pressable>
           </View>
         )}
 
@@ -398,6 +413,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     overflow: 'hidden',
+  },
+  browseTileFull: {
+    marginTop: 12,
   },
   browseTileImage: {
     ...StyleSheet.absoluteFillObject,

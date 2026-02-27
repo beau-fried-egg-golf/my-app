@@ -156,3 +156,67 @@ export interface ReservationItem {
 }
 
 export type CancellationPolicyTier = 'flexible' | 'moderate' | 'strict';
+
+// ── Events ──
+
+export interface Event {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  date: string;
+  time: string | null;
+  location: string | null;
+  total_capacity: number;
+  status: 'draft' | 'published' | 'cancelled';
+  image_url: string | null;
+  timezone: string;
+  registration_opens_at: string | null;
+  registration_closes_at: string | null;
+  // Enriched
+  total_booked?: number;
+  spots_remaining?: number;
+}
+
+export interface EventTicketType {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number; // cents
+  capacity: number | null;
+  sold_count: number;
+  available: number | null;
+  on_sale: boolean;
+  sale_status: 'active' | 'not_started' | 'ended';
+  requires_code: boolean;
+  sort_order: number;
+}
+
+export interface EventAddOnGroup {
+  id: string;
+  name: string;
+  description: string | null;
+  selection_type: 'single' | 'multiple';
+  sort_order: number;
+}
+
+export interface EventAddOn {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number; // cents
+  capacity: number | null;
+  sold_count: number;
+  available: number | null;
+  add_on_group_id: string | null;
+  sort_order: number;
+}
+
+export interface EventFormField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'checkbox';
+  required: boolean;
+  options: string[] | null;
+  sort_order: number;
+}

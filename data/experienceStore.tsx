@@ -10,6 +10,11 @@ import type {
   PackageItem,
   Reservation,
   ReservationItem,
+  Event,
+  EventTicketType,
+  EventAddOnGroup,
+  EventAddOn,
+  EventFormField,
 } from '@/types/experiences';
 
 interface ExperienceStoreContextType {
@@ -51,6 +56,17 @@ interface ExperienceStoreContextType {
     groupSize: number,
   ) => Promise<{ available: boolean; unavailableItems: string[] }>;
 
+  // Events
+  events: Event[];
+  loadEvents: () => Promise<void>;
+  getEvent: (slug: string) => Promise<{
+    event: Event;
+    ticket_types: EventTicketType[];
+    add_on_groups: EventAddOnGroup[];
+    add_ons: EventAddOn[];
+    form_fields: EventFormField[];
+  } | null>;
+
   // Reservations
   createPackageReservation: (data: {
     packageId: string;
@@ -85,6 +101,7 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
   const [locations, setLocations] = useState<ExperienceLocation[]>([]);
   const [experienceCourses, setExperienceCourses] = useState<any[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [myReservations, setMyReservations] = useState<Reservation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -352,6 +369,61 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
     return { available: unavailableItems.length === 0, unavailableItems };
   }, [getPackage, checkLodgingAvailability, checkTeeTimeAvailability]);
 
+  // ── Events ──
+
+  const loadEvents = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .eq('status', 'published')
+        .gte('date', today)
+        .order('date');
+      if (error) throw error;
+
+      // Enrich with booking counts
+      const eventList = (data || []) as Event[];
+      if (eventList.length > 0) {
+        const { data: bookings } = await supabase
+          .from('event_bookings')
+          .select('event_id, quantity')
+          .in('event_id', eventList.map(e => e.id))
+          .in('status', ['pending', 'confirmed']);
+
+        const countMap = new Map<string, number>();
+        for (const b of bookings || []) {
+          const qty = (b as any).quantity ?? 1;
+          countMap.set((b as any).event_id, (countMap.get((b as any).event_id) ?? 0) + qty);
+        }
+
+        for (const ev of eventList) {
+          ev.total_booked = countMap.get(ev.id) ?? 0;
+          ev.spots_remaining = ev.total_capacity - (ev.total_booked ?? 0);
+        }
+      }
+
+      setEvents(eventList);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const getEvent = useCallback(async (slug: string) => {
+    const { data, error } = await supabase.functions.invoke('get-event', {
+      body: { slug },
+    });
+    if (error || !data?.event) return null;
+    return data as {
+      event: Event;
+      ticket_types: EventTicketType[];
+      add_on_groups: EventAddOnGroup[];
+      add_ons: EventAddOn[];
+      form_fields: EventFormField[];
+    };
+  }, []);
+
   // ── Reservations ──
 
   const createPackageReservation = useCallback(async (data: {
@@ -615,6 +687,9 @@ export function ExperienceStoreProvider({ children }: { children: React.ReactNod
     loadExperienceCourses,
     checkLodgingAvailability,
     checkTeeTimeAvailability,
+    events,
+    loadEvents,
+    getEvent,
     packages,
     featuredPackages,
     loadPackages,

@@ -36,11 +36,12 @@ export default function ExperiencesTabBar() {
   const { width: screenWidth } = useWindowDimensions();
   const [showMore, setShowMore] = useState(false);
 
-  const TAB_BAR_WIDTH = 200;
+  const TAB_BAR_WIDTH = 260;
 
   const isExperiencesHome = pathname === '/' || pathname === '';
+  const isEvents = pathname === '/events';
   const isReservations = pathname === '/reservations';
-  const showBar = isExperiencesHome || isReservations;
+  const showBar = isExperiencesHome || isEvents || isReservations;
 
   if (!showBar) return null;
 
@@ -54,6 +55,14 @@ export default function ExperiencesTabBar() {
         >
           <View style={styles.tabIconBox}>
             <Ionicons name={isExperiencesHome ? 'compass' : 'compass-outline'} size={24} color={isExperiencesHome ? Colors.orange : Colors.gray} />
+          </View>
+        </Pressable>
+        <Pressable
+          style={styles.tabBarItem}
+          onPress={() => router.push('/(experiences)/events')}
+        >
+          <View style={styles.tabIconBox}>
+            <Ionicons name={isEvents ? 'calendar' : 'calendar-outline'} size={24} color={isEvents ? Colors.orange : Colors.gray} />
           </View>
         </Pressable>
         <Pressable
@@ -149,7 +158,7 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     bottom: 16,
-    width: 200,
+    width: 260,
     height: 56,
     borderRadius: 28,
     backgroundColor: 'transparent',
