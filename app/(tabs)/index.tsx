@@ -86,18 +86,20 @@ function PhotoGallery({ photos, containerWidth }: { photos: string[]; containerW
   const isDesktop = useIsDesktop();
   const [activeIndex, setActiveIndex] = useState(0);
   const imageWidth = containerWidth;
+  const GAP = 8;
+  const stride = imageWidth + GAP; // distance per slide (image + gap)
   const containerRef = useRef<View>(null);
   const translateX = useRef(new Animated.Value(0)).current;
 
   // Refs so PanResponder/DOM closures always see current values
-  const stateRef = useRef({ activeIndex: 0, imageWidth: containerWidth, photosLen: photos.length });
-  stateRef.current = { activeIndex, imageWidth, photosLen: photos.length };
+  const stateRef = useRef({ activeIndex: 0, stride, photosLen: photos.length });
+  stateRef.current = { activeIndex, stride, photosLen: photos.length };
 
   const animateTo = (index: number) => {
     setActiveIndex(index);
     stateRef.current.activeIndex = index;
     Animated.spring(translateX, {
-      toValue: -index * imageWidth,
+      toValue: -index * stride,
       useNativeDriver: true,
       tension: 50,
       friction: 12,
@@ -113,18 +115,18 @@ function PhotoGallery({ photos, containerWidth }: { photos: string[]; containerW
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 10,
       onPanResponderTerminationRequest: () => false,
       onPanResponderMove: (_, gs) => {
-        const { activeIndex: idx, imageWidth: w } = stateRef.current;
-        translateX.setValue(-idx * w + gs.dx);
+        const { activeIndex: idx, stride: s } = stateRef.current;
+        translateX.setValue(-idx * s + gs.dx);
       },
       onPanResponderRelease: (_, gs) => {
-        const { activeIndex: idx, photosLen, imageWidth: w } = stateRef.current;
+        const { activeIndex: idx, photosLen, stride: s } = stateRef.current;
         if (gs.dx < -40 && idx < photosLen - 1) {
           animateToRef.current(idx + 1);
         } else if (gs.dx > 40 && idx > 0) {
           animateToRef.current(idx - 1);
         } else {
           Animated.spring(translateX, {
-            toValue: -idx * w,
+            toValue: -idx * s,
             useNativeDriver: true,
             tension: 50,
             friction: 12,
@@ -151,22 +153,22 @@ function PhotoGallery({ photos, containerWidth }: { photos: string[]; containerW
       if (!dragging) return;
       e.stopPropagation();
       const dx = e.clientX - startX;
-      const { activeIndex: idx, imageWidth: w } = stateRef.current;
-      translateX.setValue(-idx * w + dx);
+      const { activeIndex: idx, stride: s } = stateRef.current;
+      translateX.setValue(-idx * s + dx);
     };
     const onUp = (e: PointerEvent) => {
       if (!dragging) return;
       dragging = false;
       e.stopPropagation();
       const dx = e.clientX - startX;
-      const { activeIndex: idx, photosLen, imageWidth: w } = stateRef.current;
+      const { activeIndex: idx, photosLen, stride: s } = stateRef.current;
       if (dx < -40 && idx < photosLen - 1) {
         animateToRef.current(idx + 1);
       } else if (dx > 40 && idx > 0) {
         animateToRef.current(idx - 1);
       } else {
         Animated.spring(translateX, {
-          toValue: -idx * w,
+          toValue: -idx * s,
           useNativeDriver: true,
           tension: 50,
           friction: 12,
@@ -207,7 +209,8 @@ function PhotoGallery({ photos, containerWidth }: { photos: string[]; containerW
         <Animated.View
           style={{
             flexDirection: 'row',
-            width: imageWidth * photos.length,
+            width: stride * photos.length,
+            gap: GAP,
             transform: [{ translateX }],
           }}
         >
@@ -281,7 +284,6 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
               <View style={styles.activityRow}>
                 <Text style={styles.activityTextBold}>{name}</Text>
                 {isVerified && <VerifiedBadge size={12} />}
-                <Text style={styles.activityText}> posted</Text>
               </View>
               {postContent ? (
                 <Text style={styles.postPreview} numberOfLines={2}>{postContent}</Text>
@@ -484,12 +486,12 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
             )}
             <View style={styles.activityContent}>
               {pinnedLabel}
-              <View style={styles.activityRow}>
+              <Text style={styles.activityRow}>
                 <Text style={styles.activityTextBold}>{name}</Text>
                 {isVerified && <VerifiedBadge size={12} />}
-                <Text style={styles.activityText}> posted a review on{' '}</Text>
-              </View>
-              <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
+                <Text style={styles.activityText}> reviewed </Text>
+                <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
+              </Text>
               {writeupContent ? (
                 <Text style={styles.postPreview} numberOfLines={2}>{writeupContent}</Text>
               ) : null}
