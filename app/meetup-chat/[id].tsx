@@ -193,7 +193,7 @@ export default function MeetupChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
     >
-      <ResponsiveContainer>
+      <ResponsiveContainer fillViewport>
       {/* Header */}
       {isDesktop ? (
         <View style={styles.desktopHeader}>
@@ -228,6 +228,7 @@ export default function MeetupChatScreen() {
 
       {/* Messages */}
       <FlatList
+        nativeID="dsk-chat-list"
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}

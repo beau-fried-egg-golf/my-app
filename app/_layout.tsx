@@ -145,6 +145,31 @@ function AppShell() {
       #desktop-footer {
         flex-shrink: 1 !important;
       }
+
+      /* ── Fill-viewport screens (chat): constrain to viewport ── */
+      #root-app-shell:has([data-dsk-scene] #dsk-fill-viewport) {
+        overflow: hidden !important;
+      }
+      #root-app-shell:has([data-dsk-scene] #dsk-fill-viewport) #desktop-footer {
+        display: none !important;
+      }
+      /* Stack container: fill remaining height after header */
+      #root-app-shell:has([data-dsk-scene] #dsk-fill-viewport) > div:not(:first-child):has([data-dsk-scene]) {
+        flex: 1 !important;
+        min-height: 0 !important;
+      }
+      /* Scene container and all wrapper divs down to fill-viewport: flex to fill */
+      #root-app-shell:has([data-dsk-scene] #dsk-fill-viewport) > div:not(:first-child) div:has(#dsk-fill-viewport) {
+        flex: 1 !important;
+        min-height: 0 !important;
+      }
+      /* Fill-viewport containers and chat message list: flex to fill */
+      #root-app-shell #dsk-fill-viewport,
+      #root-app-shell #dsk-fill-inner,
+      #root-app-shell #dsk-chat-list {
+        flex: 1 !important;
+        min-height: 0 !important;
+      }
     `;
     document.head.appendChild(style);
     return () => { style.remove(); };
