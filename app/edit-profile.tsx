@@ -52,6 +52,7 @@ export default function EditProfileScreen() {
   const [courseSearch, setCourseSearch] = useState('');
   const [courseSortOrder, setCourseSortOrder] = useState<'alpha' | 'distance'>('alpha');
   const [userLocation, setUserLocation] = useState<{ lat: number; lon: number } | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -104,7 +105,11 @@ export default function EditProfileScreen() {
   }
 
   async function handleSave() {
-    if (!name.trim() || !homeCourseId) return;
+    if (!name.trim()) {
+      setValidationError('Name is required.');
+      return;
+    }
+    setValidationError(null);
     await saveUser({
       id: user!.id,
       memberSince: user!.memberSince,
@@ -308,6 +313,12 @@ export default function EditProfileScreen() {
 
         </View>
 
+        {validationError && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="alert-circle" size={16} color="#991b1b" />
+            <Text style={styles.errorText}>{validationError}</Text>
+          </View>
+        )}
         <Pressable style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save</Text>
         </Pressable>
@@ -331,6 +342,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   label: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   input: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, color: Colors.black, fontFamily: Fonts!.sans },
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fef2f2', borderWidth: 1, borderColor: '#fecaca', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 16 },
+  errorText: { fontSize: 14, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: '#991b1b' },
   saveButton: { backgroundColor: Colors.black, borderRadius: 8, paddingVertical: 16, alignItems: 'center' },
   saveButtonText: { color: Colors.white, fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold },
   coursePicker: {
