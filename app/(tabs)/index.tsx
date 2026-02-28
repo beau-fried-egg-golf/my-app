@@ -508,6 +508,28 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
     );
   }
 
+  if (item.type === 'article_comment') {
+    const name = item.user_name ?? item.content ?? '';
+    return (
+      <PlatformPressable style={styles.activityItem} onPress={onPress}>
+        {userProfile?.image ? (
+          <Image source={{ uri: userProfile.image }} style={styles.activityAvatar} />
+        ) : (
+          <View style={styles.activityIcon}>
+            <Ionicons name="chatbubble-outline" size={16} color={Colors.black} />
+          </View>
+        )}
+        <View style={styles.activityContent}>
+          <Text style={styles.activityRow}>
+            <Text style={styles.activityTextBold}>{name}</Text>
+            <Text style={styles.activityText}> commented on an article</Text>
+          </Text>
+          <Text style={styles.activityTime}>{formatTime(item.created_at)}</Text>
+        </View>
+      </PlatformPressable>
+    );
+  }
+
   if (item.type === 'played') {
     const name = item.user_name ?? '';
     return (

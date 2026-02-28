@@ -1,4 +1,4 @@
-import { FlatList, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -107,6 +107,13 @@ function getNotificationText(n: Notification): { parts: { text: string; bold: bo
           { text: ' shared a new post', bold: false },
         ],
       };
+    case 'article_comment':
+      return {
+        parts: [
+          { text: n.actor_name ?? 'Someone', bold: true },
+          { text: ' commented on an article you commented on', bold: false },
+        ],
+      };
     default:
       return { parts: [{ text: 'New notification', bold: false }] };
   }
@@ -130,6 +137,8 @@ function getNavTarget(n: Notification): string | null {
       return n.post_id ? `/post/${n.post_id}` : null;
     case 'writeup_reply':
       return n.writeup_id ? `/writeup/${n.writeup_id}` : null;
+    case 'article_comment':
+      return n.article_slug ? `https://thefriedegg.com/${n.article_slug}#comments` : null;
     default:
       return null;
   }
@@ -188,7 +197,11 @@ export default function NotificationsScreen() {
     }
     const target = getNavTarget(item);
     if (target) {
-      router.push(target as any);
+      if (target.startsWith('http')) {
+        Linking.openURL(target);
+      } else {
+        router.push(target as any);
+      }
     }
   };
 

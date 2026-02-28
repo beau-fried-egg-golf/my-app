@@ -42,6 +42,7 @@ const BUCKETS = [
     firstRoute: '/hole-annotations',
     items: [
       { to: '/hole-annotations', label: 'Annotations' },
+      { to: '/comments', label: 'Comments' },
     ],
   },
   {
@@ -67,6 +68,7 @@ const BUCKETS = [
 
 function getActiveBucket(pathname: string) {
   if (pathname.startsWith('/hole-annotations')) return 'content';
+  if (pathname.startsWith('/comments')) return 'content';
   if (pathname.startsWith('/experiences')) return 'experiences';
   if (pathname.startsWith('/events')) return 'experiences';
   return 'community';

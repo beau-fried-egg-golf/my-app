@@ -43,6 +43,11 @@ import EventEditor from './EventEditor';
 import EventBookingList from './EventBookingList';
 import EventBookingDetail from './EventBookingDetail';
 import EventWaitlist from './EventWaitlist';
+import CommentList from './CommentList';
+import CommentCollections from './CommentCollections';
+import CommentDetail from './CommentDetail';
+import CommentImport from './CommentImport';
+import CommentInstall from './CommentInstall';
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -147,6 +152,11 @@ export default function App() {
         <Route path="events/:id/bookings" element={<EventBookingList />} />
         <Route path="events/:id/bookings/:bid" element={<EventBookingDetail />} />
         <Route path="events/:id/waitlist" element={<EventWaitlist />} />
+        <Route path="comments" element={<CommentList />} />
+        <Route path="comments/collections" element={<CommentCollections />} />
+        <Route path="comments/import" element={<CommentImport />} />
+        <Route path="comments/install" element={<CommentInstall />} />
+        <Route path="comments/:id" element={<CommentDetail />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

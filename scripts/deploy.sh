@@ -21,6 +21,10 @@ echo "==> Building events embed widget..."
 cd events-embed && npm run build && cd "$ROOT"
 
 echo ""
+echo "==> Building comments embed widget..."
+cd comments-embed && npm run build && cd "$ROOT"
+
+echo ""
 echo "==> Preparing dist for deploy..."
 cp vercel.json dist/vercel.json
 mkdir -p dist/.vercel

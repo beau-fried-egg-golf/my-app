@@ -3212,7 +3212,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' | 'fe_content' }) {
+  function sendPush(params: { recipient_id: string; title: string; body: string; data?: Record<string, string>; push_type: 'dm' | 'notification' | 'nearby_meetup' | 'mention' | 'fe_content' | 'article_comment' }) {
     supabase.functions.invoke('send-push', { body: params }).catch(() => {});
   }
 

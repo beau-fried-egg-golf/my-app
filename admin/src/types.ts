@@ -425,3 +425,63 @@ export interface ReservationItem {
   tee_time_slot_id: string | null;
   metadata: Record<string, any>;
 }
+
+// ── Comments ──
+
+export interface CommentCollection {
+  id: string;
+  collection_slug: string;
+  collection_name: string;
+  is_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Comment {
+  id: string;
+  article_slug: string;
+  collection_slug: string;
+  member_id: string;
+  member_name: string;
+  member_avatar_url: string | null;
+  parent_id: string | null;
+  body_html: string;
+  body_json: unknown;
+  body_text: string;
+  is_edited: boolean;
+  is_deleted: boolean;
+  is_suspended: boolean;
+  created_at: string;
+  updated_at: string;
+  reaction_count?: number;
+  reply_count?: number;
+  images?: CommentImage[];
+}
+
+export interface CommentImage {
+  id: string;
+  comment_id: string;
+  storage_path: string;
+  url: string;
+  position: number;
+  width: number | null;
+  height: number | null;
+  created_at: string;
+}
+
+export interface CommentReaction {
+  id: string;
+  comment_id: string;
+  member_id: string;
+  member_name: string;
+  emoji: string;
+  created_at: string;
+}
+
+export interface CommentEditHistoryEntry {
+  id: string;
+  comment_id: string;
+  body_html: string;
+  body_text: string;
+  edited_at: string;
+}

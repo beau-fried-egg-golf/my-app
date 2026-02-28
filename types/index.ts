@@ -233,7 +233,7 @@ export interface WriteupReply {
 
 export interface Activity {
   id: string;
-  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created' | 'meetup_created' | 'meetup_signup' | 'post_reply' | 'writeup_reply';
+  type: 'writeup' | 'upvote' | 'played' | 'post' | 'group_created' | 'meetup_created' | 'meetup_signup' | 'post_reply' | 'writeup_reply' | 'article_comment';
   user_id: string;
   writeup_id: string | null;
   post_id?: string | null;
@@ -399,7 +399,7 @@ export interface MessageReaction {
   created_at: string;
 }
 
-export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply' | 'waitlist_spot_available' | 'cancellation_approved' | 'cancellation_denied' | 'fe_content';
+export type NotificationType = 'upvote' | 'meetup_signup' | 'group_join' | 'meetup_reminder_7d' | 'meetup_reminder_1d' | 'post_reply' | 'writeup_reply' | 'waitlist_spot_available' | 'cancellation_approved' | 'cancellation_denied' | 'fe_content' | 'article_comment';
 
 export interface CancellationRequest {
   id: string;
@@ -432,6 +432,7 @@ export interface Notification {
   post_id: string | null;
   meetup_id: string | null;
   group_id: string | null;
+  article_slug?: string | null;
   is_read: boolean;
   created_at: string;
   // Enriched

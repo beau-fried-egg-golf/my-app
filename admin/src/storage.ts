@@ -1,5 +1,5 @@
 import { supabase, supabaseAuth } from './supabase';
-import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto, CancellationRequest, WaitlistEntry } from './types';
+import type { Course, Writeup, Photo, Activity, Profile, Post, PostPhoto, PostReply, WriteupReply, Conversation, Message, Meetup, ContentFlag, AdminUser, MeetupMember, Group, HoleAnnotation, AnnotationPin, PinPhoto, CancellationRequest, WaitlistEntry, CommentCollection, Comment, CommentEditHistoryEntry, CommentReaction } from './types';
 
 export async function getCourses(): Promise<Course[]> {
   const all: Course[] = [];
@@ -1033,4 +1033,178 @@ export async function duplicateAnnotation(id: string): Promise<string | null> {
   }
 
   return newId;
+}
+
+// ---- Comment Collections ----
+
+export async function getCommentCollections(): Promise<CommentCollection[]> {
+  const { data } = await supabase
+    .from('comment_collections')
+    .select('*')
+    .order('collection_name');
+  return data ?? [];
+}
+
+export async function upsertCommentCollection(collection: Partial<CommentCollection>): Promise<void> {
+  await supabase.from('comment_collections').upsert({
+    ...collection,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export async function toggleCommentCollection(id: string, isEnabled: boolean): Promise<void> {
+  await supabase.from('comment_collections').update({
+    is_enabled: isEnabled,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+}
+
+// ---- Comments ----
+
+export async function getComments(filters?: {
+  search?: string;
+  status?: 'all' | 'active' | 'suspended' | 'deleted';
+  collection?: string;
+}): Promise<Comment[]> {
+  let query = supabase
+    .from('comments')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (filters?.collection) {
+    query = query.eq('collection_slug', filters.collection);
+  }
+  if (filters?.status === 'active') {
+    query = query.eq('is_deleted', false).eq('is_suspended', false);
+  } else if (filters?.status === 'suspended') {
+    query = query.eq('is_suspended', true);
+  } else if (filters?.status === 'deleted') {
+    query = query.eq('is_deleted', true);
+  }
+
+  const { data: rawComments } = await query;
+  if (!rawComments || rawComments.length === 0) return [];
+
+  const commentIds = rawComments.map((c: { id: string }) => c.id);
+
+  // Parallel fetch reactions + replies
+  const [reactionsRes, repliesRes] = await Promise.all([
+    supabase.from('comment_reactions').select('comment_id').in('comment_id', commentIds),
+    supabase.from('comments').select('parent_id').in('parent_id', commentIds),
+  ]);
+
+  const reactionCountByComment = new Map<string, number>();
+  for (const r of reactionsRes.data ?? []) {
+    reactionCountByComment.set(r.comment_id, (reactionCountByComment.get(r.comment_id) ?? 0) + 1);
+  }
+
+  const replyCountByComment = new Map<string, number>();
+  for (const r of repliesRes.data ?? []) {
+    if (r.parent_id) {
+      replyCountByComment.set(r.parent_id, (replyCountByComment.get(r.parent_id) ?? 0) + 1);
+    }
+  }
+
+  let result = rawComments.map((c: Comment) => ({
+    ...c,
+    reaction_count: reactionCountByComment.get(c.id) ?? 0,
+    reply_count: replyCountByComment.get(c.id) ?? 0,
+  }));
+
+  if (filters?.search) {
+    const q = filters.search.toLowerCase();
+    result = result.filter(
+      (c: Comment) =>
+        c.body_text.toLowerCase().includes(q) ||
+        c.member_name.toLowerCase().includes(q) ||
+        c.article_slug.toLowerCase().includes(q),
+    );
+  }
+
+  return result;
+}
+
+export async function getComment(id: string): Promise<Comment | null> {
+  const { data } = await supabase.from('comments').select('*').eq('id', id).single();
+  return data;
+}
+
+export async function getCommentReactions(commentId: string): Promise<CommentReaction[]> {
+  const { data } = await supabase
+    .from('comment_reactions')
+    .select('*')
+    .eq('comment_id', commentId)
+    .order('created_at');
+  return data ?? [];
+}
+
+export async function getCommentEditHistory(commentId: string): Promise<CommentEditHistoryEntry[]> {
+  const { data } = await supabase
+    .from('comment_edit_history')
+    .select('*')
+    .eq('comment_id', commentId)
+    .order('edited_at', { ascending: false });
+  return data ?? [];
+}
+
+export async function getCommentReplies(parentId: string): Promise<Comment[]> {
+  const { data } = await supabase
+    .from('comments')
+    .select('*')
+    .eq('parent_id', parentId)
+    .order('created_at');
+  return data ?? [];
+}
+
+export async function suspendComment(id: string): Promise<void> {
+  await supabase.from('comments').update({
+    is_suspended: true,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+}
+
+export async function unsuspendComment(id: string): Promise<void> {
+  await supabase.from('comments').update({
+    is_suspended: false,
+    updated_at: new Date().toISOString(),
+  }).eq('id', id);
+}
+
+export async function deleteCommentAdmin(id: string): Promise<void> {
+  // Hard delete — cascades to images, reactions, edit history
+  await supabase.from('comments').delete().eq('id', id);
+}
+
+export async function importComments(
+  rows: { article_slug: string; collection_slug: string; member_name: string; body_text: string; created_at?: string; parent_index?: number }[],
+): Promise<{ errors: string[] }> {
+  const errors: string[] = [];
+  const insertedIds: string[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const parentId = row.parent_index != null && row.parent_index >= 0 && row.parent_index < insertedIds.length
+      ? insertedIds[row.parent_index]
+      : null;
+
+    const { data, error } = await supabase.from('comments').insert({
+      article_slug: row.article_slug,
+      collection_slug: row.collection_slug,
+      member_id: `import-${i}`,
+      member_name: row.member_name,
+      body_text: row.body_text,
+      body_html: `<p>${row.body_text}</p>`,
+      parent_id: parentId,
+      created_at: row.created_at || new Date().toISOString(),
+    }).select('id').single();
+
+    if (error) {
+      errors.push(`Row ${i + 1}: ${error.message}`);
+      insertedIds.push('');
+    } else {
+      insertedIds.push(data.id);
+    }
+  }
+
+  return { errors };
 }
