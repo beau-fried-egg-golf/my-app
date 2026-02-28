@@ -1,24 +1,27 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import {
-  Dimensions,
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
+  Animated,
+  Image,
+  ImageBackground,
+  LayoutChangeEvent,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { Course, CoursePlayed, Writeup } from '@/types';
 import PassportStamp from './PassportStamp';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const STAMPS_PER_PAGE = 6; // 2 columns × 3 rows
+const STAMPS_PER_PAGE = 12; // 4 rows × 3 columns
+const COLS = 3;
+const ROWS = 4;
+const FLIP_DURATION_MOBILE = 500;
+const FLIP_DURATION_DESKTOP = 300;
 
-type SortMode = 'date' | 'state';
+const coverImage = require('@/assets/images/passport-cover.png');
+const pageImage = require('@/assets/images/passport-page.png');
 
 interface StampData {
   courseId: string;
@@ -56,7 +59,6 @@ function getStamps(
     const playedRecord = userPlayed.find(cp => cp.course_id === courseId);
     const courseWriteups = userWriteups.filter(w => w.course_id === courseId);
 
-    // Prefer date_played, fall back to created_at from played record, then earliest writeup
     const datePlayed = playedRecord?.date_played
       ?? playedRecord?.created_at
       ?? courseWriteups.sort((a, b) => a.created_at.localeCompare(b.created_at))[0]?.created_at
@@ -74,63 +76,11 @@ function getStamps(
 
 function sortByDate(stamps: StampData[]): StampData[] {
   return [...stamps].sort((a, b) => {
-    // Stamps with no date go last
     if (!a.datePlayed && !b.datePlayed) return a.courseName.localeCompare(b.courseName);
     if (!a.datePlayed) return 1;
     if (!b.datePlayed) return -1;
-    // Newest first
     return b.datePlayed.localeCompare(a.datePlayed);
   });
-}
-
-function sortByState(stamps: StampData[]): StampData[] {
-  return [...stamps].sort((a, b) => {
-    const stateComp = a.state.localeCompare(b.state);
-    if (stateComp !== 0) return stateComp;
-    return a.courseName.localeCompare(b.courseName);
-  });
-}
-
-function getYearFromDate(d: string | null): string {
-  if (!d) return '—';
-  const date = new Date(d);
-  if (isNaN(date.getTime())) return '—';
-  return String(date.getFullYear());
-}
-
-interface ScrubberLabel {
-  label: string;
-  pageIndex: number;
-}
-
-function buildDateScrubber(pages: StampData[][]): ScrubberLabel[] {
-  const labels: ScrubberLabel[] = [];
-  let lastYear = '';
-  for (let i = 0; i < pages.length; i++) {
-    const firstStamp = pages[i][0];
-    if (!firstStamp) continue;
-    const year = getYearFromDate(firstStamp.datePlayed);
-    if (year !== lastYear) {
-      labels.push({ label: year, pageIndex: i });
-      lastYear = year;
-    }
-  }
-  return labels;
-}
-
-function buildStateScrubber(pages: StampData[][]): ScrubberLabel[] {
-  const labels: ScrubberLabel[] = [];
-  let lastState = '';
-  for (let i = 0; i < pages.length; i++) {
-    const firstStamp = pages[i][0];
-    if (!firstStamp) continue;
-    const st = firstStamp.state;
-    if (st !== lastState) {
-      labels.push({ label: st, pageIndex: i });
-      lastState = st;
-    }
-  }
-  return labels;
 }
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
@@ -143,191 +93,312 @@ function chunkArray<T>(arr: T[], size: number): T[][] {
 
 export default function PassportBook({ userId, coursesPlayed, courses, writeups, onStampPress }: PassportBookProps) {
   const isDesktop = useIsDesktop();
-  const [sortMode, setSortMode] = useState<SortMode>('date');
-  const [currentPage, setCurrentPage] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
-  const scrubberRef = useRef<ScrollView>(null);
+  const [currentPage, setCurrentPage] = useState(0); // 0 = cover; 1+ = stamp page (mobile) or spread index (desktop)
+  const [flipping, setFlipping] = useState(false);
+  const [bookWidth, setBookWidth] = useState(0);
+  const flipAnim = useRef(new Animated.Value(0)).current;
+  const [flipDirection, setFlipDirection] = useState<'forward' | 'backward'>('forward');
 
   const allStamps = useMemo(
     () => getStamps(userId, coursesPlayed, courses, writeups),
     [userId, coursesPlayed, courses, writeups],
   );
 
-  const sortedStamps = useMemo(
-    () => (sortMode === 'date' ? sortByDate(allStamps) : sortByState(allStamps)),
-    [allStamps, sortMode],
-  );
-
+  const sortedStamps = useMemo(() => sortByDate(allStamps), [allStamps]);
   const pages = useMemo(() => chunkArray(sortedStamps, STAMPS_PER_PAGE), [sortedStamps]);
-  const totalPages = pages.length;
+  const totalStampPages = pages.length;
 
-  const scrubberLabels = useMemo(
-    () => (sortMode === 'date' ? buildDateScrubber(pages) : buildStateScrubber(pages)),
-    [pages, sortMode],
-  );
+  // Desktop: currentPage 0=cover, 1=spread(pages 0-1), 2=spread(pages 2-3), ...
+  // Mobile: currentPage 0=cover, 1=page 0, 2=page 1, ...
+  const totalSpreads = Math.ceil(totalStampPages / 2);
+  const totalPages = isDesktop ? totalSpreads + 1 : totalStampPages + 1;
 
-  const pageWidth = SCREEN_WIDTH - 32; // 16px padding on each side
+  const onBookLayout = useCallback((e: LayoutChangeEvent) => {
+    setBookWidth(e.nativeEvent.layout.width);
+  }, []);
 
-  const onScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const page = Math.round(e.nativeEvent.contentOffset.x / pageWidth);
-      setCurrentPage(Math.max(0, Math.min(page, totalPages - 1)));
-    },
-    [pageWidth, totalPages],
-  );
+  const flipToPage = useCallback((targetPage: number) => {
+    if (flipping) return;
+    if (targetPage < 0 || targetPage >= totalPages) return;
 
-  const goToPage = useCallback(
-    (index: number) => {
-      flatListRef.current?.scrollToOffset({ offset: index * pageWidth, animated: true });
-      setCurrentPage(index);
-    },
-    [pageWidth],
-  );
+    const dir = targetPage > currentPage ? 'forward' : 'backward';
+    setFlipDirection(dir);
+    setFlipping(true);
+    flipAnim.setValue(0);
 
-  const handleSortChange = useCallback(
-    (mode: SortMode) => {
-      setSortMode(mode);
-      setCurrentPage(0);
-      flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
-    },
-    [],
-  );
+    Animated.timing(flipAnim, {
+      toValue: 1,
+      duration: isDesktop ? FLIP_DURATION_DESKTOP : FLIP_DURATION_MOBILE,
+      useNativeDriver: true,
+    }).start(() => {
+      flipAnim.setValue(0);
+      setCurrentPage(targetPage);
+      setFlipping(false);
+    });
+  }, [flipping, currentPage, totalPages, flipAnim]);
 
-  // Find which scrubber label is active based on current page
-  const activeScrubberIndex = useMemo(() => {
-    for (let i = scrubberLabels.length - 1; i >= 0; i--) {
-      if (scrubberLabels[i].pageIndex <= currentPage) return i;
-    }
-    return 0;
-  }, [scrubberLabels, currentPage]);
-
-  const renderPage = useCallback(
-    ({ item: pageStamps }: { item: StampData[] }) => (
-      <View style={[styles.page, { width: pageWidth }]}>
-        <View style={styles.stampGrid}>
-          {pageStamps.map(stamp => (
-            <PassportStamp
-              key={stamp.courseId}
-              courseId={stamp.courseId}
-              courseName={stamp.courseName}
-              state={stamp.state}
-              datePlayed={stamp.datePlayed}
-              onPress={() => onStampPress(stamp.courseId)}
-            />
-          ))}
-        </View>
-      </View>
-    ),
-    [pageWidth, onStampPress],
-  );
+  const handleCoverTap = useCallback(() => {
+    flipToPage(1);
+  }, [flipToPage]);
 
   if (allStamps.length === 0) return null;
 
-  const sortBar = (
-    <View style={styles.sortBar}>
-      <Pressable
-        style={[styles.sortTab, sortMode === 'date' && styles.sortTabActive]}
-        onPress={() => handleSortChange('date')}
-      >
-        <Text style={[styles.sortTabText, sortMode === 'date' && styles.sortTabTextActive]}>
-          BY DATE
-        </Text>
-      </Pressable>
-      <Pressable
-        style={[styles.sortTab, sortMode === 'state' && styles.sortTabActive]}
-        onPress={() => handleSortChange('state')}
-      >
-        <Text style={[styles.sortTabText, sortMode === 'state' && styles.sortTabTextActive]}>
-          BY STATE
-        </Text>
-      </Pressable>
-    </View>
-  );
+  const renderStampGrid = (stampPage: StampData[], pageIndex: number, pageWidth: number) => {
+    const innerPaddingH = pageWidth * 0.07;
+    const innerTop = pageWidth * 1.5 * 0.08;
+    const innerBottom = pageWidth * 1.5 * 0.05;
+    const innerWidth = pageWidth - innerPaddingH * 2;
+    const gap = innerWidth * 0.04;
+    const stampSize = (innerWidth - gap * (COLS - 1)) / COLS;
 
-  if (isDesktop) {
     return (
-      <View style={styles.container}>
-        {sortBar}
-        <View style={styles.desktopGrid}>
-          {sortedStamps.map(stamp => (
-            <PassportStamp
-              key={stamp.courseId}
-              courseId={stamp.courseId}
-              courseName={stamp.courseName}
-              state={stamp.state}
-              datePlayed={stamp.datePlayed}
-              onPress={() => onStampPress(stamp.courseId)}
-              size={200}
-            />
+      <View style={[styles.stampGridOuter, {
+        paddingHorizontal: innerPaddingH,
+        paddingTop: innerTop,
+        paddingBottom: innerBottom,
+      }]}>
+        <View style={styles.stampGrid}>
+          {Array.from({ length: ROWS }).map((_, rowIdx) => (
+            <View key={rowIdx} style={[styles.stampRow, { gap }]}>
+              {Array.from({ length: COLS }).map((_, colIdx) => {
+                const idx = rowIdx * COLS + colIdx;
+                const stamp = stampPage[idx];
+                if (!stamp) return <View key={colIdx} style={{ width: stampSize, aspectRatio: 1 }} />;
+                return (
+                  <PassportStamp
+                    key={stamp.courseId}
+                    courseId={stamp.courseId}
+                    courseName={stamp.courseName}
+                    state={stamp.state}
+                    datePlayed={stamp.datePlayed}
+                    onPress={() => onStampPress(stamp.courseId)}
+                    size={stampSize}
+                  />
+                );
+              })}
+            </View>
           ))}
         </View>
+        <Text style={styles.pageNumber}>
+          Page {pageIndex} of {totalStampPages}
+        </Text>
+      </View>
+    );
+  };
+
+  // Render a single stamp page by its 0-based index into the pages array
+  const renderSingleStampPage = (stampPageIdx: number, pageWidth: number) => {
+    const stampPage = pages[stampPageIdx];
+    if (!stampPage) {
+      return <Image source={pageImage} style={styles.pageImage} resizeMode="contain" />;
+    }
+    return (
+      <ImageBackground source={pageImage} style={styles.pageImage} resizeMode="contain">
+        {renderStampGrid(stampPage, stampPageIdx + 1, pageWidth)}
+      </ImageBackground>
+    );
+  };
+
+  // ======================== DESKTOP: TWO-PAGE SPREAD ========================
+  if (isDesktop) {
+    // Subtle crossfade for desktop transitions
+    const fadeOut = flipAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [1, 0],
+    });
+    const fadeIn = flipAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: [0, 1],
+    });
+
+    // Cover
+    if (currentPage === 0 && !flipping) {
+      return (
+        <View style={[styles.container, { maxWidth: 420, alignSelf: 'center', width: '100%' }]}>
+          <Pressable onPress={handleCoverTap}>
+            <View style={styles.bookContainer} onLayout={onBookLayout}>
+              <Image source={coverImage} style={styles.pageImage} resizeMode="contain" />
+            </View>
+          </Pressable>
+        </View>
+      );
+    }
+
+    // Two-layer spread: background images with inner borders cropped,
+    // stamp content positioned independently on top.
+    const renderSpread = (spreadIdx: number, width: number) => {
+      const leftStampIdx = (spreadIdx - 1) * 2;
+      const rightStampIdx = leftStampIdx + 1;
+      const halfWidth = width / 2;
+      const leftPage = pages[leftStampIdx];
+      const rightPage = pages[rightStampIdx];
+
+      return (
+        <View style={styles.spreadRow}>
+          {/* Background layer: page images with inner borders cropped */}
+          <View style={[styles.spreadHalf, { overflow: 'hidden' }]}>
+            <View style={styles.spreadPageBgLeft}>
+              <Image source={pageImage} style={styles.pageImage} resizeMode="stretch" />
+            </View>
+          </View>
+          <View style={[styles.spreadHalf, { overflow: 'hidden' }]}>
+            <View style={styles.spreadPageBgRight}>
+              <Image source={pageImage} style={styles.pageImage} resizeMode="stretch" />
+            </View>
+          </View>
+
+          {/* Content layer: stamp grids positioned on top of backgrounds */}
+          <View style={[StyleSheet.absoluteFill, { flexDirection: 'row' }]} pointerEvents="box-none">
+            <View style={styles.spreadContentHalf}>
+              {leftPage && renderStampGrid(leftPage, leftStampIdx + 1, halfWidth)}
+            </View>
+            <View style={styles.spreadContentHalf}>
+              {rightPage && renderStampGrid(rightPage, rightStampIdx + 1, halfWidth)}
+            </View>
+          </View>
+        </View>
+      );
+    };
+
+    const displayPage = currentPage === 0 ? 1 : currentPage;
+    const targetSpread = flipDirection === 'forward'
+      ? Math.min(displayPage + 1, totalPages - 1)
+      : Math.max(displayPage - 1, 1);
+
+    const canGoBack = currentPage > 1;
+    const canGoForward = currentPage < totalPages - 1;
+
+    return (
+      <View style={[styles.container, { maxWidth: 900, alignSelf: 'center', width: '100%' }]}>
+        <View style={styles.spreadContainer} onLayout={onBookLayout}>
+          {/* Incoming spread (fades in during flip) */}
+          {flipping && (
+            <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeIn }]}>
+              {currentPage === 0
+                ? renderSpread(1, bookWidth)
+                : renderSpread(targetSpread, bookWidth)
+              }
+            </Animated.View>
+          )}
+
+          {/* Current spread / outgoing (fades out during flip) */}
+          {currentPage === 0 && flipping ? (
+            <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeOut }]}>
+              <Image source={coverImage} style={styles.pageImage} resizeMode="contain" />
+            </Animated.View>
+          ) : (
+            <Animated.View style={[StyleSheet.absoluteFill, flipping ? { opacity: fadeOut } : undefined]}>
+              {renderSpread(displayPage, bookWidth)}
+            </Animated.View>
+          )}
+
+          {/* Spine overlay — covers double leather border between pages */}
+          {(currentPage > 0 || flipping) && (
+            <View style={styles.spineOverlay} pointerEvents="none" />
+          )}
+
+          {/* Navigation arrows */}
+          {!flipping && currentPage > 0 && (
+            <>
+              {canGoBack && (
+                <Pressable
+                  style={[styles.navArrow, styles.navArrowLeft]}
+                  onPress={() => flipToPage(currentPage - 1)}
+                >
+                  <Text style={styles.navArrowText}>{'\u2039'}</Text>
+                </Pressable>
+              )}
+              {canGoForward && (
+                <Pressable
+                  style={[styles.navArrow, styles.navArrowRight]}
+                  onPress={() => flipToPage(currentPage + 1)}
+                >
+                  <Text style={styles.navArrowText}>{'\u203A'}</Text>
+                </Pressable>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Close book button */}
+        {!flipping && currentPage > 0 && (
+          <Pressable style={styles.closeBook} onPress={() => { setCurrentPage(0); }}>
+            <Text style={styles.closeBookText}>Close Passport</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
 
+  // ======================== MOBILE: SINGLE PAGE ========================
+  const mobileFadeOut = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 0],
+  });
+  const mobileFadeIn = flipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const mobileTargetPage = flipDirection === 'forward'
+    ? Math.min(currentPage + 1, totalPages - 1)
+    : Math.max(currentPage - 1, 0);
+
+  const canGoBackMobile = currentPage > 1;
+  const canGoForwardMobile = currentPage < totalPages - 1;
+
   return (
     <View style={styles.container}>
-      {sortBar}
+      <View style={styles.bookContainer} onLayout={onBookLayout}>
+        {/* Incoming page (fades in during flip) */}
+        {flipping && (
+          <Animated.View style={[StyleSheet.absoluteFill, { opacity: mobileFadeIn }]}>
+            {mobileTargetPage === 0
+              ? <Image source={coverImage} style={styles.pageImage} resizeMode="contain" />
+              : renderSingleStampPage(mobileTargetPage - 1, bookWidth)
+            }
+          </Animated.View>
+        )}
 
-      {/* Navigation scrubber */}
-      {scrubberLabels.length > 1 && (
-        <ScrollView
-          ref={scrubberRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.scrubber}
-          contentContainerStyle={styles.scrubberContent}
-        >
-          {scrubberLabels.map((item, i) => (
-            <Pressable
-              key={`${item.label}-${item.pageIndex}`}
-              style={[styles.scrubberItem, i === activeScrubberIndex && styles.scrubberItemActive]}
-              onPress={() => goToPage(item.pageIndex)}
-            >
-              <Text style={[styles.scrubberText, i === activeScrubberIndex && styles.scrubberTextActive]}>
-                {item.label}
-              </Text>
+        {/* Current page — opacity always driven by mobileFadeOut (1 when idle, 0→1 fade when flipping) */}
+        <Animated.View style={[StyleSheet.absoluteFill, { opacity: mobileFadeOut }]}>
+          {currentPage === 0 ? (
+            <Pressable onPress={!flipping ? handleCoverTap : undefined} style={styles.coverPressable}>
+              <Image source={coverImage} style={styles.pageImage} resizeMode="contain" />
             </Pressable>
-          ))}
-        </ScrollView>
-      )}
+          ) : (
+            renderSingleStampPage(currentPage - 1, bookWidth)
+          )}
+        </Animated.View>
 
-      {/* Paged stamps */}
-      <FlatList
-        ref={flatListRef}
-        data={pages}
-        renderItem={renderPage}
-        keyExtractor={(_, i) => `page-${i}`}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        getItemLayout={(_, index) => ({
-          length: pageWidth,
-          offset: pageWidth * index,
-          index,
-        })}
-        snapToInterval={pageWidth}
-        decelerationRate="fast"
-      />
+        {/* Navigation arrows */}
+        {!flipping && currentPage > 0 && (
+          <>
+            {canGoBackMobile && (
+              <Pressable
+                style={[styles.navArrow, styles.navArrowLeft]}
+                onPress={() => flipToPage(currentPage - 1)}
+              >
+                <Text style={styles.navArrowText}>{'\u2039'}</Text>
+              </Pressable>
+            )}
+            {canGoForwardMobile && (
+              <Pressable
+                style={[styles.navArrow, styles.navArrowRight]}
+                onPress={() => flipToPage(currentPage + 1)}
+              >
+                <Text style={styles.navArrowText}>{'\u203A'}</Text>
+              </Pressable>
+            )}
+          </>
+        )}
+      </View>
 
-      {/* Page indicator */}
-      {totalPages > 1 && (
-        totalPages <= 8 ? (
-          <View style={styles.dots}>
-            {pages.map((_, i) => (
-              <View
-                key={i}
-                style={[styles.dot, i === currentPage && styles.dotActive]}
-              />
-            ))}
-          </View>
-        ) : (
-          <Text style={styles.pageText}>
-            Page {currentPage + 1} of {totalPages}
-          </Text>
-        )
+      {/* Close book button */}
+      {!flipping && currentPage > 0 && (
+        <Pressable style={styles.closeBook} onPress={() => flipToPage(0)}>
+          <Text style={styles.closeBookText}>Close Passport</Text>
+        </Pressable>
       )}
     </View>
   );
@@ -337,90 +408,108 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 8,
   },
-  sortBar: {
+  bookContainer: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 6,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+  },
+  spreadContainer: {
+    width: '100%',
+    aspectRatio: 4 / 3,
+    position: 'relative',
+    overflow: 'hidden',
+    borderRadius: 6,
+    boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+    backgroundColor: '#7B5B3A',
+  },
+  spreadRow: {
+    flex: 1,
     flexDirection: 'row',
-    marginBottom: 8,
   },
-  sortTab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 8,
-    backgroundColor: Colors.lightGray,
+  spreadHalf: {
+    flex: 1,
   },
-  sortTabActive: {
-    backgroundColor: Colors.black,
+  spineOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: '50%',
+    width: 2,
+    marginLeft: -1,
+    backgroundColor: 'rgba(0,0,0,0.12)',
   },
-  sortTabText: {
-    fontSize: 12,
-    fontFamily: Fonts!.sansBold,
-    fontWeight: FontWeights.bold,
-    color: Colors.gray,
-    letterSpacing: 1,
+  spreadContentHalf: {
+    width: '50%',
+    overflow: 'hidden',
   },
-  sortTabTextActive: {
-    color: Colors.white,
+  spreadPageBgLeft: {
+    width: '104%',
+    height: '100%',
   },
-  scrubber: {
-    marginBottom: 8,
-    maxHeight: 32,
+  spreadPageBgRight: {
+    width: '104%',
+    height: '100%',
+    marginLeft: '-4%',
   },
-  scrubberContent: {
-    gap: 6,
-    paddingRight: 16,
+  coverPressable: {
+    flex: 1,
   },
-  scrubberItem: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: Colors.lightGray,
+  pageImage: {
+    width: '100%',
+    height: '100%',
   },
-  scrubberItemActive: {
-    backgroundColor: Colors.orange,
-  },
-  scrubberText: {
-    fontSize: 12,
-    fontFamily: Fonts!.sansMedium,
-    fontWeight: FontWeights.medium,
-    color: Colors.gray,
-  },
-  scrubberTextActive: {
-    color: Colors.white,
-  },
-  page: {
-    paddingHorizontal: 4,
+  stampGridOuter: {
+    flex: 1,
+    justifyContent: 'space-between',
   },
   stampGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
+    flex: 1,
+    justifyContent: 'space-evenly',
   },
-  desktopGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  dots: {
+  stampRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
-    marginTop: 12,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.lightGray,
-  },
-  dotActive: {
-    backgroundColor: Colors.black,
-  },
-  pageText: {
+  pageNumber: {
     fontSize: 12,
     fontFamily: Fonts!.sans,
     color: Colors.gray,
     textAlign: 'center',
+    paddingBottom: 4,
+  },
+  navArrow: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    cursor: 'pointer' as any,
+  },
+  navArrowLeft: {
+    left: 0,
+  },
+  navArrowRight: {
+    right: 0,
+  },
+  navArrowText: {
+    fontSize: 32,
+    color: 'rgba(0,0,0,0.25)',
+    fontWeight: '300',
+  },
+  closeBook: {
+    alignSelf: 'center',
     marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  closeBookText: {
+    fontSize: 13,
+    fontFamily: Fonts!.sans,
+    color: Colors.gray,
+    textDecorationLine: 'underline',
   },
 });

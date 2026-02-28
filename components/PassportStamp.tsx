@@ -157,7 +157,7 @@ export default function PassportStamp({ courseId, courseName, state, datePlayed,
   const h = hashCode(courseId);
   const shapeIndex = h % 4;
   const shape = SHAPES[shapeIndex];
-  const rotation = ((h % 1000) / 1000) * 10 - 5;
+  const rotation = ((h % 1000) / 1000) * 8 - 4; // ±4 degrees
   const dateStr = formatDate(datePlayed);
   const zone = SAFE_ZONES[shape];
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   FlatList,
   Image,
@@ -103,13 +104,15 @@ function formatTime(iso: string): string {
 export default function PostDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { posts, user, togglePostReaction, getPostReplies, addPostReply, deletePost, flagContent, getUserName } = useStore();
+  const { posts, user, togglePostReaction, getPostReplies, addPostReply, editPostReply, deletePostReply, deletePost, flagContent, getUserName } = useStore();
 
   const [replies, setReplies] = useState<PostReply[]>([]);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
   const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<PostReply | null>(null);
+  const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
+  const [editReplyText, setEditReplyText] = useState('');
 
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
@@ -207,6 +210,51 @@ export default function PostDetailScreen() {
           text: 'Flag',
           style: 'destructive',
           onPress: () => flagContent('post', post!.id),
+        },
+      ]);
+    }
+  }
+
+  function startEditReply(reply: PostReply) {
+    setEditingReplyId(reply.id);
+    setEditReplyText(reply.content);
+  }
+
+  function cancelEditReply() {
+    setEditingReplyId(null);
+    setEditReplyText('');
+  }
+
+  async function handleSaveEditReply(replyId: string) {
+    if (!editReplyText.trim()) return;
+    try {
+      await editPostReply(replyId, editReplyText.trim());
+      setReplies(prev =>
+        prev.map(r => r.id === replyId ? { ...r, content: editReplyText.trim(), is_edited: true } : r),
+      );
+      cancelEditReply();
+    } catch (e) {
+      console.error('Failed to edit reply', e);
+    }
+  }
+
+  function handleDeleteReply(reply: PostReply) {
+    if (Platform.OS === 'web') {
+      if (!window.confirm('Are you sure you want to delete this reply?')) return;
+      deletePostReply(reply.id, post!.id).then(() => {
+        setReplies(prev => prev.filter(r => r.id !== reply.id));
+      });
+    } else {
+      Alert.alert('Delete Reply', 'Are you sure you want to delete this reply?', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deletePostReply(reply.id, post!.id).then(() => {
+              setReplies(prev => prev.filter(r => r.id !== reply.id));
+            });
+          },
         },
       ]);
     }
@@ -327,6 +375,8 @@ export default function PostDetailScreen() {
         {...desktopScrollProps}
         renderItem={({ item }) => {
           const { reply, depth } = item;
+          const isReplyOwner = user?.id === reply.user_id;
+          const isEditing = editingReplyId === reply.id;
           return (
             <View style={[styles.replyItem, depth === 1 && { marginLeft: 32 }]}>
               {depth === 1 && reply.parent_id && (
@@ -340,12 +390,48 @@ export default function PostDetailScreen() {
                   {reply.author_verified && <VerifiedBadge size={12} />}
                 </Pressable>
                 <Text style={styles.replyTime}> · {formatTime(reply.created_at)}</Text>
+                {reply.is_edited && <Text style={styles.editedLabel}> (edited)</Text>}
               </View>
-              <Text style={styles.replyContent}>{reply.content}</Text>
-              <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
-                <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
-                <Text style={styles.replyButtonText}>Reply</Text>
-              </Pressable>
+              {isEditing ? (
+                <View style={styles.editReplyContainer}>
+                  <TextInput
+                    style={styles.editReplyInput}
+                    value={editReplyText}
+                    onChangeText={setEditReplyText}
+                    multiline
+                    maxLength={2000}
+                    autoFocus
+                  />
+                  <View style={styles.editReplyActions}>
+                    <Pressable onPress={cancelEditReply}>
+                      <Text style={styles.editReplyCancelText}>Cancel</Text>
+                    </Pressable>
+                    <Pressable onPress={() => handleSaveEditReply(reply.id)}>
+                      <Text style={styles.editReplySaveText}>Save</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.replyContent}>{reply.content}</Text>
+                  <View style={styles.replyActionsRow}>
+                    <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
+                      <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
+                      <Text style={styles.replyButtonText}>Reply</Text>
+                    </Pressable>
+                    {isReplyOwner && (
+                      <>
+                        <Pressable style={styles.replyButton} onPress={() => startEditReply(reply)}>
+                          <Text style={styles.replyButtonText}>Edit</Text>
+                        </Pressable>
+                        <Pressable style={styles.replyButton} onPress={() => handleDeleteReply(reply)}>
+                          <Text style={styles.replyButtonText}>Delete</Text>
+                        </Pressable>
+                      </>
+                    )}
+                  </View>
+                </>
+              )}
             </View>
           );
         }}
@@ -468,8 +554,15 @@ const styles = StyleSheet.create({
   replyAuthorName: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyTime: { fontSize: 12, color: Colors.gray, fontFamily: Fonts!.sans },
   replyContent: { fontSize: 15, color: Colors.black, lineHeight: 22, fontFamily: Fonts!.sans },
-  replyButton: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
+  replyActionsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  replyButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   replyButtonText: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray },
+  editedLabel: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, fontStyle: 'italic' },
+  editReplyContainer: { marginTop: 4 },
+  editReplyInput: { borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15, fontFamily: Fonts!.sans, color: Colors.black, minHeight: 60, maxHeight: 150, outlineStyle: 'none' } as any,
+  editReplyActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
+  editReplyCancelText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
+  editReplySaveText: { fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
   replyingToLabel: { fontSize: 12, fontFamily: Fonts!.sans, color: Colors.gray, marginBottom: 4 },
   replyingToBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: Colors.cream ?? '#f5f5f0', borderTopWidth: 1, borderTopColor: Colors.lightGray },
   replyingToBannerText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.darkGray },

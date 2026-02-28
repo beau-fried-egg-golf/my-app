@@ -62,8 +62,12 @@ interface StoreContextType {
   togglePostReaction: (postId: string, reaction: string) => Promise<void>;
   getPostReplies: (postId: string) => Promise<PostReply[]>;
   addPostReply: (postId: string, content: string, parentId?: string) => Promise<PostReply>;
+  editPostReply: (replyId: string, newContent: string) => Promise<void>;
+  deletePostReply: (replyId: string, postId: string) => Promise<void>;
   getWriteupReplies: (writeupId: string) => Promise<WriteupReply[]>;
   addWriteupReply: (writeupId: string, content: string, parentId?: string) => Promise<WriteupReply>;
+  editWriteupReply: (replyId: string, newContent: string) => Promise<void>;
+  deleteWriteupReply: (replyId: string, writeupId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
   flagContent: (contentType: 'post' | 'writeup', contentId: string) => Promise<void>;
   reportCourseInaccuracy: (courseId: string, reason: string) => Promise<void>;
@@ -493,7 +497,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const { data: writeupRepliesData } = await supabase
       .from('writeup_replies')
       .select('writeup_id')
-      .in('writeup_id', writeupIds);
+      .in('writeup_id', writeupIds)
+      .eq('is_deleted', false);
 
     const replyCountByWriteup = new Map<string, number>();
     for (const r of writeupRepliesData ?? []) {
@@ -752,7 +757,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const [photosRes, reactionsRes, repliesRes] = await Promise.all([
       supabase.from('post_photos').select('*').in('post_id', postIds),
       supabase.from('post_reactions').select('*').in('post_id', postIds),
-      supabase.from('post_replies').select('post_id').in('post_id', postIds),
+      supabase.from('post_replies').select('post_id').in('post_id', postIds).eq('is_deleted', false),
     ]);
 
     // Load author names
@@ -1533,6 +1538,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         .from('post_replies')
         .select('*')
         .eq('post_id', postId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
       if (!replies || replies.length === 0) return [];
@@ -1609,12 +1615,87 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [session, user, posts],
   );
 
+  const editPostReply = useCallback(
+    async (replyId: string, newContent: string) => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      // Fetch old reply to match the activity row
+      const { data: oldReply } = await supabase
+        .from('post_replies')
+        .select('content, post_id')
+        .eq('id', replyId)
+        .single();
+
+      const { error } = await supabase
+        .from('post_replies')
+        .update({ content: newContent, is_edited: true })
+        .eq('id', replyId)
+        .eq('user_id', userId);
+      if (error) throw error;
+
+      // Sync activity feed
+      if (oldReply) {
+        await supabase
+          .from('activities')
+          .update({ content: newContent })
+          .eq('type', 'post_reply')
+          .eq('user_id', userId)
+          .eq('post_id', oldReply.post_id)
+          .eq('content', oldReply.content);
+      }
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
+  const deletePostReply = useCallback(
+    async (replyId: string, postId: string) => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      // Fetch reply content to match the activity row
+      const { data: oldReply } = await supabase
+        .from('post_replies')
+        .select('content')
+        .eq('id', replyId)
+        .single();
+
+      const { error } = await supabase
+        .from('post_replies')
+        .update({ is_deleted: true })
+        .eq('id', replyId)
+        .eq('user_id', userId);
+      if (error) throw error;
+
+      setPosts(prev =>
+        prev.map(p => p.id === postId ? { ...p, reply_count: Math.max(0, p.reply_count - 1) } : p),
+      );
+
+      // Remove activity from feed
+      if (oldReply) {
+        await supabase
+          .from('activities')
+          .delete()
+          .eq('type', 'post_reply')
+          .eq('user_id', userId)
+          .eq('post_id', postId)
+          .eq('content', oldReply.content);
+      }
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
   const getWriteupReplies = useCallback(
     async (writeupId: string): Promise<WriteupReply[]> => {
       const { data: replies } = await supabase
         .from('writeup_replies')
         .select('*')
         .eq('writeup_id', writeupId)
+        .eq('is_deleted', false)
         .order('created_at', { ascending: true });
 
       if (!replies || replies.length === 0) return [];
@@ -1689,6 +1770,80 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return { ...reply, author_name: user?.name ?? 'Member', author_verified: user?.isVerified ?? false };
     },
     [session, user, writeups],
+  );
+
+  const editWriteupReply = useCallback(
+    async (replyId: string, newContent: string) => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      // Fetch old reply to match the activity row
+      const { data: oldReply } = await supabase
+        .from('writeup_replies')
+        .select('content, writeup_id')
+        .eq('id', replyId)
+        .single();
+
+      const { error } = await supabase
+        .from('writeup_replies')
+        .update({ content: newContent, is_edited: true })
+        .eq('id', replyId)
+        .eq('user_id', userId);
+      if (error) throw error;
+
+      // Sync activity feed
+      if (oldReply) {
+        await supabase
+          .from('activities')
+          .update({ content: newContent })
+          .eq('type', 'writeup_reply')
+          .eq('user_id', userId)
+          .eq('writeup_id', oldReply.writeup_id)
+          .eq('content', oldReply.content);
+      }
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
+  );
+
+  const deleteWriteupReply = useCallback(
+    async (replyId: string, writeupId: string) => {
+      if (!session) throw new Error('Not authenticated');
+      const userId = session.user.id;
+
+      // Fetch reply content to match the activity row
+      const { data: oldReply } = await supabase
+        .from('writeup_replies')
+        .select('content')
+        .eq('id', replyId)
+        .single();
+
+      const { error } = await supabase
+        .from('writeup_replies')
+        .update({ is_deleted: true })
+        .eq('id', replyId)
+        .eq('user_id', userId);
+      if (error) throw error;
+
+      setWriteups(prev =>
+        prev.map(w => w.id === writeupId ? { ...w, reply_count: Math.max(0, w.reply_count - 1) } : w),
+      );
+
+      // Remove activity from feed
+      if (oldReply) {
+        await supabase
+          .from('activities')
+          .delete()
+          .eq('type', 'writeup_reply')
+          .eq('user_id', userId)
+          .eq('writeup_id', writeupId)
+          .eq('content', oldReply.content);
+      }
+      const newActivities = await loadActivities();
+      setActivities(newActivities);
+    },
+    [session],
   );
 
   const deletePost = useCallback(
@@ -3309,8 +3464,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         togglePostReaction,
         getPostReplies,
         addPostReply,
+        editPostReply,
+        deletePostReply,
         getWriteupReplies,
         addWriteupReply,
+        editWriteupReply,
+        deleteWriteupReply,
         deletePost,
         flagContent,
         reportCourseInaccuracy,

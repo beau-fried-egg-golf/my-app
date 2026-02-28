@@ -218,6 +218,8 @@ export interface PostReply {
   author_name?: string;
   author_verified?: boolean;
   parent_id?: string | null;
+  is_edited?: boolean;
+  is_deleted?: boolean;
 }
 
 export interface WriteupReply {
@@ -229,6 +231,8 @@ export interface WriteupReply {
   author_name?: string;
   author_verified?: boolean;
   parent_id?: string | null;
+  is_edited?: boolean;
+  is_deleted?: boolean;
 }
 
 export interface Activity {
