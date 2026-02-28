@@ -128,19 +128,31 @@ export default function PostDetailScreen() {
   const isOwner = user?.id === post.user_id;
 
   function buildReplyTree(flat: PostReply[]) {
-    const topLevel = flat.filter(r => !r.parent_id);
-    const children = new Map<string, PostReply[]>();
-    for (const r of flat) {
-      if (r.parent_id) {
-        const arr = children.get(r.parent_id) || [];
-        arr.push(r);
-        children.set(r.parent_id, arr);
+    const byId = new Map<string, PostReply>();
+    for (const r of flat) byId.set(r.id, r);
+
+    function getRootId(r: PostReply): string {
+      let current = r;
+      while (current.parent_id && byId.has(current.parent_id)) {
+        current = byId.get(current.parent_id)!;
       }
+      return current.id;
     }
+
+    const topLevel = flat.filter(r => !r.parent_id);
+    const childrenByRoot = new Map<string, PostReply[]>();
+    for (const r of flat) {
+      if (!r.parent_id) continue;
+      const rootId = getRootId(r);
+      const arr = childrenByRoot.get(rootId) || [];
+      arr.push(r);
+      childrenByRoot.set(rootId, arr);
+    }
+
     const result: { reply: PostReply; depth: number }[] = [];
     for (const r of topLevel) {
       result.push({ reply: r, depth: 0 });
-      for (const child of children.get(r.id) || []) {
+      for (const child of childrenByRoot.get(r.id) || []) {
         result.push({ reply: child, depth: 1 });
       }
     }
@@ -330,12 +342,10 @@ export default function PostDetailScreen() {
                 <Text style={styles.replyTime}> · {formatTime(reply.created_at)}</Text>
               </View>
               <Text style={styles.replyContent}>{reply.content}</Text>
-              {depth === 0 && (
-                <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
-                  <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
-                  <Text style={styles.replyButtonText}>Reply</Text>
-                </Pressable>
-              )}
+              <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
+                <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
+                <Text style={styles.replyButtonText}>Reply</Text>
+              </Pressable>
             </View>
           );
         }}
