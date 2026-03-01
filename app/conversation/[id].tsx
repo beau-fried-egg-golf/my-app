@@ -310,41 +310,41 @@ export default function ConversationScreen() {
           <Text style={styles.blockedText}>This user is not accepting messages</Text>
         </View>
       ) : (
-        <>
-        <FormattingToolbar
-          text={text}
-          onChangeText={setText}
-          inputRef={inputRef}
-          selection={selection}
-          onSelectionChange={setSelection}
-          images={attachedImages}
-          onPickImages={pickImages}
-          maxImages={5}
-          variant="compact"
-        />
-        <ImageAttachments images={attachedImages} onRemove={(i) => setAttachedImages(prev => prev.filter((_, idx) => idx !== i))} />
-        <View style={[styles.inputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
-          <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
-            <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
-          </Pressable>
-          <View style={styles.inputWrapper}>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={text}
-              onChangeText={setText}
-              onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
-              placeholder="Type a message..."
-              placeholderTextColor={Colors.gray}
-              multiline
-              maxLength={2000}
-              onKeyPress={(e: any) => {
-                if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
-                  e.preventDefault();
-                  handleSend();
-                }
-              }}
-            />
+        <View style={[styles.composerBox, { marginBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
+          <FormattingToolbar
+            text={text}
+            onChangeText={setText}
+            inputRef={inputRef}
+            selection={selection}
+            onSelectionChange={setSelection}
+            images={attachedImages}
+            onPickImages={pickImages}
+            maxImages={5}
+            variant="compact"
+          />
+          <TextInput
+            ref={inputRef}
+            style={styles.composerInput}
+            value={text}
+            onChangeText={setText}
+            onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
+            placeholder="Type a message..."
+            placeholderTextColor={Colors.gray}
+            multiline
+            maxLength={2000}
+            onKeyPress={(e: any) => {
+              if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+          />
+          <ImageAttachments images={attachedImages} onRemove={(i) => setAttachedImages(prev => prev.filter((_, idx) => idx !== i))} />
+          <View style={styles.composerBottom}>
+            <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
+              <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
+            </Pressable>
+            <View style={{ flex: 1 }} />
             {!!text.trim() && (
               <Pressable
                 style={styles.sendBtn}
@@ -356,7 +356,6 @@ export default function ConversationScreen() {
             )}
           </View>
         </View>
-        </>
       )}
 
       {/* Context menu modal */}
@@ -466,43 +465,35 @@ const styles = StyleSheet.create({
   },
   empty: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
-  inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.lightGray,
+  composerBox: {
+    marginHorizontal: 12,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: 12,
     backgroundColor: Colors.white,
-    gap: 8,
+  },
+  composerInput: {
+    minHeight: 36,
+    maxHeight: 100,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    fontSize: 16,
+    outlineStyle: 'none',
+    fontFamily: Fonts!.sans,
+    color: Colors.black,
+  } as any,
+  composerBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    paddingBottom: 4,
   },
   emojiBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 0,
   },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderWidth: 1,
-    borderColor: Colors.lightGray,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-  },
-  input: {
-    flex: 1,
-    minHeight: 32,
-    maxHeight: 100,
-    paddingVertical: 6,
-    fontSize: 16,
-    outlineStyle: 'none',
-    fontFamily: Fonts!.sans,
-    color: Colors.black,
-  } as any,
   sendBtn: {
     width: 28,
     height: 28,
@@ -510,8 +501,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.black,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-    marginBottom: 2,
+    marginRight: 4,
   },
   blockedBar: {
     paddingVertical: 16,

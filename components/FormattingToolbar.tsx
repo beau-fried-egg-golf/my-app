@@ -139,6 +139,8 @@ const styles = StyleSheet.create({
   },
   toolbarCompact: {
     paddingVertical: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
   },
   btn: {
     width: 36,

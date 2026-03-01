@@ -666,12 +666,11 @@ export default function WriteupDetailScreen() {
                 </Pressable>
               </View>
             )}
-            <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
-            <ImageAttachments {...replyInput.attachmentProps} />
-            <View style={styles.inputWrapper}>
+            <View style={styles.composerBox}>
+              <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
               <TextInput
                 ref={replyInput.inputRef as any}
-                style={styles.replyInput}
+                style={styles.composerInput}
                 value={replyInput.text}
                 onChangeText={replyInput.setText}
                 onSelectionChange={replyInput.handleNativeSelectionChange}
@@ -686,15 +685,19 @@ export default function WriteupDetailScreen() {
                   }
                 }}
               />
-              {!!replyInput.text.trim() && (
-                <Pressable
-                  style={styles.sendBtn}
-                  onPress={handleSendReply}
-                  disabled={sendingReply}
-                >
-                  <Ionicons name="arrow-up" size={18} color={Colors.white} />
-                </Pressable>
-              )}
+              <ImageAttachments {...replyInput.attachmentProps} />
+              <View style={styles.composerBottom}>
+                <View style={{ flex: 1 }} />
+                {!!replyInput.text.trim() && (
+                  <Pressable
+                    style={styles.sendBtn}
+                    onPress={handleSendReply}
+                    disabled={sendingReply}
+                  >
+                    <Ionicons name="arrow-up" size={18} color={Colors.white} />
+                  </Pressable>
+                )}
+              </View>
             </View>
           </View>
         ) : undefined}
@@ -709,27 +712,28 @@ export default function WriteupDetailScreen() {
               </Pressable>
             </View>
           )}
-          <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
-          <ImageAttachments {...replyInput.attachmentProps} />
-          <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
-            <View style={styles.inputWrapper}>
-              <TextInput
-                ref={replyInput.inputRef as any}
-                style={styles.replyInput}
-                value={replyInput.text}
-                onChangeText={replyInput.setText}
-                onSelectionChange={replyInput.handleNativeSelectionChange}
-                placeholder="Write a reply..."
-                placeholderTextColor={Colors.gray}
-                multiline
-                maxLength={2000}
-                onKeyPress={(e: any) => {
-                  if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
-                    e.preventDefault();
-                    handleSendReply();
-                  }
-                }}
-              />
+          <View style={[styles.composerBox, styles.composerBoxMobile, { marginBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
+            <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
+            <TextInput
+              ref={replyInput.inputRef as any}
+              style={styles.composerInput}
+              value={replyInput.text}
+              onChangeText={replyInput.setText}
+              onSelectionChange={replyInput.handleNativeSelectionChange}
+              placeholder="Write a reply..."
+              placeholderTextColor={Colors.gray}
+              multiline
+              maxLength={2000}
+              onKeyPress={(e: any) => {
+                if (e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+                  e.preventDefault();
+                  handleSendReply();
+                }
+              }}
+            />
+            <ImageAttachments {...replyInput.attachmentProps} />
+            <View style={styles.composerBottom}>
+              <View style={{ flex: 1 }} />
               {!!replyInput.text.trim() && (
                 <Pressable
                   style={styles.sendBtn}
@@ -814,11 +818,12 @@ const styles = StyleSheet.create({
   replyingToBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6, backgroundColor: Colors.cream ?? '#f5f5f0', borderTopWidth: 1, borderTopColor: Colors.lightGray },
   replyingToBannerText: { fontSize: 13, fontFamily: Fonts!.sans, color: Colors.darkGray },
   noReplies: { fontSize: 14, color: Colors.gray, fontFamily: Fonts!.sans, textAlign: 'center', paddingVertical: 20 },
-  replyInputBar: { paddingHorizontal: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.lightGray, backgroundColor: Colors.white },
   desktopReplyInputBar: { paddingTop: 16 },
-  inputWrapper: { flexDirection: 'row', alignItems: 'flex-end', borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 4 },
-  replyInput: { flex: 1, minHeight: 32, maxHeight: 100, paddingVertical: 6, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
-  sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginLeft: 8, marginBottom: 2 },
+  composerBox: { borderWidth: 1, borderColor: Colors.border, borderRadius: 12, backgroundColor: Colors.white },
+  composerBoxMobile: { marginHorizontal: 12 },
+  composerInput: { minHeight: 36, maxHeight: 100, paddingHorizontal: 14, paddingVertical: 8, fontSize: 16, outlineStyle: 'none', fontFamily: Fonts!.sans, color: Colors.black } as any,
+  composerBottom: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingBottom: 4 },
+  sendBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.black, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   editHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   cancelText: { fontSize: 16, color: Colors.gray, fontFamily: Fonts!.sans },
   saveText: { fontSize: 16, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
