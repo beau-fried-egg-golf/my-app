@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
@@ -20,6 +18,9 @@ import { Course } from '@/types';
 import { uploadPhoto } from '@/utils/photo';
 import DetailHeader from '@/components/DetailHeader';
 import TutorialPopup from '@/components/TutorialPopup';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments from '@/components/ImageAttachments';
+import useRichTextInput from '@/hooks/useRichTextInput';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { DesktopActionPane } from '@/components/desktop';
 import { useActionPane } from '@/hooks/useActionPane';
@@ -35,19 +36,13 @@ function getDistanceMiles(lat1: number, lon1: number, lat2: number, lon2: number
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-interface PhotoDraft {
-  uri: string;
-  caption: string;
-}
-
 export default function CreateWriteupScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ courseId?: string }>();
   const { user, courses, addWriteup, isPaidMember, setShowUpgradeModal } = useStore();
   const [courseId, setCourseId] = useState<string | null>(params.courseId ?? null);
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const richText = useRichTextInput({ maxImages: 5 });
   const [showPicker, setShowPicker] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [courseSearch, setCourseSearch] = useState('');
@@ -88,33 +83,8 @@ export default function CreateWriteupScreen() {
 
   if (!user) return null;
 
-  const canSubmit = courseId && title.trim() && content.trim() && !submitting;
+  const canSubmit = courseId && title.trim() && richText.text.trim() && !submitting;
   const selectedCourse = courses.find((c) => c.id === courseId);
-
-  const MAX_PHOTOS = 10;
-
-  async function pickPhotos() {
-    const remaining = MAX_PHOTOS - photos.length;
-    if (remaining <= 0) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: remaining,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const newPhotos = result.assets.slice(0, remaining).map((a) => ({ uri: a.uri, caption: '' }));
-      setPhotos([...photos, ...newPhotos]);
-    }
-  }
-
-  function removePhoto(index: number) {
-    setPhotos(photos.filter((_, i) => i !== index));
-  }
-
-  function updateCaption(index: number, caption: string) {
-    setPhotos(photos.map((p, i) => (i === index ? { ...p, caption } : p)));
-  }
 
   async function handleSubmit() {
     if (!isPaidMember) { setShowUpgradeModal(true); return; }
@@ -122,7 +92,7 @@ export default function CreateWriteupScreen() {
     setSubmitting(true);
     try {
       const uploadedPhotos = await Promise.all(
-        photos.map(async (p) => ({
+        richText.images.map(async (p) => ({
           url: await uploadPhoto(p.uri, user!.id),
           caption: p.caption.trim(),
         })),
@@ -131,7 +101,7 @@ export default function CreateWriteupScreen() {
       await addWriteup({
         courseId: courseId!,
         title: title.trim(),
-        content: content.trim(),
+        content: richText.text.trim(),
         photos: uploadedPhotos,
       });
       if (isInline) closeActionPane();
@@ -222,44 +192,21 @@ export default function CreateWriteupScreen() {
 
         <View style={styles.field}>
           <TextInput
+            ref={richText.inputRef as any}
             style={styles.contentInput}
-            value={content}
-            onChangeText={setContent}
+            value={richText.text}
+            onChangeText={richText.setText}
+            onSelectionChange={richText.handleNativeSelectionChange}
             placeholder="Write about your experience..."
             placeholderTextColor={Colors.gray}
             multiline
             textAlignVertical="top"
           />
+          <FormattingToolbar {...richText.toolbarProps} />
         </View>
 
         <View style={styles.photosSection}>
-          {photos.length < MAX_PHOTOS && (
-            <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-              <Text style={styles.addPhotoText}>ADD PHOTOS ({photos.length}/{MAX_PHOTOS})</Text>
-            </Pressable>
-          )}
-          {photos.length >= MAX_PHOTOS && (
-            <Text style={styles.photoLimitText}>Photo limit reached ({MAX_PHOTOS}/{MAX_PHOTOS})</Text>
-          )}
-          {photos.map((photo, i) => (
-            <View key={i} style={styles.photoItem}>
-              <View style={styles.photoRow}>
-                <Image source={{ uri: photo.uri }} style={styles.photoThumb} />
-                <TextInput
-                  style={styles.captionInput}
-                  value={photo.caption}
-                  onChangeText={(text) => updateCaption(i, text)}
-                  placeholder="Add a description..."
-                  placeholderTextColor={Colors.gray}
-                  multiline
-                  maxLength={200}
-                />
-                <Pressable style={styles.removePhoto} onPress={() => removePhoto(i)}>
-                  <Text style={styles.removeText}>x</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
+          <ImageAttachments {...richText.attachmentProps} showCaptions />
         </View>
     </>
   );

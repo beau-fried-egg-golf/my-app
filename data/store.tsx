@@ -3,6 +3,7 @@ import { Alert, Platform } from 'react-native';
 import { Session, AuthError } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { User, Course, Writeup, Photo, Activity, Profile, CoursePlayed, Post, PostPhoto, PostReply, WriteupReply, Follow, Conversation, Message, UserBlock, Group, GroupMember, GroupMessage, Meetup, MeetupMember, MeetupMessage, MessageReaction, ConversationListItem, Notification, CancellationRequest, WaitlistEntry, profileToUser } from '@/types';
+import { stripMarkdown } from '@/utils/markdown';
 
 function generateId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -61,11 +62,11 @@ interface StoreContextType {
   addPost: (data: { content: string; photos: { url: string; caption: string }[] }) => Promise<Post>;
   togglePostReaction: (postId: string, reaction: string) => Promise<void>;
   getPostReplies: (postId: string) => Promise<PostReply[]>;
-  addPostReply: (postId: string, content: string, parentId?: string) => Promise<PostReply>;
+  addPostReply: (postId: string, content: string, parentId?: string, photos?: Array<{ url: string; caption?: string }>) => Promise<PostReply>;
   editPostReply: (replyId: string, newContent: string) => Promise<void>;
   deletePostReply: (replyId: string, postId: string) => Promise<void>;
   getWriteupReplies: (writeupId: string) => Promise<WriteupReply[]>;
-  addWriteupReply: (writeupId: string, content: string, parentId?: string) => Promise<WriteupReply>;
+  addWriteupReply: (writeupId: string, content: string, parentId?: string, photos?: Array<{ url: string; caption?: string }>) => Promise<WriteupReply>;
   editWriteupReply: (replyId: string, newContent: string) => Promise<void>;
   deleteWriteupReply: (replyId: string, writeupId: string) => Promise<void>;
   deletePost: (postId: string) => Promise<void>;
@@ -86,7 +87,7 @@ interface StoreContextType {
   loadConversations: () => Promise<void>;
   getOrCreateConversation: (otherUserId: string) => Promise<string>;
   getMessages: (conversationId: string) => Promise<Message[]>;
-  sendMessage: (conversationId: string, content: string, replyToId?: string) => Promise<Message>;
+  sendMessage: (conversationId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>) => Promise<Message>;
   toggleMessageReaction: (messageId: string, conversationId: string, reaction: string) => Promise<void>;
   blockUser: (userId: string) => Promise<void>;
   unblockUser: (userId: string) => Promise<void>;
@@ -107,7 +108,7 @@ interface StoreContextType {
   leaveGroup: (groupId: string) => Promise<void>;
   getGroupMembers: (groupId: string) => Promise<GroupMember[]>;
   getGroupMessages: (groupId: string) => Promise<GroupMessage[]>;
-  sendGroupMessage: (groupId: string, content: string, replyToId?: string) => Promise<GroupMessage>;
+  sendGroupMessage: (groupId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>) => Promise<GroupMessage>;
   toggleGroupMessageReaction: (messageId: string, groupId: string, reaction: string) => Promise<void>;
   markGroupRead: (groupId: string) => Promise<void>;
   // Meetups
@@ -124,7 +125,7 @@ interface StoreContextType {
   cancelPendingReservation: (meetupId: string) => Promise<void>;
   getMeetupMembers: (meetupId: string) => Promise<MeetupMember[]>;
   getMeetupMessages: (meetupId: string) => Promise<MeetupMessage[]>;
-  sendMeetupMessage: (meetupId: string, content: string, replyToId?: string) => Promise<MeetupMessage>;
+  sendMeetupMessage: (meetupId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>) => Promise<MeetupMessage>;
   toggleMeetupMessageReaction: (messageId: string, meetupId: string, reaction: string) => Promise<void>;
   markMeetupRead: (meetupId: string) => Promise<void>;
   // Cancellations & Waitlist
@@ -1560,13 +1561,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addPostReply = useCallback(
-    async (postId: string, content: string, parentId?: string): Promise<PostReply> => {
+    async (postId: string, content: string, parentId?: string, photos?: Array<{ url: string; caption?: string }>): Promise<PostReply> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data: reply, error } = await supabase
         .from('post_replies')
-        .insert({ post_id: postId, user_id: userId, content, parent_id: parentId ?? null })
+        .insert({ post_id: postId, user_id: userId, content, parent_id: parentId ?? null, ...(photos && photos.length > 0 ? { photos } : {}) })
         .select()
         .single();
 
@@ -1600,7 +1601,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         sendPush({
           recipient_id: post.user_id,
           title: 'New Reply',
-          body: `${user?.name ?? 'Someone'} replied to your post`,
+          body: `${user?.name ?? 'Someone'}: ${stripMarkdown(content).slice(0, 80)}`,
           data: { post_id: postId },
           push_type: 'notification',
         });
@@ -1717,13 +1718,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addWriteupReply = useCallback(
-    async (writeupId: string, content: string, parentId?: string): Promise<WriteupReply> => {
+    async (writeupId: string, content: string, parentId?: string, photos?: Array<{ url: string; caption?: string }>): Promise<WriteupReply> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data: reply, error } = await supabase
         .from('writeup_replies')
-        .insert({ writeup_id: writeupId, user_id: userId, content, parent_id: parentId ?? null })
+        .insert({ writeup_id: writeupId, user_id: userId, content, parent_id: parentId ?? null, ...(photos && photos.length > 0 ? { photos } : {}) })
         .select()
         .single();
 
@@ -1757,7 +1758,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         sendPush({
           recipient_id: writeup.user_id,
           title: 'New Reply',
-          body: `${user?.name ?? 'Someone'} replied to your review`,
+          body: `${user?.name ?? 'Someone'}: ${stripMarkdown(content).slice(0, 80)}`,
           data: { writeup_id: writeupId },
           push_type: 'notification',
         });
@@ -2107,12 +2108,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMessage = useCallback(
-    async (conversationId: string, content: string, replyToId?: string): Promise<Message> => {
+    async (conversationId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>): Promise<Message> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
       const { data, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: conversationId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
+        .insert({ conversation_id: conversationId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}), ...(photos && photos.length > 0 ? { photos } : {}) })
         .select()
         .single();
       if (error || !data) throw error ?? new Error('Failed to send message');
@@ -2137,7 +2138,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         sendPush({
           recipient_id: recipientId,
           title: 'New Message',
-          body: `${user?.name ?? 'Someone'}: ${content.length > 80 ? content.slice(0, 80) + '...' : content}`,
+          body: `${user?.name ?? 'Someone'}: ${(() => { const s = stripMarkdown(content); return s.length > 80 ? s.slice(0, 80) + '...' : s; })()}`,
           data: { conversation_id: conversationId },
           push_type: 'dm',
         });
@@ -2509,13 +2510,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendGroupMessage = useCallback(
-    async (groupId: string, content: string, replyToId?: string): Promise<GroupMessage> => {
+    async (groupId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>): Promise<GroupMessage> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data, error } = await supabase
         .from('group_messages')
-        .insert({ group_id: groupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
+        .insert({ group_id: groupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}), ...(photos && photos.length > 0 ? { photos } : {}) })
         .select()
         .single();
 
@@ -2557,7 +2558,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 sendPush({
                   recipient_id: profile.id,
                   title: group?.name ?? 'Group Chat',
-                  body: `@${profile.name}: ${content.slice(0, 100)}`,
+                  body: `@${profile.name}: ${stripMarkdown(content).slice(0, 100)}`,
                   data: { type: 'group_mention', group_id: groupId },
                   push_type: 'mention',
                 });
@@ -3107,13 +3108,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMeetupMessage = useCallback(
-    async (meetupId: string, content: string, replyToId?: string): Promise<MeetupMessage> => {
+    async (meetupId: string, content: string, replyToId?: string, photos?: Array<{ url: string; caption?: string }>): Promise<MeetupMessage> => {
       if (!session) throw new Error('Not authenticated');
       const userId = session.user.id;
 
       const { data, error } = await supabase
         .from('meetup_messages')
-        .insert({ meetup_id: meetupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}) })
+        .insert({ meetup_id: meetupId, user_id: userId, content, ...(replyToId ? { reply_to_id: replyToId } : {}), ...(photos && photos.length > 0 ? { photos } : {}) })
         .select()
         .single();
 
@@ -3155,7 +3156,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
                 sendPush({
                   recipient_id: profile.id,
                   title: meetup?.name ?? 'Meetup Chat',
-                  body: `@${profile.name}: ${content.slice(0, 100)}`,
+                  body: `@${profile.name}: ${stripMarkdown(content).slice(0, 100)}`,
                   data: { type: 'meetup_mention', meetup_id: meetupId },
                   push_type: 'mention',
                 });

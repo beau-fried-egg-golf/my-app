@@ -61,6 +61,7 @@ export interface Message {
   reply_to_id?: string | null;
   reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
   reactions?: Record<string, string[]>;
+  photos?: Array<{ url: string; caption?: string }>;
 }
 
 export interface UserBlock {
@@ -220,6 +221,7 @@ export interface PostReply {
   parent_id?: string | null;
   is_edited?: boolean;
   is_deleted?: boolean;
+  photos?: Array<{ url: string; caption?: string }>;
 }
 
 export interface WriteupReply {
@@ -233,6 +235,7 @@ export interface WriteupReply {
   parent_id?: string | null;
   is_edited?: boolean;
   is_deleted?: boolean;
+  photos?: Array<{ url: string; caption?: string }>;
 }
 
 export interface Activity {
@@ -323,6 +326,7 @@ export interface GroupMessage {
   reply_to_id?: string | null;
   reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
   reactions?: Record<string, string[]>;
+  photos?: Array<{ url: string; caption?: string }>;
 }
 
 export interface ConversationListItem {
@@ -393,6 +397,7 @@ export interface MeetupMessage {
   reply_to_id?: string | null;
   reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
   reactions?: Record<string, string[]>;
+  photos?: Array<{ url: string; caption?: string }>;
 }
 
 export interface MessageReaction {

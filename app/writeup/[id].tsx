@@ -24,6 +24,10 @@ import ReactionTooltip from '@/components/ReactionTooltip';
 import DetailHeader from '@/components/DetailHeader';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import FormattedText from '@/components/FormattedText';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments, { PhotoGrid } from '@/components/ImageAttachments';
+import useRichTextInput from '@/hooks/useRichTextInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
@@ -163,7 +167,7 @@ export default function WriteupDetailScreen() {
   const [editPhotos, setEditPhotos] = useState<EditPhoto[]>([]);
 
   const [replies, setReplies] = useState<WriteupReply[]>([]);
-  const [replyText, setReplyText] = useState('');
+  const replyInput = useRichTextInput({ maxImages: 5 });
   const [sendingReply, setSendingReply] = useState(false);
   const [replyingTo, setReplyingTo] = useState<WriteupReply | null>(null);
   const [editingReplyId, setEditingReplyId] = useState<string | null>(null);
@@ -350,12 +354,21 @@ export default function WriteupDetailScreen() {
 
   async function handleSendReply() {
     if (!isPaidMember) return;
-    if (!replyText.trim() || sendingReply) return;
+    if (!replyInput.text.trim() || sendingReply) return;
     setSendingReply(true);
     try {
-      const reply = await addWriteupReply(writeup!.id, replyText.trim(), replyingTo?.id);
+      let photos: Array<{ url: string; caption?: string }> | undefined;
+      if (replyInput.images.length > 0 && user) {
+        photos = await Promise.all(
+          replyInput.images.map(async (p) => ({
+            url: await uploadPhoto(p.uri, user.id),
+            caption: p.caption.trim() || undefined,
+          })),
+        );
+      }
+      const reply = await addWriteupReply(writeup!.id, replyInput.text.trim(), replyingTo?.id, photos);
       setReplies(prev => [...prev, reply]);
-      setReplyText('');
+      replyInput.clearAll();
       setReplyingTo(null);
     } catch (e) {
       console.error('Failed to add reply', e);
@@ -615,7 +628,8 @@ export default function WriteupDetailScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={styles.replyContent}>{reply.content}</Text>
+                  <FormattedText style={styles.replyContent}>{reply.content}</FormattedText>
+                  {reply.photos && reply.photos.length > 0 && <PhotoGrid photos={reply.photos} />}
                   <View style={styles.replyActionsRow}>
                     {isPaidMember && (
                       <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
@@ -652,11 +666,15 @@ export default function WriteupDetailScreen() {
                 </Pressable>
               </View>
             )}
+            <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
+            <ImageAttachments {...replyInput.attachmentProps} />
             <View style={styles.inputWrapper}>
               <TextInput
+                ref={replyInput.inputRef as any}
                 style={styles.replyInput}
-                value={replyText}
-                onChangeText={setReplyText}
+                value={replyInput.text}
+                onChangeText={replyInput.setText}
+                onSelectionChange={replyInput.handleNativeSelectionChange}
                 placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
@@ -668,7 +686,7 @@ export default function WriteupDetailScreen() {
                   }
                 }}
               />
-              {!!replyText.trim() && (
+              {!!replyInput.text.trim() && (
                 <Pressable
                   style={styles.sendBtn}
                   onPress={handleSendReply}
@@ -691,12 +709,16 @@ export default function WriteupDetailScreen() {
               </Pressable>
             </View>
           )}
+          <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
+          <ImageAttachments {...replyInput.attachmentProps} />
           <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
             <View style={styles.inputWrapper}>
               <TextInput
+                ref={replyInput.inputRef as any}
                 style={styles.replyInput}
-                value={replyText}
-                onChangeText={setReplyText}
+                value={replyInput.text}
+                onChangeText={replyInput.setText}
+                onSelectionChange={replyInput.handleNativeSelectionChange}
                 placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
@@ -708,7 +730,7 @@ export default function WriteupDetailScreen() {
                   }
                 }}
               />
-              {!!replyText.trim() && (
+              {!!replyInput.text.trim() && (
                 <Pressable
                   style={styles.sendBtn}
                   onPress={handleSendReply}

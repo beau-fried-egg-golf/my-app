@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import { stripMarkdown } from '@/utils/markdown';
 
 interface ReplyPreviewBubbleProps {
   senderName: string;
@@ -16,7 +17,7 @@ export function ReplyPreviewBubble({ senderName, content, isOwn }: ReplyPreviewB
         {senderName}
       </Text>
       <Text style={[styles.previewContent, isOwn ? styles.previewContentOwn : styles.previewContentOther]} numberOfLines={2}>
-        {content}
+        {stripMarkdown(content)}
       </Text>
     </View>
   );
@@ -35,7 +36,7 @@ export function ReplyPreviewBar({ senderName, content, onCancel }: ReplyPreviewB
       <View style={styles.barAccent} />
       <View style={styles.barContent}>
         <Text style={styles.barName} numberOfLines={1}>Replying to {senderName}</Text>
-        <Text style={styles.barText} numberOfLines={1}>{content}</Text>
+        <Text style={styles.barText} numberOfLines={1}>{stripMarkdown(content)}</Text>
       </View>
       <Pressable onPress={onCancel} style={styles.barClose}>
         <Ionicons name="close" size={18} color={Colors.gray} />

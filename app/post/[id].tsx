@@ -17,11 +17,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { PostReply } from '@/types';
+import { uploadPhoto } from '@/utils/photo';
 import LinkPreview from '@/components/LinkPreview';
 import ReactionTooltip from '@/components/ReactionTooltip';
 import DetailHeader from '@/components/DetailHeader';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import VerifiedBadge from '@/components/VerifiedBadge';
+import FormattedText from '@/components/FormattedText';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments, { PhotoGrid } from '@/components/ImageAttachments';
+import useRichTextInput from '@/hooks/useRichTextInput';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
@@ -107,7 +112,7 @@ export default function PostDetailScreen() {
   const { posts, user, togglePostReaction, getPostReplies, addPostReply, editPostReply, deletePostReply, deletePost, flagContent, getUserName } = useStore();
 
   const [replies, setReplies] = useState<PostReply[]>([]);
-  const [replyText, setReplyText] = useState('');
+  const replyInput = useRichTextInput({ maxImages: 5 });
   const [sendingReply, setSendingReply] = useState(false);
   const [brokenPhotoIds, setBrokenPhotoIds] = useState<Set<string>>(new Set());
   const [replyingTo, setReplyingTo] = useState<PostReply | null>(null);
@@ -163,12 +168,21 @@ export default function PostDetailScreen() {
   }
 
   async function handleSendReply() {
-    if (!replyText.trim() || sendingReply) return;
+    if (!replyInput.text.trim() || sendingReply) return;
     setSendingReply(true);
     try {
-      const reply = await addPostReply(post!.id, replyText.trim(), replyingTo?.id);
+      let photos: Array<{ url: string; caption?: string }> | undefined;
+      if (replyInput.images.length > 0 && user) {
+        photos = await Promise.all(
+          replyInput.images.map(async (p) => ({
+            url: await uploadPhoto(p.uri, user.id),
+            caption: p.caption.trim() || undefined,
+          })),
+        );
+      }
+      const reply = await addPostReply(post!.id, replyInput.text.trim(), replyingTo?.id, photos);
       setReplies(prev => [...prev, reply]);
-      setReplyText('');
+      replyInput.clearAll();
       setReplyingTo(null);
     } catch (e) {
       console.error('Failed to add reply', e);
@@ -413,7 +427,8 @@ export default function PostDetailScreen() {
                 </View>
               ) : (
                 <>
-                  <Text style={styles.replyContent}>{reply.content}</Text>
+                  <FormattedText style={styles.replyContent}>{reply.content}</FormattedText>
+                  {reply.photos && reply.photos.length > 0 && <PhotoGrid photos={reply.photos} />}
                   <View style={styles.replyActionsRow}>
                     <Pressable style={styles.replyButton} onPress={() => setReplyingTo(reply)}>
                       <Ionicons name="arrow-undo-outline" size={14} color={Colors.gray} />
@@ -448,11 +463,15 @@ export default function PostDetailScreen() {
                 </Pressable>
               </View>
             )}
+            <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
+            <ImageAttachments {...replyInput.attachmentProps} />
             <View style={styles.inputWrapper}>
               <TextInput
+                ref={replyInput.inputRef as any}
                 style={styles.replyInput}
-                value={replyText}
-                onChangeText={setReplyText}
+                value={replyInput.text}
+                onChangeText={replyInput.setText}
+                onSelectionChange={replyInput.handleNativeSelectionChange}
                 placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
@@ -464,7 +483,7 @@ export default function PostDetailScreen() {
                   }
                 }}
               />
-              {!!replyText.trim() && (
+              {!!replyInput.text.trim() && (
                 <Pressable
                   style={styles.sendBtn}
                   onPress={handleSendReply}
@@ -487,12 +506,16 @@ export default function PostDetailScreen() {
               </Pressable>
             </View>
           )}
+          <FormattingToolbar {...replyInput.toolbarProps} variant="compact" />
+          <ImageAttachments {...replyInput.attachmentProps} />
           <View style={[styles.replyInputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
             <View style={styles.inputWrapper}>
               <TextInput
+                ref={replyInput.inputRef as any}
                 style={styles.replyInput}
-                value={replyText}
-                onChangeText={setReplyText}
+                value={replyInput.text}
+                onChangeText={replyInput.setText}
+                onSelectionChange={replyInput.handleNativeSelectionChange}
                 placeholder="Write a reply..."
                 placeholderTextColor={Colors.gray}
                 multiline
@@ -504,7 +527,7 @@ export default function PostDetailScreen() {
                   }
                 }}
               />
-              {!!replyText.trim() && (
+              {!!replyInput.text.trim() && (
                 <Pressable
                   style={styles.sendBtn}
                   onPress={handleSendReply}

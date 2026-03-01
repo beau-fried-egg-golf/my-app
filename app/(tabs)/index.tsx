@@ -20,6 +20,7 @@ import { DesktopFeedToolbar } from '@/components/desktop';
 import LetterSpacedHeader from '@/components/LetterSpacedHeader';
 import { useActionPane } from '@/hooks/useActionPane';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+import { stripMarkdown } from '@/utils/markdown';
 
 function decodeEntities(str: string): string {
   return str
@@ -286,7 +287,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
                 {isVerified && <VerifiedBadge size={12} />}
               </View>
               {postContent ? (
-                <Text style={styles.postPreview} numberOfLines={2}>{postContent}</Text>
+                <Text style={styles.postPreview} numberOfLines={2}>{stripMarkdown(postContent)}</Text>
               ) : null}
               {isLinkPost && post ? (
                 <LinkPreview
@@ -343,7 +344,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
             <Text style={styles.activityTime}>  {formatTime(item.created_at)}</Text>
           </View>
           {replyText ? (
-            <Text style={styles.activityText} numberOfLines={3}>{replyText}</Text>
+            <Text style={styles.activityText} numberOfLines={3}>{stripMarkdown(replyText)}</Text>
           ) : null}
           {postPreview ? (
             <Text style={styles.activityReplyContext} numberOfLines={1}>Replying to: {postPreview}</Text>
@@ -373,7 +374,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
             <Text style={styles.activityTime}>  {formatTime(item.created_at)}</Text>
           </View>
           {replyText ? (
-            <Text style={styles.activityText} numberOfLines={3}>{replyText}</Text>
+            <Text style={styles.activityText} numberOfLines={3}>{stripMarkdown(replyText)}</Text>
           ) : null}
           <Text style={styles.activityReplyContext} numberOfLines={1}>Replying to: {contextLabel}</Text>
         </View>
@@ -487,7 +488,7 @@ function ActivityItem({ item, onPress, writeups, profiles, posts, isPinned }: { 
                 <Text style={styles.activityTextBold}>{item.course_name ?? ''}</Text>
               </Text>
               {writeupContent ? (
-                <Text style={styles.postPreview} numberOfLines={2}>{writeupContent}</Text>
+                <Text style={styles.postPreview} numberOfLines={2}>{stripMarkdown(writeupContent)}</Text>
               ) : null}
               {photos.length > 0 && (
                 <PhotoGallery photos={photos.map(p => p.url)} containerWidth={contentWidth} />

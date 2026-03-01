@@ -30,6 +30,7 @@ import { MAPBOX_ACCESS_TOKEN } from '@/constants/mapbox';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { useDesktopScrollProps } from '@/hooks/useDesktopScroll';
+import { stripMarkdown } from '@/utils/markdown';
 
 function hasFEContent(course: Course): boolean {
   return !!(course.fe_hero_image || course.fe_profile_url || course.fe_profile_author || course.fe_egg_rating !== null || course.fe_bang_for_buck || course.fe_profile_date);
@@ -80,7 +81,7 @@ function WriteupCard({
       )}
       <Text style={styles.writeupTitle}>{writeup.title}</Text>
       <Text style={styles.writeupPreview} numberOfLines={2}>
-        {writeup.content}
+        {stripMarkdown(writeup.content)}
       </Text>
       <View style={styles.writeupMeta}>
         <Text style={styles.writeupAuthorName}>{userName}</Text>

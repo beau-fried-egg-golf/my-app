@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +11,6 @@ import {
   View,
 } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
@@ -21,14 +19,12 @@ import { supabase } from '@/data/supabase';
 import LinkPreview from '@/components/LinkPreview';
 import DetailHeader from '@/components/DetailHeader';
 import TutorialPopup from '@/components/TutorialPopup';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments from '@/components/ImageAttachments';
+import useRichTextInput from '@/hooks/useRichTextInput';
 import { useIsDesktop } from '@/hooks/useIsDesktop';
 import { DesktopActionPane } from '@/components/desktop';
 import { useActionPane } from '@/hooks/useActionPane';
-
-interface PhotoDraft {
-  uri: string;
-  caption: string;
-}
 
 interface LinkMeta {
   title: string;
@@ -55,8 +51,7 @@ export default function CreatePostScreen() {
     shareImage?: string;
   }>();
   const { user, addPost } = useStore();
-  const [content, setContent] = useState('');
-  const [photos, setPhotos] = useState<PhotoDraft[]>([]);
+  const richText = useRichTextInput({ maxImages: 5 });
   const [submitting, setSubmitting] = useState(false);
 
   const hasShareParams = !!(shareType && shareId);
@@ -78,9 +73,7 @@ export default function CreatePostScreen() {
 
   if (!user) return null;
 
-  const canSubmit = content.trim() && !submitting;
-
-  const MAX_PHOTOS = 5;
+  const canSubmit = richText.text.trim() && !submitting;
 
   async function fetchLinkMeta(url: string): Promise<LinkMeta> {
     try {
@@ -118,7 +111,7 @@ export default function CreatePostScreen() {
   }
 
   function handleContentChange(text: string) {
-    setContent(text);
+    richText.setText(text);
 
     // Skip URL auto-detection when a shared card is attached and not dismissed
     if (hasShareParams && !linkDismissed) return;
@@ -158,35 +151,12 @@ export default function CreatePostScreen() {
     setLinkMeta(null);
   }
 
-  async function pickPhotos() {
-    const remaining = MAX_PHOTOS - photos.length;
-    if (remaining <= 0) return;
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      selectionLimit: remaining,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const newPhotos = result.assets.slice(0, remaining).map((a) => ({ uri: a.uri, caption: '' }));
-      setPhotos([...photos, ...newPhotos]);
-    }
-  }
-
-  function removePhoto(index: number) {
-    setPhotos(photos.filter((_, i) => i !== index));
-  }
-
-  function updateCaption(index: number, caption: string) {
-    setPhotos(photos.map((p, i) => (i === index ? { ...p, caption } : p)));
-  }
-
   async function handleSubmit() {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
       const uploadedPhotos = await Promise.all(
-        photos.map(async (p) => ({
+        richText.images.map(async (p) => ({
           url: await uploadPhoto(p.uri, user!.id),
           caption: p.caption.trim(),
         })),
@@ -195,7 +165,7 @@ export default function CreatePostScreen() {
       const includingLink = linkUrl && !linkDismissed;
 
       await addPost({
-        content: content.trim(),
+        content: richText.text.trim(),
         photos: uploadedPhotos,
         ...(includingLink && {
           link_url: linkUrl,
@@ -218,15 +188,18 @@ export default function CreatePostScreen() {
     <>
         <View style={styles.field}>
           <TextInput
+            ref={richText.inputRef as any}
             style={styles.contentInput}
-            value={content}
+            value={richText.text}
             onChangeText={handleContentChange}
+            onSelectionChange={richText.handleNativeSelectionChange}
             placeholder="What's on your mind?"
             placeholderTextColor={Colors.gray}
             multiline
             textAlignVertical="top"
             autoFocus
           />
+          <FormattingToolbar {...richText.toolbarProps} onChangeText={handleContentChange} />
         </View>
 
         {showLinkPreview && (
@@ -253,33 +226,7 @@ export default function CreatePostScreen() {
         )}
 
         <View style={styles.photosSection}>
-          {photos.length < MAX_PHOTOS && (
-            <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-              <Text style={styles.addPhotoText}>ADD PHOTOS ({photos.length}/{MAX_PHOTOS})</Text>
-            </Pressable>
-          )}
-          {photos.length >= MAX_PHOTOS && (
-            <Text style={styles.photoLimitText}>Photo limit reached ({MAX_PHOTOS}/{MAX_PHOTOS})</Text>
-          )}
-          {photos.map((photo, i) => (
-            <View key={i} style={styles.photoItem}>
-              <View style={styles.photoRow}>
-                <Image source={{ uri: photo.uri }} style={styles.photoThumb} />
-                <TextInput
-                  style={styles.captionInput}
-                  value={photo.caption}
-                  onChangeText={(text) => updateCaption(i, text)}
-                  placeholder="Add a description..."
-                  placeholderTextColor={Colors.gray}
-                  multiline
-                  maxLength={200}
-                />
-                <Pressable style={styles.removePhoto} onPress={() => removePhoto(i)}>
-                  <Text style={styles.removeText}>x</Text>
-                </Pressable>
-              </View>
-            </View>
-          ))}
+          <ImageAttachments {...richText.attachmentProps} showCaptions />
         </View>
     </>
   );

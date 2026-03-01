@@ -1,6 +1,7 @@
 import { useRef } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
+import FormattedText from '@/components/FormattedText';
 import ReactionBadges from './ReactionBadges';
 import { ReplyPreviewBubble } from './ReplyPreview';
 
@@ -44,6 +45,7 @@ interface MessageBubbleProps {
     sender_name?: string;
     reactions?: Record<string, string[]>;
     reply_to?: { id: string; content: string; user_id: string; sender_name?: string } | null;
+    photos?: Array<{ url: string; caption?: string }>;
   };
   isOwn: boolean;
   showSenderName: boolean;
@@ -97,6 +99,13 @@ export default function MessageBubble({
             />
           )}
           {renderContent(message.content, isOwn)}
+          {message.photos && message.photos.length > 0 && (
+            <View style={styles.photoContainer}>
+              {message.photos.map((photo, i) => (
+                <Image key={i} source={{ uri: photo.url }} style={styles.photoThumb} />
+              ))}
+            </View>
+          )}
           <Text style={[styles.bubbleTime, isOwn ? styles.bubbleTimeOwn : styles.bubbleTimeOther]}>
             {formatTime(message.created_at)}
           </Text>
@@ -158,4 +167,16 @@ const styles = StyleSheet.create({
   },
   mentionOwn: { color: Colors.white },
   mentionOther: { color: Colors.black },
+  photoContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  photoThumb: {
+    width: 100,
+    height: 75,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
+  },
 });

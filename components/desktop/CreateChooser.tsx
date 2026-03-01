@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -23,6 +22,9 @@ import { uploadPhoto } from '@/utils/photo';
 import { Course } from '@/types';
 import LinkPreview from '@/components/LinkPreview';
 import DesktopActionPane from './DesktopActionPane';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments from '@/components/ImageAttachments';
+import { type TextSelection } from '@/utils/markdown';
 
 type Mode = 'post' | 'review' | 'invite';
 
@@ -119,6 +121,8 @@ function PostForm({
 }) {
   const MAX_PHOTOS = 5;
   const showLinkPreview = linkUrl && !linkDismissed;
+  const inputRef = useRef<TextInput>(null);
+  const [selection, setSelection] = useState<TextSelection>({ start: 0, end: 0 });
 
   async function pickPhotos() {
     const remaining = MAX_PHOTOS - photos.length;
@@ -139,13 +143,25 @@ function PostForm({
     <>
       <View style={styles.field}>
         <TextInput
+          ref={inputRef}
           style={styles.contentInput}
           value={content}
           onChangeText={onContentChange}
+          onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
           placeholder="What's on your mind?"
           placeholderTextColor={Colors.gray}
           multiline
           textAlignVertical="top"
+        />
+        <FormattingToolbar
+          text={content}
+          onChangeText={onContentChange}
+          inputRef={inputRef}
+          selection={selection}
+          onSelectionChange={setSelection}
+          images={photos}
+          onPickImages={pickPhotos}
+          maxImages={MAX_PHOTOS}
         />
       </View>
 
@@ -172,39 +188,16 @@ function PostForm({
         </View>
       )}
 
-      <View style={styles.photosSection}>
-        {photos.length < MAX_PHOTOS && (
-          <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-            <Text style={styles.addPhotoText}>ADD PHOTOS ({photos.length}/{MAX_PHOTOS})</Text>
-          </Pressable>
-        )}
-        {photos.length >= MAX_PHOTOS && (
-          <Text style={styles.photoLimitText}>Photo limit reached ({MAX_PHOTOS}/{MAX_PHOTOS})</Text>
-        )}
-        {photos.map((photo, i) => (
-          <View key={i} style={styles.photoItem}>
-            <View style={styles.photoRow}>
-              <Image source={{ uri: photo.uri }} style={styles.photoThumb} />
-              <TextInput
-                style={styles.captionInput}
-                value={photo.caption}
-                onChangeText={(text) => {
-                  const updated = [...photos];
-                  updated[i] = { ...updated[i], caption: text };
-                  setPhotos(updated);
-                }}
-                placeholder="Add a description..."
-                placeholderTextColor={Colors.gray}
-                multiline
-                maxLength={200}
-              />
-              <Pressable style={styles.removePhoto} onPress={() => setPhotos(photos.filter((_, j) => j !== i))}>
-                <Text style={styles.removePhotoText}>x</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
+      <ImageAttachments
+        images={photos}
+        onRemove={(i) => setPhotos(photos.filter((_, j) => j !== i))}
+        onUpdateCaption={(i, text) => {
+          const updated = [...photos];
+          updated[i] = { ...updated[i], caption: text };
+          setPhotos(updated);
+        }}
+        showCaptions
+      />
     </>
   );
 }
@@ -260,7 +253,9 @@ function ReviewForm({
   }, [courses, courseSearch, courseSortOrder, userLocation]);
 
   const selectedCourse = courses.find((c) => c.id === courseId);
-  const MAX_PHOTOS = 10;
+  const MAX_PHOTOS = 5;
+  const contentRef = useRef<TextInput>(null);
+  const [selection, setSelection] = useState<TextSelection>({ start: 0, end: 0 });
 
   async function pickPhotos() {
     const remaining = MAX_PHOTOS - photos.length;
@@ -357,49 +352,38 @@ function ReviewForm({
 
       <View style={styles.field}>
         <TextInput
+          ref={contentRef}
           style={styles.contentInput}
           value={content}
           onChangeText={setContent}
+          onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
           placeholder="Write about your experience..."
           placeholderTextColor={Colors.gray}
           multiline
           textAlignVertical="top"
         />
+        <FormattingToolbar
+          text={content}
+          onChangeText={setContent}
+          inputRef={contentRef}
+          selection={selection}
+          onSelectionChange={setSelection}
+          images={photos}
+          onPickImages={pickPhotos}
+          maxImages={MAX_PHOTOS}
+        />
       </View>
 
-      <View style={styles.photosSection}>
-        {photos.length < MAX_PHOTOS && (
-          <Pressable style={styles.addPhotoButton} onPress={pickPhotos}>
-            <Text style={styles.addPhotoText}>ADD PHOTOS ({photos.length}/{MAX_PHOTOS})</Text>
-          </Pressable>
-        )}
-        {photos.length >= MAX_PHOTOS && (
-          <Text style={styles.photoLimitText}>Photo limit reached ({MAX_PHOTOS}/{MAX_PHOTOS})</Text>
-        )}
-        {photos.map((photo, i) => (
-          <View key={i} style={styles.photoItem}>
-            <View style={styles.photoRow}>
-              <Image source={{ uri: photo.uri }} style={styles.photoThumb} />
-              <TextInput
-                style={styles.captionInput}
-                value={photo.caption}
-                onChangeText={(text) => {
-                  const updated = [...photos];
-                  updated[i] = { ...updated[i], caption: text };
-                  setPhotos(updated);
-                }}
-                placeholder="Add a description..."
-                placeholderTextColor={Colors.gray}
-                multiline
-                maxLength={200}
-              />
-              <Pressable style={styles.removePhoto} onPress={() => setPhotos(photos.filter((_, j) => j !== i))}>
-                <Text style={styles.removePhotoText}>x</Text>
-              </Pressable>
-            </View>
-          </View>
-        ))}
-      </View>
+      <ImageAttachments
+        images={photos}
+        onRemove={(i) => setPhotos(photos.filter((_, j) => j !== i))}
+        onUpdateCaption={(i, text) => {
+          const updated = [...photos];
+          updated[i] = { ...updated[i], caption: text };
+          setPhotos(updated);
+        }}
+        showCaptions
+      />
     </>
   );
 }
@@ -780,18 +764,6 @@ const styles = StyleSheet.create({
   linkLoadingText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray },
   dismissButton: { position: 'absolute', top: 16, right: 8, backgroundColor: 'rgba(0,0,0,0.6)', width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   dismissText: { color: Colors.white, fontSize: 14, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, lineHeight: 16 },
-
-  /* Photos */
-  photosSection: { marginBottom: 24, gap: 12 },
-  addPhotoButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 },
-  addPhotoText: { fontSize: 15, fontFamily: Fonts!.sansMedium, fontWeight: FontWeights.medium, color: Colors.black },
-  photoItem: { borderWidth: 1, borderColor: Colors.lightGray, borderRadius: 8, padding: 8 },
-  photoRow: { flexDirection: 'row', gap: 10 },
-  photoThumb: { width: 72, height: 72, borderRadius: 6 },
-  captionInput: { flex: 1, fontSize: 16, color: Colors.black, paddingVertical: 4, lineHeight: 20, fontFamily: Fonts!.sans, outlineStyle: 'none' } as any,
-  removePhoto: { alignSelf: 'flex-start' },
-  removePhotoText: { fontSize: 18, fontFamily: Fonts!.sansBold, fontWeight: FontWeights.bold, color: Colors.black },
-  photoLimitText: { fontSize: 14, fontFamily: Fonts!.sans, color: Colors.gray, paddingVertical: 8 },
 
   /* Course picker (review) */
   coursePicker: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: Colors.border, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 12, backgroundColor: Colors.white },

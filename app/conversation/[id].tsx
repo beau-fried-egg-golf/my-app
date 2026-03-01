@@ -2,13 +2,18 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { Animated, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { Colors, Fonts, FontWeights } from '@/constants/theme';
 import { useStore } from '@/data/store';
 import { Message } from '@/types';
+import { uploadPhoto } from '@/utils/photo';
+import type { TextSelection } from '@/utils/markdown';
 import MessageBubble from '@/components/chat/MessageBubble';
 import MessageContextMenu from '@/components/chat/MessageContextMenu';
 import { ReplyPreviewBar } from '@/components/chat/ReplyPreview';
 import EmojiPicker from '@/components/chat/EmojiPicker';
+import FormattingToolbar from '@/components/FormattingToolbar';
+import ImageAttachments, { type PhotoDraft } from '@/components/ImageAttachments';
 import ResponsiveContainer from '@/components/ResponsiveContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardHeight } from '@/hooks/useKeyboardHeight';
@@ -62,6 +67,8 @@ export default function ConversationScreen() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ visible: boolean; messageId: string; position: { x: number; y: number } }>({ visible: false, messageId: '', position: { x: 0, y: 0 } });
   const inputRef = useRef<TextInput>(null);
+  const [selection, setSelection] = useState<TextSelection>({ start: 0, end: 0 });
+  const [attachedImages, setAttachedImages] = useState<PhotoDraft[]>([]);
 
   const conversation = conversations.find(c => c.id === id);
   const currentUserId = session?.user?.id;
@@ -95,13 +102,25 @@ export default function ConversationScreen() {
     return () => clearInterval(interval);
   }, [loadConversations, loadMessages, id, markConversationRead]);
 
+  const pickImages = async () => {
+    const remaining = 5 - attachedImages.length;
+    if (remaining <= 0) return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: remaining, quality: 0.7 });
+    if (!result.canceled) setAttachedImages(prev => [...prev, ...result.assets.slice(0, remaining).map(a => ({ uri: a.uri, caption: '' }))]);
+  };
+
   const handleSend = async () => {
     if (!text.trim() || sending || !id) return;
     setSending(true);
     try {
-      const msg = await sendMessage(id, text.trim(), replyTo?.id);
+      let photos: Array<{ url: string; caption?: string }> | undefined;
+      if (attachedImages.length > 0 && currentUserId) {
+        photos = await Promise.all(attachedImages.map(async (p) => ({ url: await uploadPhoto(p.uri, currentUserId), caption: p.caption.trim() || undefined })));
+      }
+      const msg = await sendMessage(id, text.trim(), replyTo?.id, photos);
       setMessages(prev => [...prev, { ...msg, reactions: {}, reply_to: replyTo ? { id: replyTo.id, content: replyTo.content, user_id: replyTo.user_id } : null }]);
       setText('');
+      setAttachedImages([]);
       setReplyTo(null);
       setShowEmojiPicker(false);
     } catch (e) {
@@ -291,6 +310,19 @@ export default function ConversationScreen() {
           <Text style={styles.blockedText}>This user is not accepting messages</Text>
         </View>
       ) : (
+        <>
+        <FormattingToolbar
+          text={text}
+          onChangeText={setText}
+          inputRef={inputRef}
+          selection={selection}
+          onSelectionChange={setSelection}
+          images={attachedImages}
+          onPickImages={pickImages}
+          maxImages={5}
+          variant="compact"
+        />
+        <ImageAttachments images={attachedImages} onRemove={(i) => setAttachedImages(prev => prev.filter((_, idx) => idx !== i))} />
         <View style={[styles.inputBar, { paddingBottom: keyboardHeight > 0 ? 10 : Math.max(10, insets.bottom) }]}>
           <Pressable style={styles.emojiBtn} onPress={() => setShowEmojiPicker(!showEmojiPicker)}>
             <Ionicons name={showEmojiPicker ? 'close' : 'happy-outline'} size={22} color={Colors.gray} />
@@ -301,6 +333,7 @@ export default function ConversationScreen() {
               style={styles.input}
               value={text}
               onChangeText={setText}
+              onSelectionChange={(e: any) => setSelection(e.nativeEvent.selection)}
               placeholder="Type a message..."
               placeholderTextColor={Colors.gray}
               multiline
@@ -323,6 +356,7 @@ export default function ConversationScreen() {
             )}
           </View>
         </View>
+        </>
       )}
 
       {/* Context menu modal */}
